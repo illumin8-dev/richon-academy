@@ -35,7 +35,7 @@ def test_health_does_not_connect(client, monkeypatch):
     connect.assert_not_called()
 
 
-@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/admin", "/orders"])
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/admin"])
 def test_unimplemented_routes_stay_closed(client, path):
     assert client.get(path).status_code == 404
 

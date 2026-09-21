@@ -1,19 +1,32 @@
-"""Richon private backend bootstrap: process and read-only DB checks only."""
+"""Private Richon backend: health checks and pending orders, no payments."""
 
 import logging
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from db import DatabaseConfigurationError, check_database
+from orders import router as orders_router
 
 logger = logging.getLogger("richon.health")
 app = FastAPI(
-    title="Richon backend bootstrap",
+    title="Richon private backend",
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
     debug=False,
 )
+app.include_router(orders_router)
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # The default validation response includes input values; never echo PII.
+    return JSONResponse(
+        status_code=422, content={"detail": "invalid_request"},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.get("/health")

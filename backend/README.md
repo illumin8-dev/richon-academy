@@ -1,109 +1,125 @@
-# 리치온 백엔드 1단계: 비공개 서버 / DB 연결 점검
+# 리치온 백엔드: 비공개 점검 / 결제 대기 주문
 
-## 범위
+## 이번 범위
 
-기존 HTML / CNAME / 신청 링크 / 프론트 배포 설정은 변경하지 않습니다.
-이 폴더에만 FastAPI 테스트 서버를 추가합니다. 결제 / 로그인 / 고객관리 / 알림 / 테이블 생성은 포함하지 않습니다.
+기존 `apply.html`, 메인 홈페이지, 네이버폼, 프론트 배포 설정은 변경하지 않습니다.
+실제 강의·수강료는 임의로 등록하지 않습니다. PG 호출 / 결제 완료 / 수강 확정 / 로그인 / 알림 / 고객관리 화면도 아직 없습니다.
 
-- `GET /health`: 프로세스 응답. DB에 접근하지 않습니다.
-- `GET /health/db`: 짧은 **읽기 전용 트랜잭션**으로 `SELECT 1` 확인 후 연결 종료.
-- 인증은 앱 자체 로그인이 아니라 **Cloud Run IAM**에 맡기는 비공개 시험 단계입니다.
-  **공개 서비스로 전환하거나 이 경로를 프론트에 연결하지 마세요.**
-- DB 점검은 수동 확인용입니다. 주기적인 생존 점검에 사용하면 Neon을 계속 깨워 무료 사용량을 소모할 수 있습니다.
-
-## 파일
-
-| 파일 | 역할 |
+| 기능 | 동작 |
 |---|---|
-| `main.py` | 두 점검 API / 고정된 안전한 오류 응답 |
-| `db.py` | URL 형태 확인 / TLS 연결 / 읽기 전용 쿼리 |
-| `Dockerfile` | Python 3.13 / 비루트 사용자 / Cloud Run PORT 지원 |
-| `.gcloudignore`, `.dockerignore` | 실행 파일만 허용하는 업로드·빌드 목록 |
-| `tests/test_backend.py` | 외부 DB 없이 실행하는 모의 연결 테스트 |
-| `scripts/deploy-test.sh` | Cloud Shell에서 실행하는 비공개 배포·점검 |
+| `GET /health` | DB 접근 없는 프로세스 점검 |
+| `GET /health/db` | 읽기 전용 `SELECT 1` 점검. 주기적 프로브로 사용하지 않음 |
+| `POST /orders` | 서버가 등록한 강의·금액으로 결제 대기 주문을 저장 |
+| `migrate_orders.py --apply` | 명시적으로 주문용 DB 구조 생성. 자동 시작/HTTP 요청에서는 실행하지 않음 |
 
-## 준비된 GCP 구성
+**Cloud Run IAM으로 보호되는 비공개 개발 API입니다.** 아직 일반 고객에게 공개하거나 `apply.html`에 연결하지 마세요.
+CORS 허용 / 고객의 주문 조회 / 주문 상태 변경 API는 만들지 않았습니다. 브라우저에서 서비스 URL이 차단되는 것은 정상입니다.
 
-- 프로젝트 ID: `richon-academy`
-- 리전: `asia-southeast1` (싱가포르)
-- 런타임 서비스 계정: `richon-backend@richon-academy.iam.gserviceaccount.com`
-- Secret Manager: `richon-database-url`
-- 런타임 계정에는 **위 비밀 하나에만** Secret Accessor 권한을 부여합니다.
-- 비밀 값은 `postgresql://...` 주소 전체입니다. `psql ` / 양끝 따옴표 / 줄바꿈 명령을 넣지 마세요.
-- 포트원 계정과 키는 이 단계에 필요하지 않습니다.
+## 파일 변경 위치
 
-## Cloud Shell에서 배포
+- `orders.py`: 입력 확인 / 금액·강의명 서버 조회 / 주문 생성 / 동일 요청 재전송 처리.
+- `main.py`: 주문 API 등록 / 입력값을 노출하지 않는 검증 오류 처리. 기존 점검 API 유지.
+- `migrations/001_pending_orders.sql`, `migrate_orders.py`: 강의·주문 테이블과 이력 / 트랜잭션·체크섬 기반 재실행 보호.
+- `Dockerfile`, `.dockerignore`, `.gcloudignore`: 필요한 새 서버 파일만 빌드에 포함.
+- `scripts/prepare-orders.sh`: Cloud Shell에서 비밀값을 출력하지 않고 DB 구조를 적용.
+- `tests/test_orders.py`: API·저장 로직 모의 테스트.
+- `tests/test_orders_postgres.py`: 별도 빈 테스트 PostgreSQL에서 실행하는 선택적 SQL·동시성 테스트.
 
-이미 인증된 Cloud Shell에서 이 브랜치를 복제한 다음 실행합니다.
+## GCP / 비밀 설정
+
+프로젝트 `richon-academy`, 리전 `asia-southeast1`, 서비스 `richon-backend-test`를 사용합니다.
+런타임은 `richon-backend@richon-academy.iam.gserviceaccount.com`, 빌드는 `richon-build`로 분리합니다.
+비밀 `richon-database-url` 하나에만 런타임의 Secret Accessor 권한을 둡니다.
+비밀 값에는 `postgresql://...` 주소만 넣고 `psql ` / 양끝 따옴표는 제외합니다.
+키·DSN·비밀번호·토큰은 소스 / PR / 로그 / 채팅에 올리지 않습니다.
+
+### 1. 주문 테이블 준비 — 명시적인 DB 변경
+
+인증된 Cloud Shell에서 이 브랜치를 받은 뒤 실행합니다.
+
+```bash
+bash backend/scripts/prepare-orders.sh
+```
+
+대상 프로젝트와 비밀 버전을 확인하고 `CREATE`를 입력해야 진행합니다.
+`richon` 스키마에 `courses`, `orders`, `schema_migrations`를 생성합니다.
+**실제 강의 / 임시 1,000원 상품 / 고객 / 주문은 하나도 넣지 않습니다.**
+같은 체크섬의 적용 이력이 있으면 테이블 생성 SQL을 다시 실행하지 않습니다.
+다른 용도의 기존 `richon` 스키마가 있거나 체크섬이 다르면 중단합니다. 오류 시 DDL 전체를 롤백합니다.
+이 명령은 서버를 배포하지 않습니다. Cloud Shell 실행 계정에 비밀 읽기 권한이 필요합니다.
+
+### 2. 비공개 서버 재배포
 
 ```bash
 bash backend/scripts/deploy-test.sh
 ```
 
-실행 전 대상 프로젝트와 변경 사항을 출력하고 `YES`를 입력해야 진행합니다.
-스크립트는 빌드 전용 계정 `richon-build`에 `roles/run.builder`만 부여하며, 런타임 계정과 분리합니다.
-서비스 `richon-backend-test`를 비공개로 배포합니다. 빌드에는 `backend/`만 전달되고 비밀 원문은 읽거나 출력하지 않습니다.
-최신 **활성** 비밀 버전을 숫자로 고정해 해당 배포에 연결합니다. 비밀을 바꾸면 새 버전으로 다시 배포해야 합니다.
+기존처럼 `YES` 확인 후 `backend/`만 빌드합니다. Secret의 최신 활성 버전을 숫자로 고정합니다.
+최소 인스턴스 0 / 최대 설정 1 / CPU 1 / 512MiB / 동시 요청 4를 유지합니다.
+IAM 생성·권한 전파가 지연되면 수 분 뒤 재시도합니다. 권한을 공개로 바꿔 우회하지 마세요.
+빌드·이미지 보관·네트워크 등 과금은 별도이며 인스턴스 제한은 비용의 절대 상한이 아닙니다.
+기존 배포 스크립트의 `PASS`는 **IAM 차단 + 서버 응답 + DB 읽기**만 의미합니다. 주문 저장 검증은 별도로 해야 합니다.
 
-설정: CPU 1 / 512 MiB / 요청 기반 CPU 할당 / 최소 인스턴스 0 / 최대 설정 1 / 동시 요청 4.
-최대 인스턴스 설정은 비용의 절대 상한이 아닙니다. 빌드·이미지 보관·네트워크 등을 포함한 과금과 예산 알림은 별도로 확인하세요.
+### 3. 강의 정보 확정 및 주문 점검 — 별도 후속 단계
 
-배포 후 다음 항목을 실제로 점검합니다.
+실제 강의명 / 기수 / 수강료가 확정된 뒤 `richon.courses`에 등록합니다.
+`course_id`는 과정·기수별 고유값이며, 기존 신청 페이지에서 선택하는 강의와의 대응은 연결 단계에서 확정합니다.
+가격은 양의 정수 원화입니다. `enabled` 기본값은 FALSE이며, 미등록·비활성 강의는 주문할 수 없습니다.
+테스트 금액은 아래 독립 테스트 코드에서만 사용하며 운영 수강료가 아닙니다.
 
-1. 인증 없는 요청이 HTTP 401 또는 403으로 차단되는지.
-2. 본인 GCP 로그인으로 `/health`가 `{"status":"ok"}`를 반환하는지.
-3. `/health/db`가 `{"status":"ok","database":"reachable"}`를 반환하는지.
+요청 형식(아래는 실제 제출하지 않는 설명용 더미):
 
-이 세 항목이 통과하기 전까지 **GCP 배포·실제 Neon 연결 검증 완료로 보지 않습니다**.
-웹브라우저로 서비스 URL을 바로 열면 권한 오류가 나오는 것이 이 단계에서는 정상입니다.
-스크립트 실행·점검 중 실패하더라도 이미 만들어진 서비스·빌드 이미지가 자동 삭제되지는 않습니다.
+```json
+{
+  "course_id": "example-course-01",
+  "customer_name": "테스트 신청자",
+  "customer_phone": "01000000000",
+  "customer_email": "student@example.invalid"
+}
+```
 
-### 실패할 때
+`Idempotency-Key` 헤더에는 결제 시도마다 생성한 UUID v4를 넣습니다.
+**같은 시도의 더블클릭·재시도는 같은 키를 재사용해야 합니다.** 다른 키는 별도 주문입니다.
+동일 키·동일 정규화 입력은 이전 주문을 반환(200), 새 주문은 201, 같은 키로 내용 변경은 409입니다.
+`amount`, `status` 등 허용하지 않은 필드는 422로 거부합니다. 강의 미등록·비활성은 404, 저장/설정 오류는 503입니다.
+클라이언트가 아니라 DB 강의 정보에서 금액을 가져와 주문에 스냅샷으로 저장합니다.
+주문 상태는 `pending_payment`만 허용하며, 응답에는 이름·전화·이메일·재시도 지문을 넣지 않습니다.
+전화·이메일 형식 검사는 소유자 인증이나 네이버폼 제출 확인이 아닙니다.
 
-- IAM 전파가 지연되면 수 분 뒤 같은 스크립트를 다시 실행하세요. 지속되면 오류 마지막 부분만 확인합니다.
-- 배포 권한 오류: 실행 계정의 Cloud Run Source Developer / Service Usage Consumer / 두 서비스 계정에 대한 Service Account User 등 권한을 확인합니다. 프로젝트 Owner로 준비한 경우 일부 권한은 이미 있을 수 있습니다.
-- 비밀 접근 오류: 런타임 계정이 해당 비밀에 Secret Accessor 권한을 갖는지 확인합니다.
-- `database_configuration_invalid`: Secret Manager에서 주소 형식 확인. `psql '...'` 전체를 저장했다면 주소만 새 버전으로 저장합니다.
-- `database_unavailable`: Neon 연결정보·역할 비밀번호·네트워크·TLS를 비공개로 확인합니다. 로그에는 보안을 위해 구체적인 드라이버 오류를 남기지 않습니다.
-- DB 연결 시 TLS 서버 인증을 위해 `sslmode=verify-full` / `sslrootcert=system`을 사용합니다. 문제가 나도 인증을 끄지 말고 인증서 저장소를 확인하세요.
-
-**DB 연결 문자열·비밀번호·API Secret·토큰은 GitHub / PR / 채팅 / 캡처에 올리지 마세요.**
-
-## 로컬 테스트
+## 검증
 
 ```bash
 cd backend
-python3 -m venv .venv
-. .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 python -m pytest
-python -m uvicorn main:app --host 127.0.0.1 --port 8080
 ```
 
-테스트는 가짜 연결 객체를 사용합니다. 실제 Neon / TLS / Cloud Run IAM을 검증하는 테스트가 아닙니다.
-의존성을 고정했지만 전체 전이 의존성 잠금·취약점 검사는 아직 별도 완료되지 않았습니다. 실결제 공개 전 검증 항목입니다.
-DB 스키마·런타임 DB 최소권한 역할 설계는 주문 저장 단계에서 진행합니다. 현재 코드는 기존 계정으로 연결해 읽기 전용 쿼리만 수행합니다.
+기본 테스트는 모의 연결입니다. 실제 PostgreSQL 트랜잭션·Neon·TLS·IAM 검증을 대신하지 않습니다.
+`RICHON_EMPTY_TEST_DB=YES`, `RICHON_TEST_DATABASE_URL`을 별도로 설정하면 SQL 통합 테스트가 활성화됩니다.
+**반드시 비어 있는 폐기 가능한 전용 DB만 사용하세요.** 통합 테스트는 자체 `richon` 스키마를 만들고 종료 시 삭제합니다.
+기존 `richon` 스키마 또는 앱의 `DATABASE_URL`과 같은 주소는 거부합니다. 실제 고객 DB에서 실행하지 마세요.
+통합 항목은 저장·재시도 / 동시 요청 8개 / 동일 키·다른 입력 경합 / 가격 스냅샷·비활성화 / 상태 변조 / 마이그레이션 재실행입니다.
 
-## 프론트 배포 / 병합 주의
+공개 전: 실제 PostgreSQL 동시성 검증, 전용 DB 최소권한 역할, 고객 동의·입력 흐름, 요청 제한·남용 방지, 비회원 주문 접근 권한을 확정해야 합니다.
+PG 단계에서는 결제 상태·금액 검증 / 웹훅 중복 처리 / 환불·취소 상태 전이를 별도 구현합니다.
+현재 DB CHECK도 결제 대기만 허용하므로 결제 상태 추가는 별도 마이그레이션이 필요합니다.
+카카오·네이버 회원과 기존 주문 연결은 연락처 문자열 일치만으로 처리하지 않습니다.
 
-이 PR은 별도 브랜치에서 테스트하고 **프론트 배포 제외 설정 확인 전 main에 병합하지 않습니다.**
-GitHub Pages가 켜져 있지만 실제 서비스가 Pages인지 Cloudflare Pages인지 / 빌드 출력 디렉터리가 어디인지까지는 확인되지 않았습니다.
-`backend/.gcloudignore`는 GCP 업로드 범위만 제한합니다. **Cloudflare / GitHub Pages의 배포 제외를 대신하지 않습니다.**
-Pages 또는 Cloudflare의 프론트 출력물에 `backend/`가 들어가지 않도록, 실제 배포 설정 확인 후 별도 승인받아 설정해야 합니다.
-공개 저장소이므로 서버 소스는 GitHub에서 보입니다. 비밀이 소스에 없는 것과 소스 자체를 비공개로 하는 것은 다른 문제입니다.
+## 배포 분리 / 되돌리기
 
-## 정리 / 되돌리기
+아직 `main`에 합치지 않습니다. 기존 프론트 출력물에서 `backend/`를 제외하는 설정은 별도 확인·승인이 필요합니다.
+`.gcloudignore`는 GCP 업로드 제한일 뿐 Cloudflare / GitHub Pages 제외 설정이 아닙니다.
+공개 GitHub에 서버 소스가 보이는 것과 비밀 노출은 별개이며, 비밀 원문은 저장하지 않습니다.
+서버는 이전 이미지/리비전으로 되돌릴 수 있지만, 이미 적용한 스키마는 자동 삭제하지 않습니다.
+이 PR에는 고객 데이터나 다른 사이트 리소스를 삭제하는 운영 스크립트가 없습니다.
+통합 테스트의 스키마 삭제는 위의 명시적인 빈 테스트 DB 조건에서만 실행됩니다.
 
-main과 기존 프론트 파일은 건드리지 않습니다. PR을 닫으면 코드 제안만 철회됩니다.
-이미 테스트 서버를 배포했다면 필요 없을 때 Cloud Run의 `richon-backend-test`만 삭제하세요.
-이미지 보관 비용은 서버 삭제와 별개이므로 Artifact Registry에서 이 테스트 빌드 이미지의 정리도 확인합니다.
-Neon 프로젝트 / 비밀 / 기존 프론트 / 다른 GCP 리소스를 삭제하는 스크립트는 포함하지 않습니다.
+## 참고 문서
 
-## 공식 참고 문서
-
-- 소스 배포: https://docs.cloud.google.com/run/docs/deploying-source-code
-- 빌드 계정: https://docs.cloud.google.com/run/docs/configuring/services/build-service-account
-- 비밀 연결: https://docs.cloud.google.com/run/docs/configuring/services/secrets
-- 비공개 서비스 점검: https://docs.cloud.google.com/run/docs/authenticating/developers
-- Psycopg 연결: https://www.psycopg.org/psycopg3/docs/api/connections.html
-- PostgreSQL TLS: https://www.postgresql.org/docs/current/libpq-connect.html
+- https://docs.cloud.google.com/run/docs/deploying-source-code
+- https://docs.cloud.google.com/run/docs/authenticating/developers
+- https://docs.cloud.google.com/run/docs/configuring/services/secrets
+- https://www.psycopg.org/psycopg3/docs/basic/transactions.html
+- https://www.postgresql.org/docs/current/transaction-iso.html
+- https://www.postgresql.org/docs/current/sql-insert.html
+- https://fastapi.tiangolo.com/tutorial/handling-errors/
