@@ -6,7 +6,6 @@
 !orders.py
 !migrate_orders.py
 !migrations/
-migrations/**
 !migrations/001_pending_orders.sql
 !.dockerignore
 !.gcloudignore
