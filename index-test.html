@@ -60,7 +60,7 @@
       background-position: center center;
       background-repeat: no-repeat;
       transform: scale(1.012);
-      will-change: clip-path, filter, transform, opacity;
+      will-change: filter, transform, opacity;
     }
 
     /* 같은 밝은 원본을 어둡게 만든 OFF 배경 */
@@ -69,14 +69,14 @@
       filter: brightness(.27) saturate(.52) contrast(1.04);
     }
 
-    /* 스위치에서부터 퍼지는 원본 밝은 이미지 */
+    /* 같은 구도의 밝은 원본을 화면 전체에 겹쳐 노출을 올리듯 보여준다. */
     .hero-bg-light {
       z-index: 1;
-      clip-path: circle(var(--reveal-size) at var(--switch-x) var(--switch-y));
+      opacity: 1;
     }
 
     .js .hero-bg-light {
-      --reveal-size: 0vmax;
+      opacity: 0;
     }
 
     /* OFF 시 따뜻한 검정 계열. 녹색 tint 사용 안 함 */
@@ -95,39 +95,26 @@
       will-change: opacity;
     }
 
-    /* ON 이미지에 이미 빛이 있으므로 아주 약하게만 보강 */
+    /* 스위치 주변에 경계가 보이지 않는 넓은 온기만 먼저 생긴다. */
     .switch-glow {
       position: absolute;
       z-index: 3;
       left: var(--switch-x);
       top: var(--switch-y);
-      width: clamp(110px, 12vw, 210px);
-      aspect-ratio: 1;
+      width: clamp(360px, 38vw, 720px);
+      aspect-ratio: 1.28;
       border-radius: 50%;
-      transform: translate(-50%, -50%) scale(.55);
+      transform: translate(-50%, -50%) scale(.72);
       pointer-events: none;
       opacity: 0;
-      background: radial-gradient(circle,
-        rgba(255, 219, 155, .48) 0%,
-        rgba(244, 121, 32, .18) 30%,
-        rgba(244, 121, 32, 0) 72%);
-      filter: blur(8px);
+      background: radial-gradient(ellipse at center,
+        rgba(255, 225, 176, .24) 0%,
+        rgba(255, 231, 196, .12) 28%,
+        rgba(244, 121, 32, .045) 48%,
+        rgba(244, 121, 32, 0) 74%);
+      filter: blur(46px);
+      mix-blend-mode: screen;
       will-change: opacity, transform;
-    }
-
-    .switch-pulse {
-      position: absolute;
-      z-index: 4;
-      left: var(--switch-x);
-      top: var(--switch-y);
-      width: clamp(36px, 3vw, 55px);
-      height: clamp(58px, 4.8vw, 88px);
-      border-radius: 8px;
-      transform: translate(-50%, -50%) scale(1);
-      opacity: 0;
-      pointer-events: none;
-      box-shadow: 0 0 0 0 rgba(244,121,32,0);
-      will-change: transform, opacity, box-shadow;
     }
 
     .copy-wrap {
@@ -135,7 +122,7 @@
       z-index: 6;
       left: clamp(28px, 8vw, 150px);
       top: 50%;
-      width: min(680px, 44vw);
+      width: min(800px, 51vw);
       transform: translateY(-54%);
     }
 
@@ -175,6 +162,15 @@
     .js .copy-on {
       opacity: 0;
       transform: translateY(22px);
+    }
+
+    .copy-on h1 {
+      font-size: clamp(36px, 3.35vw, 62px);
+    }
+
+    .copy-on .line {
+      display: block;
+      white-space: nowrap;
     }
 
     .copy-on .accent {
@@ -254,6 +250,10 @@
         line-height: 1.18;
       }
 
+      .copy-on .line {
+        white-space: normal;
+      }
+
       .subcopy {
         margin-top: 20px;
         font-size: 16px;
@@ -294,13 +294,12 @@
       .hero-bg-dark,
       .hero-dim,
       .copy-off,
-      .switch-glow,
-      .switch-pulse {
+      .switch-glow {
         display: none;
       }
 
       .hero-bg-light {
-        clip-path: none !important;
+        opacity: 1 !important;
       }
 
       .copy-on {
@@ -318,7 +317,6 @@
         <div class="hero-layer hero-bg-light" id="heroLight" aria-hidden="true"></div>
         <div class="hero-dim" id="heroDim" aria-hidden="true"></div>
         <div class="switch-glow" id="switchGlow" aria-hidden="true"></div>
-        <div class="switch-pulse" id="switchPulse" aria-hidden="true"></div>
 
         <div class="copy-wrap">
           <div class="copy copy-off" id="copyOff">
@@ -326,7 +324,7 @@
           </div>
 
           <div class="copy copy-on" id="copyOn">
-            <h1>리치온 아카데미로<br>투자의 기준을 <span class="accent">ON</span> 하세요.</h1>
+            <h1><span class="line">리치온 아카데미로</span><span class="line">투자의 기준을 <span class="accent">ON</span> 하세요.</span></h1>
             <p class="subcopy">
               <strong>경매 / 재개발 / 분양권 / 갭투자</strong><br>
               흐름에 따른 실전 투자의 길
@@ -345,7 +343,6 @@
       const heroLight = document.getElementById('heroLight');
       const heroDim = document.getElementById('heroDim');
       const switchGlow = document.getElementById('switchGlow');
-      const switchPulse = document.getElementById('switchPulse');
       const copyOff = document.getElementById('copyOff');
       const copyOn = document.getElementById('copyOn');
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -364,41 +361,30 @@
         const maxScroll = Math.max(1, scrollSection.offsetHeight - window.innerHeight);
         const progress = clamp(-rect.top / maxScroll);
 
-        // 0.38~0.72 : 스위치에서 밝은 화면이 퍼짐
-        const reveal = smoothstep(range(progress, 0.38, 0.72));
-        const revealVmax = reveal * 145;
-        heroLight.style.setProperty('--reveal-size', `${revealVmax}vmax`);
+        // 0.40~0.68 : 원형 마스크 없이 전체 화면의 노출이 부드럽게 올라간다.
+        const lightIn = smoothstep(range(progress, 0.40, 0.68));
+        heroLight.style.opacity = String(lightIn);
 
-        // 화면 전체의 어둠도 동시에 걷힘
-        const dimOut = smoothstep(range(progress, 0.40, 0.73));
+        // 밝은 원본이 올라오는 동안 기존 어둠도 함께 천천히 걷힌다.
+        const dimOut = smoothstep(range(progress, 0.40, 0.70));
         heroDim.style.opacity = String(0.88 * (1 - dimOut));
 
-        // 0.24부터 스위치 주변에 빛이 모이고, ON 직후 살짝 잦아듦
-        const glowIn = smoothstep(range(progress, 0.24, 0.43));
-        const glowSettle = 1 - 0.58 * smoothstep(range(progress, 0.58, 0.82));
-        const glowOpacity = glowIn * glowSettle;
-        switchGlow.style.opacity = String(glowOpacity);
-        switchGlow.style.transform = `translate(-50%, -50%) scale(${0.55 + glowIn * 0.85})`;
+        // 스위치 주위에는 형태가 느껴지지 않을 만큼 넓은 온기만 먼저 생긴다.
+        const glowIn = smoothstep(range(progress, 0.28, 0.43));
+        const glowOut = smoothstep(range(progress, 0.52, 0.78));
+        const glowOpacity = glowIn * (1 - 0.72 * glowOut);
+        switchGlow.style.opacity = String(glowOpacity * 0.78);
+        switchGlow.style.transform = `translate(-50%, -50%) scale(${0.72 + glowIn * 0.28})`;
 
-        // 0.405 부근에서 '딸깍'하는 아주 작은 pulse
-        const pulseCenter = 0.415;
-        const pulseWidth = 0.035;
-        const pulseDistance = Math.abs(progress - pulseCenter);
-        const pulse = clamp(1 - pulseDistance / pulseWidth);
-        const pulseCurve = Math.sin(pulse * Math.PI);
-        switchPulse.style.opacity = String(pulseCurve * 0.72);
-        switchPulse.style.transform = `translate(-50%, -50%) scale(${1 - pulseCurve * 0.08})`;
-        switchPulse.style.boxShadow = `0 0 ${18 + 24 * pulseCurve}px ${2 + 8 * pulseCurve}px rgba(244,121,32,${0.12 * pulseCurve})`;
-
-        // OFF 카피는 스위치가 켜지기 직전에 사라짐
-        const offOut = smoothstep(range(progress, 0.34, 0.52));
+        // OFF 카피는 실제 화면이 밝아지기 시작한 뒤 자연스럽게 사라진다.
+        const offOut = smoothstep(range(progress, 0.46, 0.60));
         copyOff.style.opacity = String(1 - offOut);
-        copyOff.style.transform = `translateY(${-10 * offOut}px)`;
+        copyOff.style.transform = `translateY(${-8 * offOut}px)`;
 
-        // 밝아진 뒤 ON 카피 등장
-        const onIn = smoothstep(range(progress, 0.55, 0.75));
+        // 충분히 밝아진 뒤 ON 카피가 들어온다.
+        const onIn = smoothstep(range(progress, 0.62, 0.78));
         copyOn.style.opacity = String(onIn);
-        copyOn.style.transform = `translateY(${22 * (1 - onIn)}px)`;
+        copyOn.style.transform = `translateY(${18 * (1 - onIn)}px)`;
       }
 
       function requestRender() {
