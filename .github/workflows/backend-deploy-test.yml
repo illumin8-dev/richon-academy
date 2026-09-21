@@ -1,0 +1,128 @@
+name: Deploy private Richon test backend
+
+# A deliberate request commit triggers deployment; normal source/PR pushes do not.
+# This works without merging workflows into the website/default branch.
+on:
+  push:
+    branches: ['feat/backend-gcp-deploy']
+    paths: ['.github/test-deploy.request']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: richon-private-test-deploy
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    if: >-
+      github.repository_id == '1380040761' &&
+      github.repository_owner_id == '251193658' &&
+      github.ref == 'refs/heads/feat/backend-gcp-deploy' &&
+      github.event_name == 'push'
+    uses: ./.github/workflows/backend-ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      PROJECT: richon-academy
+      REGION: asia-southeast1
+      SERVICE: richon-backend-test
+      IMAGE_BASE: asia-southeast1-docker.pkg.dev/richon-academy/richon-backend-ci/backend
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: 'true'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      # Build before cloud credentials exist. backend/.dockerignore is an allowlist.
+      - name: Build checked source without credentials
+        run: docker build --pull --progress=plain --tag "$IMAGE_BASE:$GITHUB_SHA" backend
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: richon-academy
+          workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-test/providers/github-test
+          service_account: richon-github-deploy@richon-academy.iam.gserviceaccount.com
+      - name: Verify existing service before changing it
+        run: |
+          set +x
+          umask 077
+          gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-service.json"
+          gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-policy.json"
+          python3 .github/gcp/guard.py "$RUNNER_TEMP/richon-service.json" "$RUNNER_TEMP/richon-policy.json"
+      - name: Push only to the dedicated test image repository
+        run: |
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker push "$IMAGE_BASE:$GITHUB_SHA"
+      - id: candidate
+        name: Deploy a candidate with zero service traffic
+        run: |
+          set +x
+          DIGEST="$(gcloud artifacts docker images describe "$IMAGE_BASE:$GITHUB_SHA" --project="$PROJECT" --format='value(image_summary.digest)')"
+          [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          IMAGE="$IMAGE_BASE@$DIGEST"
+          SUFFIX="ci-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          REVISION="$SERVICE-$SUFFIX"
+          gcloud run services update "$SERVICE" --project="$PROJECT" --region="$REGION" \
+            --image="$IMAGE" --revision-suffix="$SUFFIX" --tag=ci-candidate --no-traffic --quiet
+          gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-service.json"
+          gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-policy.json"
+          python3 .github/gcp/guard.py "$RUNNER_TEMP/richon-service.json" "$RUNNER_TEMP/richon-policy.json" "$REVISION" "$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+      - id: identity
+        name: Obtain a short-lived token for private health checks
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: richon-academy
+          workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-test/providers/github-test
+          service_account: richon-github-deploy@richon-academy.iam.gserviceaccount.com
+          token_format: id_token
+          id_token_audience: ${{ steps.candidate.outputs.service_url }}
+          id_token_include_email: true
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Verify candidate privacy and read-only DB connectivity
+        env:
+          CANDIDATE_URL: ${{ steps.candidate.outputs.candidate_url }}
+          TEST_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
+        run: python3 .github/gcp/probe.py
+      - name: Promote only the verified candidate
+        env:
+          REVISION: ${{ steps.candidate.outputs.revision }}
+          IMAGE: ${{ steps.candidate.outputs.image }}
+        run: |
+          set +x
+          gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-service.json"
+          gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-policy.json"
+          python3 .github/gcp/guard.py "$RUNNER_TEMP/richon-service.json" "$RUNNER_TEMP/richon-policy.json" "$REVISION" "$IMAGE" > /dev/null
+          gcloud run services update-traffic "$SERVICE" --project="$PROJECT" --region="$REGION" --to-revisions="$REVISION=100" --quiet
+          gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-service.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          status = json.loads((Path(os.environ['RUNNER_TEMP']) / 'richon-service.json').read_text())['status']
+          active = [r for r in status.get('traffic', []) if r.get('percent', 0) > 0]
+          assert sum(r['percent'] for r in active) == 100
+          assert all(r.get('revisionName') == os.environ['REVISION'] for r in active)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## PASS\nPrivate test backend deployed and read-only DB health verified.\n')
+              summary.write('Revision: `' + os.environ['REVISION'] + '`\n')
+              summary.write('Frontend, customer data and DB schema were not changed.\n')
+          print('PASS: private test backend deployment confirmed.')
+          PY
+      - name: Remove local metadata files
+        if: always()
+        run: rm -f "$RUNNER_TEMP/richon-service.json" "$RUNNER_TEMP/richon-policy.json"
