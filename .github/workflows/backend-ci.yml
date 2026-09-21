@@ -1,0 +1,169 @@
+name: Backend checks (no deployment)
+
+on:
+  push:
+    branches: [main, 'feat/backend-*', 'fix/backend-*']
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  tests:
+    name: Python tests and disposable PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_DB: richon_ci
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_only_disposable_password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_user -d richon_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Check syntax
+        run: |
+          python -m compileall -q backend
+          bash -n backend/scripts/deploy-test.sh
+          bash -n backend/scripts/prepare-orders.sh
+      - name: Install exact declared dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          python -m pip check
+      - name: Run unit and real SQL/concurrency tests
+        working-directory: backend
+        env:
+          RICHON_EMPTY_TEST_DB: 'YES'
+          # This database exists only on this job's runner. Never use Neon here.
+          RICHON_TEST_DATABASE_URL: postgresql://ci_user:ci_only_disposable_password@127.0.0.1:5432/richon_ci
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          unset DATABASE_URL
+          python -m pytest -ra --junitxml="$RUNNER_TEMP/backend-tests.xml"
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          report = ET.parse(os.path.join(os.environ['RUNNER_TEMP'], 'backend-tests.xml'))
+          cases = list(report.iter('testcase'))
+          assert cases, 'No tests ran'
+          assert not list(report.iter('skipped')), 'Tests were skipped; do not treat this as full verification'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'## Tests\n{len(cases)} tests passed, including disposable PostgreSQL checks.\n')
+          PY
+
+  docker:
+    name: Gcloud upload context and Docker build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: 'true'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      # Install the CLI only. No Google authentication, project, secrets or IAM.
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Recreate the local gcloud upload file set
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+
+          source = Path('backend').resolve()
+          stage = Path(os.environ['RUNNER_TEMP']) / 'richon-build-context'
+          stage.mkdir()
+          result = subprocess.run(
+              ['gcloud', 'meta', 'list-files-for-upload'], cwd=source,
+              text=True, capture_output=True, check=True,
+          )
+          files = {str(Path(line)) for line in result.stdout.splitlines() if line.strip()}
+          expected = {
+              '.dockerignore', '.gcloudignore', 'Dockerfile', 'requirements.txt',
+              'main.py', 'db.py', 'orders.py', 'migrate_orders.py',
+              'migrations/001_pending_orders.sql',
+          }
+          if files != expected:
+              print('Missing files:', sorted(expected - files))
+              print('Unexpected files:', sorted(files - expected))
+              raise SystemExit('Upload allowlist mismatch; inspect .gcloudignore')
+          for relative in sorted(files):
+              file = source / relative
+              if file.is_symlink() or not file.is_file() or not file.resolve().is_relative_to(source):
+                  raise SystemExit('Unsafe build-context path')
+              destination = stage / relative
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(file, destination)
+              print(relative)
+          print('PASS: backend-only upload context; no credentials or frontend files')
+          PY
+      - name: Build the actual Dockerfile without cache
+        env:
+          DOCKER_BUILDKIT: '1'
+        run: |
+          docker build --pull --no-cache --progress=plain \
+            --tag richon-backend:ci "$RUNNER_TEMP/richon-build-context"
+      - name: Check container startup and safe health responses
+        run: |
+          docker run --detach --name richon-ci \
+            --publish 127.0.0.1:8080:8080 --env PORT=8080 richon-backend:ci
+          python3 - <<'PY'
+          import json
+          import time
+          import urllib.error
+          import urllib.request
+
+          for attempt in range(30):
+              try:
+                  with urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2) as response:
+                      assert response.status == 200
+                      assert response.headers['Cache-Control'] == 'no-store'
+                      assert json.load(response) == {'status': 'ok'}
+                  break
+              except (OSError, AssertionError):
+                  time.sleep(1)
+          else:
+              raise SystemExit('Container did not become healthy')
+          try:
+              urllib.request.urlopen('http://127.0.0.1:8080/health/db', timeout=5)
+          except urllib.error.HTTPError as response:
+              assert response.code == 503
+              assert json.load(response) == {'detail': 'database_configuration_invalid'}
+          else:
+              raise SystemExit('Missing DB configuration must not pass')
+          print('PASS: Docker container healthy; no production database was accessed')
+          PY
+          echo '## Docker build' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Build and startup passed using gcloud-filtered backend files. GCP/Neon were not accessed.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Show diagnostic container logs on failure
+        if: failure()
+        run: docker logs richon-ci 2>&1 || true
+      - name: Clean up the disposable container
+        if: always()
+        run: docker rm -f richon-ci >/dev/null 2>&1 || true
