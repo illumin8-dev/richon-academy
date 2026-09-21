@@ -192,6 +192,184 @@
       font-weight: 750;
     }
 
+    /* 첫 화면에서만 보이는 아주 조용한 스크롤 힌트 */
+    .scroll-guide {
+      position: absolute;
+      z-index: 8;
+      left: 50%;
+      bottom: clamp(26px, 4vh, 46px);
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      color: rgba(255,255,255,.72);
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: .24em;
+      line-height: 1;
+      text-shadow: 0 2px 18px rgba(0,0,0,.34);
+      pointer-events: none;
+      will-change: opacity, transform;
+    }
+
+    .scroll-guide .chevron {
+      width: 9px;
+      height: 9px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg);
+      animation: scrollNudge 1.7s ease-in-out infinite;
+    }
+
+    @keyframes scrollNudge {
+      0%, 100% { transform: translateY(0) rotate(45deg); opacity: .55; }
+      50% { transform: translateY(6px) rotate(45deg); opacity: 1; }
+    }
+
+    /* 기존 리치온 헤더를 오프닝 뒤에만 노출 */
+    .site-nav {
+      position: fixed;
+      z-index: 60;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      border-bottom: 1px solid rgba(28,31,38,.08);
+      box-shadow: 0 10px 30px -24px rgba(0,0,0,.25);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-16px);
+      pointer-events: none;
+      will-change: opacity, transform;
+    }
+
+    .site-logo {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      color: inherit;
+      text-decoration: none;
+      font-weight: 900;
+      font-size: 23px;
+      letter-spacing: -.02em;
+      white-space: nowrap;
+    }
+
+    .site-logo .r { color: #1c1f26; }
+    .site-logo .o { color: var(--richon-orange); }
+    .site-logo small {
+      margin-left: 8px;
+      align-self: center;
+      color: #a9842f;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .25em;
+    }
+
+    .site-menu {
+      display: flex;
+      gap: 26px;
+      align-items: center;
+      font-size: 14.5px;
+      font-weight: 500;
+    }
+
+    .site-menu a {
+      color: #686b72;
+      text-decoration: none;
+      transition: color .2s ease;
+    }
+
+    .site-menu a:hover { color: #1c1f26; }
+
+    .site-nav-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .site-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 11px 20px;
+      white-space: nowrap;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      transition: .22s;
+    }
+
+    .site-btn-line {
+      color: #1c1f26;
+      border: 1px solid #d8d4c8;
+    }
+
+    .site-btn-line:hover {
+      border-color: #c9a86a;
+      color: #a9842f;
+    }
+
+    .site-btn-o {
+      color: #fff;
+      background: var(--richon-orange);
+    }
+
+    .site-btn-o:hover {
+      background: #ff913f;
+      transform: translateY(-2px);
+      box-shadow: 0 14px 26px -12px rgba(244,121,32,.5);
+    }
+
+    .site-burger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      padding: 6px;
+      border: 0;
+      background: none;
+      cursor: pointer;
+    }
+
+    .site-burger span {
+      width: 24px;
+      height: 2px;
+      border-radius: 2px;
+      background: #1c1f26;
+      transition: .3s;
+    }
+
+    .site-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .site-burger.open span:nth-child(2) { opacity: 0; }
+    .site-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    @media (max-width: 900px) {
+      .site-menu {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 28px;
+        background: rgba(255,255,255,.98);
+        font-size: 22px;
+      }
+
+      .site-menu.show { display: flex; }
+      .site-nav-right .site-btn:not(.site-btn-o) { display: none; }
+      .site-burger { display: flex; z-index: 61; }
+      .site-logo small { display: none; }
+    }
+
     /* 끝부분이 본문의 흰 화면과 자연스럽게 이어지는지 확인 */
     .after-hero {
       min-height: 65vh;
@@ -294,7 +472,8 @@
       .hero-bg-dark,
       .hero-dim,
       .copy-off,
-      .switch-glow {
+      .switch-glow,
+      .scroll-guide {
         display: none;
       }
 
@@ -306,10 +485,31 @@
         opacity: 1 !important;
         transform: none !important;
       }
+
+      .site-nav {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        pointer-events: auto !important;
+      }
     }
   </style>
 </head>
 <body>
+  <nav class="site-nav" id="siteNav" aria-label="리치온 아카데미 메뉴">
+    <a class="site-logo" href="index.html#top"><span class="r">RICH</span><span class="o">ON</span><small>ESTATE STUDY</small></a>
+    <div class="site-menu" id="siteMenu">
+      <a href="index.html#proof">후기</a>
+      <a href="index.html#programs">정규 프로그램</a>
+      <a href="index.html#instructor">강사/멘토</a>
+    </div>
+    <div class="site-nav-right">
+      <a class="site-btn site-btn-line" href="https://open.kakao.com/o/gPdQcklh" target="_blank" rel="noopener">오픈카톡방</a>
+      <a class="site-btn site-btn-o" href="apply.html">강의 신청</a>
+      <button class="site-burger" id="siteBurger" aria-label="메뉴" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+
   <main>
     <section class="hero-scroll" id="heroScroll" aria-label="리치온 아카데미 히어로">
       <div class="hero-sticky" id="heroSticky">
@@ -317,6 +517,11 @@
         <div class="hero-layer hero-bg-light" id="heroLight" aria-hidden="true"></div>
         <div class="hero-dim" id="heroDim" aria-hidden="true"></div>
         <div class="switch-glow" id="switchGlow" aria-hidden="true"></div>
+
+        <div class="scroll-guide" id="scrollGuide" aria-hidden="true">
+          <span>SCROLL</span>
+          <span class="chevron"></span>
+        </div>
 
         <div class="copy-wrap">
           <div class="copy copy-off" id="copyOff">
@@ -343,6 +548,10 @@
       const heroLight = document.getElementById('heroLight');
       const heroDim = document.getElementById('heroDim');
       const switchGlow = document.getElementById('switchGlow');
+      const scrollGuide = document.getElementById('scrollGuide');
+      const siteNav = document.getElementById('siteNav');
+      const siteBurger = document.getElementById('siteBurger');
+      const siteMenu = document.getElementById('siteMenu');
       const copyOff = document.getElementById('copyOff');
       const copyOn = document.getElementById('copyOn');
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -360,6 +569,18 @@
         const rect = scrollSection.getBoundingClientRect();
         const maxScroll = Math.max(1, scrollSection.offsetHeight - window.innerHeight);
         const progress = clamp(-rect.top / maxScroll);
+
+        // 첫 진입 안내는 초반에만 보이고 바로 사라진다.
+        const guideOut = smoothstep(range(progress, 0.02, 0.16));
+        scrollGuide.style.opacity = String(1 - guideOut);
+        scrollGuide.style.transform = `translate(-50%, ${guideOut * 8}px)`;
+
+        // ON 화면을 충분히 보여준 뒤 기존 헤더가 뒤늦게 등장한다.
+        const navIn = smoothstep(range(progress, 0.88, 0.98));
+        siteNav.style.opacity = String(navIn);
+        siteNav.style.transform = `translateY(${-16 * (1 - navIn)}px)`;
+        siteNav.style.visibility = navIn > 0.01 ? 'visible' : 'hidden';
+        siteNav.style.pointerEvents = navIn > 0.8 ? 'auto' : 'none';
 
         // 0.40~0.68 : 원형 마스크 없이 전체 화면의 노출이 부드럽게 올라간다.
         const lightIn = smoothstep(range(progress, 0.40, 0.68));
@@ -393,6 +614,18 @@
           requestAnimationFrame(render);
         }
       }
+
+      siteBurger?.addEventListener('click', () => {
+        const open = siteBurger.classList.toggle('open');
+        siteMenu.classList.toggle('show', open);
+        siteBurger.setAttribute('aria-expanded', String(open));
+      });
+
+      siteMenu?.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+        siteBurger.classList.remove('open');
+        siteMenu.classList.remove('show');
+        siteBurger.setAttribute('aria-expanded', 'false');
+      }));
 
       window.addEventListener('scroll', requestRender, { passive: true });
       window.addEventListener('resize', requestRender);
