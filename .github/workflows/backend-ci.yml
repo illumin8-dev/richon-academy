@@ -3,16 +3,17 @@ name: Backend checks (no deployment)
 on:
   push:
     branches: [main, 'feat/backend-*', 'fix/backend-*']
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+    paths: ['backend/**', '.github/workflows/*.yml', '.github/gcp/**', '.gitignore']
   pull_request:
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+    paths: ['backend/**', '.github/workflows/*.yml', '.github/gcp/**', '.gitignore']
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: backend-ci-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: backend-ci-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 defaults:
@@ -44,11 +45,12 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - name: Check syntax
+      - name: Check syntax and connection safety guards
         run: |
-          python -m compileall -q backend
+          python -m compileall -q backend .github/gcp
           bash -n backend/scripts/deploy-test.sh
           bash -n backend/scripts/prepare-orders.sh
+          python -m unittest discover -s .github/gcp -p 'test_*.py' -v
       - name: Install exact declared dependencies
         working-directory: backend
         run: |
