@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!requirements.txt
+!main.py
+!db.py
+!.dockerignore
+!.gcloudignore
