@@ -1,0 +1,31 @@
+name: Portal UI checks (synthetic data only)
+on:
+  push:
+    branches: ['feat/backend-*', 'fix/backend-*']
+    paths: ['backend/portal_static/**', 'backend/tests/portal_browser.py', '.github/workflows/portal-ui-ci.yml']
+  pull_request:
+    paths: ['backend/portal_static/**', 'backend/tests/portal_browser.py', '.github/workflows/portal-ui-ci.yml']
+permissions:
+  contents: read
+concurrency:
+  group: portal-ui-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Install test-only browser tools
+        run: |
+          python -m pip install 'playwright==1.57.0'
+          python -m playwright install --with-deps chromium
+      - name: Test the UI without real credentials or customer data
+        run: |
+          node --check backend/portal_static/portal.js
+          python backend/tests/portal_browser.py

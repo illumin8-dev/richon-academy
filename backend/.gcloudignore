@@ -7,8 +7,16 @@
 !migrate_orders.py
 !auth_core.py
 !auth_http.py
+!portal.py
+!portal_store.py
 !migrations/
 migrations/*
 !migrations/001_pending_orders.sql
+!portal_static/
+portal_static/*
+!portal_static/mypage.html
+!portal_static/admin.html
+!portal_static/portal.css
+!portal_static/portal.js
 !.dockerignore
 !.gcloudignore
