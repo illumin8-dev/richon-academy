@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from auth_http import install_if_enabled
 from db import DatabaseConfigurationError, check_database
 from orders import router as orders_router
 
@@ -18,6 +19,7 @@ app = FastAPI(
     debug=False,
 )
 app.include_router(orders_router)
+install_if_enabled(app)  # Default OFF; no provider login endpoint is exposed.
 
 
 @app.exception_handler(RequestValidationError)

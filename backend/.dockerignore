@@ -5,6 +5,8 @@
 !db.py
 !orders.py
 !migrate_orders.py
+!auth_core.py
+!auth_http.py
 !migrations/
 !migrations/001_pending_orders.sql
 !.dockerignore

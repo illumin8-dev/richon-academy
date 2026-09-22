@@ -8,7 +8,7 @@ WORKDIR /app
 RUN test -s "$SSL_CERT_FILE" && groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app
 COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
-COPY main.py db.py orders.py migrate_orders.py ./
+COPY main.py db.py orders.py migrate_orders.py auth_core.py auth_http.py ./
 COPY migrations/ ./migrations/
 USER 10001:10001
 EXPOSE 8080
