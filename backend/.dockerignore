@@ -9,6 +9,8 @@
 !auth_http.py
 !portal.py
 !portal_store.py
+!enrollments.py
+!enrollment_store.py
 !migrations/
 migrations/*
 !migrations/001_pending_orders.sql
@@ -18,5 +20,10 @@ portal_static/*
 !portal_static/admin.html
 !portal_static/portal.css
 !portal_static/portal.js
+!enrollment_static/
+enrollment_static/*
+!enrollment_static/enrollments.html
+!enrollment_static/enrollments.css
+!enrollment_static/enrollments.js
 !.dockerignore
 !.gcloudignore
