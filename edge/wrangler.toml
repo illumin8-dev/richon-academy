@@ -10,7 +10,7 @@ preview_urls = false
 # ]
 [vars]
 PORTAL_ENABLED = "false"
-PORTAL_UPSTREAM = ""
+PORTAL_UPSTREAM = "https://richon-portal-amjmgyepbq-as.a.run.app"
 # RICHON_EDGE_SECRET must be stored as a Worker secret, never in Git.
 [observability]
 enabled = false
