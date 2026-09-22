@@ -1,7 +1,5 @@
-request: initial-private-test-deployment
-reviewed_source_commit: 30d1adb1e1fb6c139d99ed148c4e377a4e5b56d5
-target_project: richon-academy
-target_service: richon-backend-test
-owner_setup: CONNECT approved and SETUP READY reported in conversation
-scope: run checks, authenticate with WIF, deploy candidate, verify IAM and read-only DB health, promote verified candidate
-excluded: frontend changes, public access, schema changes, customer/order writes, PG payments, IAM changes
+{
+  "operation": "order-smoke",
+  "course_id": "verify-20260922-4d5529da96f34e299d222a4ac3cd1d63",
+  "allow_synthetic_orders": true
+}
