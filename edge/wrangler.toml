@@ -1,6 +1,6 @@
 name = "richon-account-router"
 main = "worker.mjs"
-compatibility_date = "2026-09-23"
+compatibility_date = "2026-09-22"
 workers_dev = false
 preview_urls = false
 # No live routes in this preparation config. After rollout approval, attach only:
