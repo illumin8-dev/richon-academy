@@ -1,5 +1,6 @@
 """Key-free session HTTP surface. No login, fake login, signup or merge route."""
 from dataclasses import dataclass
+from datetime import timezone
 import logging
 import os
 from typing import Annotated
@@ -75,8 +76,14 @@ def set_session_cookie(response: Response, session: core.IssuedSession) -> None:
     # Use only after issue_session() successfully commits. Never return the raw
     # session token in JSON, a URL, localStorage, a log, or a JavaScript cookie.
     core.token_digest(session.token)
+    if session.expires_at.tzinfo is None or session.expires_at.utcoffset() is None:
+        raise ValueError("session_expiry_timezone_required")
+    # Psycopg returns ZoneInfo timestamps (including Etc/UTC). HTTP cookie dates
+    # require datetime.timezone.utc, not just a timezone with a zero offset.
+    # Normalize the representation without changing the database expiry instant.
+    expires = session.expires_at.astimezone(timezone.utc)
     response.set_cookie(COOKIE, session.token, max_age=core.SESSION_SECONDS,
-                        expires=session.expires_at, path="/", secure=True,
+                        expires=expires, path="/", secure=True,
                         httponly=True, samesite="lax")
     response.headers.update(NO_STORE)
 
