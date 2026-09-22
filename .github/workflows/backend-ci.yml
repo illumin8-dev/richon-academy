@@ -109,10 +109,11 @@ jobs:
           expected = {
               '.dockerignore', '.gcloudignore', 'Dockerfile', 'requirements.txt',
               'main.py', 'db.py', 'orders.py', 'migrate_orders.py',
-              'auth_core.py', 'auth_http.py', 'portal.py', 'portal_store.py',
+              'auth_core.py', 'auth_http.py', 'portal.py', 'portal_store.py', 'monthly_store.py', 'monthly_portal.py',
               'migrations/001_pending_orders.sql',
               'portal_static/mypage.html', 'portal_static/admin.html',
               'portal_static/portal.css', 'portal_static/portal.js',
+              'portal_static/enrollments.html', 'portal_static/enrollments.css', 'portal_static/enrollments.js',
           }
           if files != expected:
               print('Missing files:', sorted(expected - files))
@@ -162,7 +163,7 @@ jobs:
               assert json.load(response) == {'detail': 'database_configuration_invalid'}
           else:
               raise SystemExit('Missing DB configuration must not pass')
-          for path in ('/auth/me', '/auth/login', '/auth/logout', '/portal/mypage', '/portal/admin', '/portal/api/me', '/portal/api/admin/orders'):
+          for path in ('/auth/me', '/auth/login', '/auth/logout', '/portal/mypage', '/portal/admin', '/portal/api/me', '/portal/api/admin/orders', '/portal/enrollments', '/portal/api/admin/enrollments/options'):
               try:
                   urllib.request.urlopen('http://127.0.0.1:8080' + path, timeout=5)
               except urllib.error.HTTPError as response:

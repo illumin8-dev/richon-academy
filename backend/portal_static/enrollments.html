@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>월별 수강관리 | 리치온아카데미</title><link rel="stylesheet" href="/portal/monthly-assets/enrollments.css"><script defer src="/portal/monthly-assets/enrollments.js"></script></head>
+<body>
+<a class="skip" href="#main">본문으로 이동</a>
+<header><a class="brand" href="https://richonacademy.com/">리치온아카데미</a><div><a href="/portal/mypage">마이페이지</a><button id="logout" hidden>로그아웃</button></div></header>
+<div class="layout"><aside><p class="eyebrow">RICHON ADMIN</p><nav aria-label="관리자 메뉴"><a aria-current="page" href="/portal/enrollments">월별 수강관리</a><a href="/portal/admin">회원 / 강의 / 주문</a><a href="/portal/mypage">마이페이지 ↗</a></nav><p class="aside-note">누가, 어떤 과정을,<br>몇 월까지 듣는지.<br><br>월 단위로 한눈에 관리합니다.</p></aside>
+<main id="main"><div class="heading"><div><p class="eyebrow">ENROLLMENT OVERVIEW</p><h1>통합 수강관리</h1><p class="muted">수강월과 개인별 신청 이력을 함께 확인하세요.</p></div><span class="tag">관리자 전용 / 조회 버전</span></div>
+<section id="gate" class="panel notice" aria-live="polite"><h2 id="gate-title">관리자 권한을 확인하고 있습니다.</h2><p id="gate-text">잠시만 기다려 주세요.</p><button id="retry">다시 확인</button></section>
+<div id="content" hidden>
+<form id="filters" class="panel filters">
+<div class="month-row"><label class="month-label">조회 월<input id="month" name="month" type="month" required></label><button id="month-prev" type="button" aria-label="이전 달">←</button><button id="month-next" type="button" aria-label="다음 달">→</button><label class="check"><input id="all-months" type="checkbox">전체 수강월 보기</label><span class="hint">인원과 수강상태는 조회 월 기준입니다.</span></div>
+<div class="filter-grid">
+<label>과정 / 기수<select id="course"><option value="">전체 과정 / 기수</option></select></label>
+<label>구매기간 이력<select id="plan"><option value="">전체 기간</option><option value="1">1개월</option><option value="2">2개월 과정</option><option value="3">3개월</option><option value="12">12개월</option></select></label>
+<label>수강상태<select id="status"><option value="">전체 상태</option><option value="active">수강 중</option><option value="ending">조회 월에 종료</option><option value="pending">아직 미확정</option><option value="scheduled">시작 전 (전체 월)</option><option value="ended">종료 (전체 월)</option></select></label>
+<label>결제기록 이력<select id="payment"><option value="">전체</option><option value="unknown">미확인</option><option value="pending">결제 대기</option><option value="recorded">확인 기록 있음</option><option value="refunded">환불 기록 있음</option></select></label>
+<label>현금영수증 이력<select id="receipt"><option value="">전체</option><option value="unknown">미확인</option><option value="not_requested">미요청</option><option value="requested">발급 요청</option><option value="recorded_issued">발급 기록 있음</option></select></label>
+<label>회원 연결<select id="linked"><option value="">전체</option><option value="true">회원 연결됨</option><option value="false">비회원 / 미연결</option></select></label>
+</div>
+<div class="search-row"><label class="grow">이름 / 닉네임 / 정확한 이메일·전화번호<input id="search" type="search" maxlength="200" autocomplete="off" placeholder="이름, 닉네임 또는 연락처"></label><label>종료월부터<input id="end-from" type="month"></label><label>종료월까지<input id="end-to" type="month"></label><button type="submit" class="primary" id="search-button">조회</button><button type="button" id="reset">초기화</button></div>
+<p class="hint">기간·결제·영수증 조건은 같은 구매 이력에서 일치하는 수강생을 찾습니다. 대기 중인 연장은 확정 수강월에 더하지 않습니다.</p>
+</form>
+<section class="stats" aria-label="월별 요약"><article><span>조회 월 확정 인원</span><strong id="stat-people">—</strong><small>전체 과정 중복 인원 제외</small></article><article><span>과정별 수강 건수</span><strong id="stat-enrollments">—</strong><small>한 명이 두 과정이면 2건</small></article><article><span>조회 월 종료 인원</span><strong id="stat-ending">—</strong><small>마지막 확정 수강월 기준</small></article><article><span>확정 대기 인원</span><strong id="stat-pending">—</strong><small>확정 인원과 중복될 수 있음</small></article></section>
+<div id="course-counts" class="course-counts" aria-label="과정별 인원"></div>
+<section class="panel results"><div class="table-tools"><div><h2>수강생 통합표 <span id="total" class="count">—</span></h2><p class="hint" id="result-note">한 사람의 과정별 현황은 한 줄로, 구매·연장은 상세 이력으로 표시합니다.</p></div><details id="column-settings"><summary>표시할 열 설정</summary><div id="column-list"></div><button id="columns-reset" type="button">기본 열로</button></details></div>
+<div class="table-wrap" tabindex="0" role="region" aria-label="수강관리표. 좌우로 이동하면 연락처와 추가 열을 볼 수 있습니다."><table><thead id="table-head"></thead><tbody id="table-body"></tbody></table></div>
+<div id="list-message" class="notice" role="status"></div><button id="retry-list" hidden>다시 불러오기</button><div class="pager"><span id="page-info" class="hint"></span><div><label class="page-size">한 페이지<select id="page-size"><option value="20">20행</option><option value="50">50행</option></select></label><button id="prev" disabled>이전</button><button id="next" disabled>다음</button></div></div></section>
+<p class="footnote">결제금액은 기록된 금액만 표시하며 미확인은 ‘—’입니다. 결제 대기는 매출이 아닙니다. 연락처는 보호 표시하며, 실제 PG 결제·영수증 발급·알림은 아직 연결하지 않았습니다.</p>
+</div><p id="action-message" role="status"></p>
+</main></div>
+<dialog id="history"><div class="dialog-head"><div><p class="eyebrow">APPLICATION HISTORY</p><h2 id="history-title">신청 / 연장 이력</h2></div><button id="history-close" aria-label="상세 이력 닫기">닫기</button></div><p id="history-subtitle" class="muted"></p><div id="history-body"></div><p id="history-message" role="status"></p><div class="history-pager"><button id="history-prev">이전 이력</button><button id="history-next">다음 이력</button></div><p class="hint">‘결제 확인 기록’과 ‘영수증 발급 기록’은 운영 기록입니다. 이 화면에서 결제·발급을 실행하지 않습니다.</p></dialog>
+</body></html>
