@@ -19,7 +19,12 @@ pytestmark=pytest.mark.skipif(os.getenv('RICHON_EMPTY_TEST_DB')!='YES' or not os
 
 
 @pytest.fixture(scope='module')
-def prepared(auth_postgres):
+def runtime_password():
+    return secrets.token_urlsafe(32)
+
+
+@pytest.fixture(scope='module')
+def prepared(auth_postgres, runtime_password):
     connect=auth_postgres
     with connect() as conn:
         assert conn.execute('SELECT 1 FROM pg_roles WHERE rolname=%s',(ready.ROLE,)).fetchone() is None
@@ -29,7 +34,16 @@ def prepared(auth_postgres):
             with conn.cursor() as cur:
                 changed=p.schema(cur)
                 assert changed==['003_portal_read_models','007_oauth_handoff']
-                p.grant_runtime(cur,secrets.token_urlsafe(32),conn)
+                # Match the observed Neon logging baseline in this disposable
+                # CI transaction only. Production code merely checks settings.
+                for name, value in (
+                    ('log_statement', 'none'), ('log_min_duration_statement', '-1'),
+                    ('log_min_duration_sample', '-1'), ('log_transaction_sample_rate', '0'),
+                    ('log_min_error_statement', 'panic'), ('log_error_verbosity', 'terse'),
+                    ('log_parameter_max_length_on_error', '0'),
+                ):
+                    cur.execute('SELECT set_config(%s,%s,true)', (name, value))
+                p.grant_runtime(cur,runtime_password,conn)
         created=True
         yield connect
     finally:
@@ -123,3 +137,26 @@ def test_grant_check_needs_no_set_role_privilege(prepared):
             with conn.cursor() as cur:p.grant_runtime(cur,'unused-existing-role',conn)
             raise psycopg.Rollback()
         assert conn.execute('SELECT 1 FROM pg_roles WHERE rolname=%s',(owner,)).fetchone() is None
+
+
+def test_runtime_password_authentication_over_loopback(prepared, runtime_password):
+    import psycopg
+    # guarded_target has already rejected non-loopback / non-richon_ci targets.
+    with psycopg.connect(os.environ['RICHON_TEST_DATABASE_URL'],
+                         user=ready.ROLE, password=runtime_password) as conn:
+        conn.read_only=True
+        with conn.cursor() as cur:ready.check_cursor(cur)
+
+
+def test_credential_helper_is_not_a_persistent_database_function(prepared):
+    with prepared() as conn:
+        assert conn.execute("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN ('richon','public') AND p.proname='richon_create_portal_login'").fetchone()==(0,)
+
+
+def test_managed_role_reentry_does_not_create_or_rotate_password(prepared, monkeypatch):
+    from unittest.mock import Mock
+    create=Mock(side_effect=AssertionError('existing role must not rotate'))
+    monkeypatch.setattr(p,'create_runtime_role',create)
+    with prepared() as conn:
+        with conn.cursor() as cur:p.grant_runtime(cur,'unused-existing-role',conn)
+    create.assert_not_called()

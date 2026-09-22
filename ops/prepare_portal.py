@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'backend'))
 import db
 import portal_readiness as readiness
+from portal_credentials import create_runtime_role, CredentialLoggingUnsafe
 
 PROJECT = 'richon-academy'
 NUMBER = '756298505437'
@@ -124,9 +125,13 @@ def grant_runtime(cur, password, conn):
     cur.execute('SELECT shobj_description(oid,\'pg_authid\') FROM pg_roles WHERE rolname=%s', (readiness.ROLE,))
     existing = cur.fetchone()
     if existing is None:
-        # libpq computes a SCRAM verifier locally; plaintext never appears in SQL.
-        verifier = conn.pgconn.encrypt_password(password.encode(), readiness.ROLE.encode(), b'scram-sha-256').decode()
-        cur.execute(sql.SQL('CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD {}').format(role, sql.Literal(verifier)))
+        # Neon rejects pre-hashed passwords. Bind the original value over the
+        # existing verify-full TLS connection, only after checking safe logging.
+        need(readiness.ROLE == 'richon_portal_login', 'unexpected_runtime_role')
+        try:
+            create_runtime_role(cur, password)
+        except CredentialLoggingUnsafe:
+            raise Stop('credential_logging_not_safe') from None
         cur.execute(sql.SQL('COMMENT ON ROLE {} IS {}').format(role, sql.Literal(MARKER)))
     else:
         need(existing[0] == MARKER, 'unmanaged_database_role')

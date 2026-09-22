@@ -23,8 +23,8 @@ PREPARE 이전에는 GCP 메타데이터 읽기만 합니다. 실제 DB 접속/�
 
 - 프로젝트 richon-academy / 756298505437 / asia-southeast1로 고정.
 - 기존 서버의 private IAM과 DATABASE_URL의 고정 버전을 읽고 대상 Neon endpoint/DB/owner를 대조.
-- 새 DB URL을 GCP richon-portal-database-url에 저장. 평문 비밀번호는 Git/출력/빌드/SQL에 넣지 않음.
-- 일반 SQL 역할 richon_portal_login을 생성. libpq에서 만든 SCRAM 검증자만 CREATE ROLE에 사용.
+- 새 DB URL을 GCP richon-portal-database-url에 저장. 비밀번호는 Git/출력/빌드/클라이언트 SQL 문자열에 넣지 않음.
+- 일반 SQL 역할 richon_portal_login 생성. 원래 비밀번호를 verify-full TLS 연결의 바인드 값으로 전송하며, pg_temp의 SECURITY INVOKER 함수가 고정 CREATE ROLE을 실행함.
 - 001 체크섬 검증 후 기존 002/003/007 SQL과 역할/grants를 한 트랜잭션에 적용.
 - 회원 신규 생성/세션 유지/일회성 OAuth 처리와 포털 조회에 필요한 열 단위 권한만 부여.
 - 회원 role/status 변경, 주문/과정 변경, 주문 소유권 연결, schema/DDL/migration 접근은 불가.
@@ -35,6 +35,23 @@ PREPARE 이전에는 GCP 메타데이터 읽기만 합니다. 실제 DB 접속/�
 - 모든 기능 OFF 상태의 richon-portal을 **비공개**로 배포. 숫자 Secret 버전과 이미지 digest를 고정.
 - 시작 시 실제 runtime DB 연결/권한을 읽기 전용으로 검증한 뒤에만 포트를 엶.
 - 마지막에 private IAM/Ready/이미지 및 기존 주문 서버 spec/IAM 불변 확인.
+
+## Neon 전용 비밀번호 처리 오류 수정
+
+057c008 버전은 libpq가 만든 SCRAM 검증자를 CREATE ROLE에 전달했습니다.
+분리된 Neon PostgreSQL 18 검증 브랜치에서 이 방식을 실행하면 control plane이 HTTP 400과
+`Neon only supports being given plaintext passwords`를 반환함을 재현했습니다.
+일반 PostgreSQL CI만으로는 이 관리형 서비스의 제한을 검증할 수 없었습니다.
+
+수정한 ops/portal_credentials.py는 이미 GCP Secret에 저장한 비밀번호를 그대로 사용합니다.
+비밀번호를 포함하는 SQL 문자열을 클라이언트에서 만들지 않고 바인드 인자로 전달합니다.
+서버 내부에서는 원래 값으로 CREATE ROLE을 실행하고 PostgreSQL이 저장용 해시를 계산합니다.
+Neon control plane도 원래 비밀번호를 처리합니다. 비밀번호가 서비스 제공자에게 전달되지 않는다는 의미는 아닙니다.
+
+전송 전에 현재 세션의 SQL/파라미터/오류/중첩문/디버그/감사 로그 설정을 확인합니다.
+노출 우려가 있으면 `credential_logging_not_safe`로 중단하며 로그 설정이나 권한을 자동 변경하지 않습니다.
+임시 함수는 해당 소유자 연결이 닫히면 사라지고 runtime 이미지에 포함되지 않습니다.
+기존 최소권한, TLS 인증서·호스트 검증, PUBLIC/IAM 보호, 오류 원문 비출력은 유지합니다.
 
 ## 재실행/중단
 
@@ -56,8 +73,10 @@ PORTAL PRIVATE READY는 실제 카카오 인증 완료가 아닙니다.
 
 backend/tests/test_portal_bootstrap.py: 대상/공개 차단/활성 서비스 덮어쓰기 거부/오류 비노출.
 backend/tests/test_portal_bootstrap_postgres.py: 폐기 가능한 loopback CI에서 002/003/007,
-최소권한 회원 생성/세션/포털 조회/로그아웃, 관리자 승격/주문 변경/DDL 차단.
-기존 social-login-ci에서 수정한 portal image의 build/startup도 검사합니다.
+최소권한 회원 생성/세션/포털 조회/로그아웃, 관리자 승격/주문 변경/DDL 차단,
+새 역할 비밀번호 접속과 기존 역할 재실행 시 비밀번호 미변경을 검사합니다.
+backend/tests/test_portal_credentials.py: 바인드 전송, 로그 검사 실패 시 비밀번호 미전송, 임시 INVOKER 함수와 고정 역할 권한을 검사합니다.
+기존 social-login-ci에서 portal image의 build/startup도 검사합니다.
 실제 GCP 실행 결과는 사용자가 고정 스크립트를 실행한 뒤 별도 확인합니다.
 
 공식 근거:
@@ -65,4 +84,5 @@ backend/tests/test_portal_bootstrap_postgres.py: 폐기 가능한 loopback CI에
 - https://docs.cloud.google.com/run/docs/deploying
 - https://docs.cloud.google.com/iam/docs/roles-permissions/run
 - https://docs.cloud.google.com/build/docs/securing-builds/configure-user-specified-service-accounts
-- https://www.psycopg.org/psycopg3/docs/api/pq.html#psycopg.pq.PGconn.encrypt_password
+- https://www.postgresql.org/docs/18/runtime-config-logging.html
+- https://www.postgresql.org/docs/18/pgstatstatements.html
