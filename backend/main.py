@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from auth_http import install_if_enabled
 from portal import install_if_enabled as install_portal_if_enabled
 from monthly_portal import install_if_enabled as install_monthly_if_enabled
+from manual_portal import install_if_enabled as install_manual_if_enabled
 from db import DatabaseConfigurationError, check_database
 from orders import router as orders_router
 
@@ -24,6 +25,7 @@ app.include_router(orders_router)
 install_if_enabled(app)  # Default OFF; no provider login endpoint is exposed.
 install_portal_if_enabled(app)  # Default OFF; no migration or customer-data write.
 install_monthly_if_enabled(app)  # Default OFF; monthly reads only.
+install_manual_if_enabled(app)  # Default OFF; authenticated legacy-record CRUD.
 
 
 @app.exception_handler(RequestValidationError)
