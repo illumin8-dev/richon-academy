@@ -16,6 +16,7 @@ backend/*
 !backend/manual_store.py
 !backend/manual_portal.py
 !backend/portal_entry.py
+!backend/portal_readiness.py
 !backend/portal_static/
 backend/portal_static/*
 !backend/portal_static/mypage.html
