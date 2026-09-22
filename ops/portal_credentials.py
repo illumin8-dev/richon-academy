@@ -66,11 +66,13 @@ def create_runtime_role(cur, password):
     """Use only on the dedicated owner connection, inside its DB transaction.
 
     No SECURITY DEFINER, persistent helper, password literal, file, or logging.
-    The temp helper disappears when that connection closes. Retry with an
-    already-created managed role never calls this function or changes a password.
+    Drop the helper before commit, including when using transaction pooling.
+    A failure rolls its creation back with the owner transaction. A managed
+    existing-role retry never calls this function or changes a password.
     """
     if not isinstance(password, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', password):
         raise ValueError('invalid_bootstrap_password')
     check_credential_logging(cur)
     cur.execute(ROLE_HELPER)
     cur.execute('SELECT pg_temp.richon_create_portal_login(%s)', (password,))
+    cur.execute('DROP FUNCTION pg_temp.richon_create_portal_login(text)')

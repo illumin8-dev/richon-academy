@@ -44,6 +44,10 @@ def prepared(auth_postgres, runtime_password):
                 ):
                     cur.execute('SELECT set_config(%s,%s,true)', (name, value))
                 p.grant_runtime(cur,runtime_password,conn)
+                # Cleanup must happen before the same transaction/pooled session
+                # is released, not merely when a physical backend disconnects.
+                cur.execute("SELECT to_regprocedure('pg_temp.richon_create_portal_login(text)')")
+                assert cur.fetchone() == (None,)
         created=True
         yield connect
     finally:

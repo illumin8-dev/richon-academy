@@ -29,8 +29,9 @@ def test_password_is_bound_and_never_rendered_into_client_sql(capsys):
     cur = cursor(); password = 'P' * 43
     credentials.create_runtime_role(cur, password)
     calls = cur.execute.call_args_list
-    assert len(calls) == 3
-    assert calls[-1].args == ('SELECT pg_temp.richon_create_portal_login(%s)', (password,))
+    assert len(calls) == 4
+    assert calls[-2].args == ('SELECT pg_temp.richon_create_portal_login(%s)', (password,))
+    assert calls[-1].args == ('DROP FUNCTION pg_temp.richon_create_portal_login(text)',)
     assert all(password not in call.args[0] for call in calls)
     assert 'SECURITY INVOKER' in calls[1].args[0]
     assert 'SECURITY DEFINER' not in calls[1].args[0]
@@ -86,4 +87,4 @@ def test_helper_is_created_only_after_guard_passes():
 def test_missing_or_top_level_statement_tracker_is_accepted(track):
     cur = cursor({**SAFE_VALUES, 'pg_stat_statements.track': track})
     credentials.create_runtime_role(cur, 'P' * 43)
-    assert cur.execute.call_count == 3
+    assert cur.execute.call_count == 4
