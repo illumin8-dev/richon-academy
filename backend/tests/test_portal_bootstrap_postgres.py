@@ -106,3 +106,20 @@ def test_new_migrations_rollback_together_on_failure(auth_postgres,prepared):
             with conn.cursor() as cur:p.schema(cur)
     with prepared() as conn:
         with conn.cursor() as cur:assert p.schema(cur)==[]
+
+
+def test_grant_check_needs_no_set_role_privilege(prepared):
+    import psycopg
+    from psycopg import sql
+    owner='bootstrap_ci_owner_'+uuid4().hex[:12]
+    with prepared() as conn:
+        with conn.transaction():
+            conn.execute(sql.SQL('CREATE ROLE {} CREATEROLE NOSUPERUSER').format(sql.Identifier(owner)))
+            conn.execute(sql.SQL('GRANT richon_portal_login TO {} WITH ADMIN TRUE, SET FALSE, INHERIT FALSE').format(sql.Identifier(owner)))
+            conn.execute(sql.SQL('GRANT USAGE ON SCHEMA richon TO {} WITH GRANT OPTION').format(sql.Identifier(owner)))
+            conn.execute(sql.SQL('GRANT ALL ON ALL TABLES IN SCHEMA richon TO {} WITH GRANT OPTION').format(sql.Identifier(owner)))
+            conn.execute(sql.SQL('SET LOCAL ROLE {}').format(sql.Identifier(owner)))
+            assert conn.execute("SELECT pg_has_role(current_user,'richon_portal_login','SET')").fetchone()==(False,)
+            with conn.cursor() as cur:p.grant_runtime(cur,'unused-existing-role',conn)
+            raise psycopg.Rollback()
+        assert conn.execute('SELECT 1 FROM pg_roles WHERE rolname=%s',(owner,)).fetchone() is None

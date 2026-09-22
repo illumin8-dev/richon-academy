@@ -138,9 +138,8 @@ def grant_runtime(cur, password, conn):
             cur.execute(sql.SQL('GRANT {} ({}) ON richon.{} TO {}').format(sql.SQL(op), sql.SQL(',').join(map(sql.Identifier, columns)), sql.Identifier(table), role))
     for table in readiness.DELETE:
         cur.execute(sql.SQL('GRANT DELETE ON richon.{} TO {}').format(sql.Identifier(table), role))
-    cur.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
-    readiness.check_cursor(cur)
-    cur.execute('RESET ROLE')
+    # Neon owner is not SUPERUSER; do not assume it can SET ROLE to a new role.
+    readiness.check_role(cur)
 
 
 def secret_grant(name):

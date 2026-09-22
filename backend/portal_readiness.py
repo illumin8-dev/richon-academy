@@ -19,37 +19,45 @@ UPDATE = {'members': ('auth_version',),
 DELETE = ('oauth_attempts', 'oauth_signups')
 
 
-def check_cursor(cur):
-    cur.execute("SELECT current_user,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=current_user")
+def check_role(cur):
+    # Explicit target checks also work for a non-superuser schema owner, without SET ROLE.
+    cur.execute("SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s", (ROLE,))
     row = cur.fetchone()
     if not row or row[0] != ROLE or any(row[1:]):
         raise ValueError('portal_role_not_restricted')
-    cur.execute("SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=current_user)")
+    cur.execute("SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname=%s)", (ROLE,))
     if cur.fetchone()[0]:
         raise ValueError('portal_role_membership_not_allowed')
-    cur.execute("SELECT has_schema_privilege('richon','USAGE'),has_schema_privilege('richon','CREATE'),has_schema_privilege('public','CREATE'),has_database_privilege(current_database(),'CREATE')")
+    cur.execute("SELECT has_schema_privilege(%s,'richon','USAGE'),has_schema_privilege(%s,'richon','CREATE'),has_schema_privilege(%s,'public','CREATE'),has_database_privilege(%s,current_database(),'CREATE')", (ROLE,)*4)
     if cur.fetchone() != (True, False, False, False):
         raise ValueError('portal_schema_privilege_mismatch')
     for table in READ:
         relation = 'richon.' + table
-        cur.execute('SELECT has_table_privilege(%s,\'SELECT\')', (relation,))
+        cur.execute('SELECT has_table_privilege(%s,%s,\'SELECT\')', (ROLE,relation))
         if cur.fetchone() != (True,):
             raise ValueError('portal_read_grant_missing')
         for operation in ('DELETE', 'TRUNCATE', 'TRIGGER', 'REFERENCES'):
-            cur.execute('SELECT has_table_privilege(%s,%s)', (relation, operation))
+            cur.execute('SELECT has_table_privilege(%s,%s,%s)', (ROLE,relation,operation))
             if cur.fetchone()[0] != (operation == 'DELETE' and table in DELETE):
                 raise ValueError('portal_table_grant_mismatch')
         cur.execute("SELECT attname FROM pg_attribute WHERE attrelid=%s::regclass AND attnum>0 AND NOT attisdropped", (relation,))
         columns = [r[0] for r in cur.fetchall()]
         for operation, grants in (('INSERT', INSERT), ('UPDATE', UPDATE)):
             for column in columns:
-                cur.execute('SELECT has_column_privilege(%s,%s,%s)', (relation, column, operation))
+                cur.execute('SELECT has_column_privilege(%s,%s,%s,%s)', (ROLE,relation,column,operation))
                 if cur.fetchone()[0] != (column in grants.get(table, ())):
                     raise ValueError('portal_column_grant_mismatch')
     for operation in ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'TRIGGER'):
-        cur.execute('SELECT has_table_privilege(\'richon.schema_migrations\',%s)', (operation,))
+        cur.execute('SELECT has_table_privilege(%s,\'richon.schema_migrations\',%s)', (ROLE,operation))
         if cur.fetchone()[0]:
             raise ValueError('portal_migration_access_not_allowed')
+
+
+def check_cursor(cur):
+    cur.execute('SELECT current_user')
+    if cur.fetchone() != (ROLE,):
+        raise ValueError('portal_role_not_restricted')
+    check_role(cur)
 
 
 def verify_database():
