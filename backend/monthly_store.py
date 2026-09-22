@@ -51,6 +51,7 @@ WITH grouped AS (
  LEFT JOIN richon.members m ON m.member_id=l.member_id
  LEFT JOIN richon.monthly_enrollment_terms t USING(enrollment_id)
  WHERE (%(course)s::text IS NULL OR e.course_id=%(course)s)
+   /* manual_archive_filter */
    AND (l.name ILIKE %(like)s ESCAPE E'\\' OR coalesce(l.nickname,'') ILIKE %(like)s ESCAPE E'\\'
         OR l.phone=%(phone)s OR lower(l.email)=lower(%(q)s))
    AND (%(linked)s::boolean IS NULL OR (l.member_id IS NOT NULL)=%(linked)s)
@@ -89,6 +90,28 @@ ROW_FIELDS = '''enrollment_id,learner_id,course_id,course_title,cohort,name,nick
     latest_payment_state,latest_receipt_state'''
 
 
+def _base_for_schema(cur):
+    """Honor persisted archives independently of the manual-write feature flag.
+
+    Migration 004 remains readable before optional migration 005 is applied.
+    After 005 is recorded, a missing archive table is an error, not permission
+    to silently count archived records again. Do not catch DB access failures.
+    This check and all three reads share read_cursor's repeatable-read snapshot.
+    """
+    cur.execute("""SELECT to_regclass('richon.manual_enrollments') IS NOT NULL,
+        EXISTS (SELECT 1 FROM richon.schema_migrations
+                WHERE version='005_manual_registry')""")
+    archive_exists, migration_applied = cur.fetchone()
+    if not archive_exists and migration_applied:
+        raise RuntimeError('manual_archive_store_unavailable')
+    # Only fixed SQL is selected here; every search value remains a bind value.
+    clause = """AND NOT EXISTS (
+        SELECT 1 FROM richon.manual_enrollments archive
+        WHERE archive.enrollment_id=e.enrollment_id AND archive.archived_at IS NOT NULL
+    )""" if archive_exists else ''
+    return BASE.replace('/* manual_archive_filter */', clause)
+
+
 def search(filters):
     f = filters.model_dump()
     p = {
@@ -103,7 +126,8 @@ def search(filters):
     }
     if p['phone'].startswith('+82'): p['phone']='0'+p['phone'][3:]
     with read_cursor() as cur:
-        cur.execute(BASE+'''SELECT count(*)::integer AS total,
+        base = _base_for_schema(cur)
+        cur.execute(base+'''SELECT count(*)::integer AS total,
           count(DISTINCT learner_id) FILTER (WHERE %(month)s::date BETWEEN start_month AND end_month)::integer AS confirmed_people,
           count(*) FILTER (WHERE %(month)s::date BETWEEN start_month AND end_month)::integer AS confirmed_enrollments,
           count(DISTINCT learner_id) FILTER (WHERE start_month=%(month)s::date AND confirmed_months>0)::integer AS starting_people,
@@ -111,12 +135,12 @@ def search(filters):
           count(DISTINCT learner_id) FILTER (WHERE pending_terms>0 AND %(month)s::date BETWEEN start_month AND proposed_end)::integer AS pending_people
           FROM filtered''',p)
         summary = _rows(cur)[0]
-        cur.execute(BASE+'''SELECT course_id,course_title,cohort,
+        cur.execute(base+'''SELECT course_id,course_title,cohort,
           count(DISTINCT learner_id) FILTER (WHERE %(month)s::date BETWEEN start_month AND end_month)::integer AS confirmed_people,
           count(DISTINCT learner_id) FILTER (WHERE pending_terms>0 AND %(month)s::date BETWEEN start_month AND proposed_end)::integer AS pending_people
           FROM filtered GROUP BY course_id,course_title,cohort ORDER BY course_title,cohort NULLS LAST,course_id LIMIT 201''',p)
         course_summary = _rows(cur)
-        cur.execute(BASE+'SELECT '+ROW_FIELDS+''' FROM filtered
+        cur.execute(base+'SELECT '+ROW_FIELDS+''' FROM filtered
           ORDER BY end_month ASC NULLS LAST,name,enrollment_id LIMIT %(limit)s OFFSET %(offset)s''',p)
         items = _rows(cur)
     return {'month':f['month'],'summary':summary,'courses':course_summary[:200],
