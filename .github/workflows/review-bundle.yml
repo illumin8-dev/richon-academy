@@ -1,0 +1,27 @@
+name: Backend review bundle (no credentials)
+on:
+  push:
+    branches: ['feat/backend-pricing-notes-oauth']
+    paths: ['backend/**', 'preview/**', '.github/workflows/**']
+  pull_request:
+    paths: ['backend/**', 'preview/**', '.github/workflows/review-bundle.yml']
+permissions:
+  contents: read
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Package only tracked source (never runner files or secret values)
+        run: |
+          git archive --format=zip --output=review-source.zip HEAD backend preview .github/workflows .github/gcp
+          sha256sum review-source.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-review-source
+          path: review-source.zip
+          retention-days: 1
+          if-no-files-found: error
