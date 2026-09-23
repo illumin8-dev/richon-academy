@@ -16,6 +16,7 @@ def test_007_is_not_ready_then_008_catalog_checks_under_restricted_role(prepared
         conn.read_only=True
         with conn.cursor() as cur:
             r.check_cursor(cur)
+            r.check_return_paths(cur, expected_paths=r.RETURN_PATHS - {'/', '/index.html', '/apply.html'})
             with pytest.raises(ValueError, match='return_constraint'):
                 r.check_return_paths(cur)
     # Catalog/permission exercise is rolled back, not a production migration.

@@ -71,13 +71,21 @@ def constraint_paths(definition):
     if not isinstance(definition, str) or len(definition) > 2048:
         raise ValueError('portal_return_constraint_mismatch')
     compact = re.sub(r"'[^']*'|\s+", lambda m: m[0] if m[0].startswith("'") else '', definition)
-    match = re.fullmatch(r"CHECK\(\(return_to=ANY\(ARRAY\[(.*)\]\)\)\)", compact)
-    if not match:
+    # These are the two built-in representations actually emitted for our
+    # text and varchar columns. Do not remove arbitrary casts or SQL clauses.
+    templates = (
+        ("CHECK((return_to=ANY(ARRAY[", "])))", "text"),
+        ("CHECK(((return_to)::text=ANY((ARRAY[", "])::text[])))", "charactervarying"),
+    )
+    matches = [(compact[len(prefix):-len(suffix)], cast)
+               for prefix, suffix, cast in templates
+               if compact.startswith(prefix) and compact.endswith(suffix)]
+    if len(matches) != 1:
         raise ValueError('portal_return_constraint_mismatch')
-    values = match[1].split(',')
+    body, cast = matches[0]
     paths = []
-    for value in values:
-        atom = re.fullmatch(r"'(/[A-Za-z0-9_./-]*)'::text", value)
+    for value in body.split(','):
+        atom = re.fullmatch(r"'(/[A-Za-z0-9_./-]*)'::" + cast, value)
         if not atom:
             raise ValueError('portal_return_constraint_mismatch')
         paths.append(atom[1])

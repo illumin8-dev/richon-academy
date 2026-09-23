@@ -64,3 +64,11 @@ def test_only_enabled_oauth_requires_new_constraint_at_startup(monkeypatch,enabl
     role=Mock();paths=Mock();monkeypatch.setattr(r,'check_cursor',role);monkeypatch.setattr(r,'check_return_paths',paths)
     r.verify_database()
     role.assert_called_once();assert paths.call_count==int(enabled)
+
+
+def test_actual_postgres_varchar_catalog_shape():
+    definition="CHECK (((return_to)::text = ANY ((ARRAY["+', '.join("'"+path+"'::character varying" for path in sorted(r.RETURN_PATHS))+"])::text[])))"
+    assert r.constraint_paths(definition)==r.RETURN_PATHS
+    for bad in (definition+' OR true',definition.replace('::text[]','::varchar[]'),
+                definition.replace("'/'::character varying","' /'::character varying")):
+        with pytest.raises(ValueError):r.constraint_paths(bad)
