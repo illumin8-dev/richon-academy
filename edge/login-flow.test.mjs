@@ -32,3 +32,21 @@ test('actual proxy preserves supplied Origin, sanitizes only login GET Referer',
   const redirect=await handle(new Request(ORIGIN+'/auth/kakao/callback'),env,async()=>new Response(null,{status:303,headers:{Location:'/apply.html'}}));
   assert.equal(redirect.headers.get('location'),ORIGIN+'/apply.html');assert.equal(redirect.headers.get('referrer-policy'),'no-referrer');assert.equal(redirect.headers.get('cache-control'),'no-store');
 });
+
+test('both official provider assets are fixed GET-only gated no-store subrequests',async()=>{
+  for(const provider of ['kakao','naver']) {
+    const path=`/auth/assets/${provider}-login.png`;
+    assert.equal(allowed(path,'GET'),true);
+    assert.equal(allowed(path,'POST'),false);
+    let seen;
+    const result=await handle(new Request(ORIGIN+path),env,async(url,init)=>{
+      seen=init;return new Response(new Uint8Array([137,80,78,71]),{headers:{'Content-Type':'image/png'}});
+    });
+    assert.equal(result.status,200);
+    assert.equal(seen.cache,'no-store');assert.equal(seen.cf,undefined);
+    assert.equal(seen.headers.get('X-Richon-Edge-Key'),env.RICHON_EDGE_SECRET);
+    assert.equal(result.headers.get('Referrer-Policy'),'no-referrer');
+    assert.equal(result.headers.get('Cache-Control'),'no-store');
+  }
+  assert.equal(allowed('/auth/assets/other.png','GET'),false);
+});

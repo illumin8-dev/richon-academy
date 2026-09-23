@@ -58,7 +58,7 @@ def failed(return_to='/'):
 
 
 def page(title,body):
-    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.kakao-login{border:0;background:none;padding:0;width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;line-height:0}.kakao-login img{display:block;width:100%;height:auto}.kakao-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
     # Native form POSTs need a non-null same-origin Origin. Cross-site referrers
     # remain suppressed; callback/redirect/error responses keep no-referrer.
     return HTMLResponse(content,headers={**HEADERS,'Referrer-Policy':'same-origin','Content-Security-Policy':CSP})
@@ -133,6 +133,11 @@ def make_router(settings):
         return FileResponse(Path(__file__).parent / 'portal_static' / 'kakao-login.png',
                             media_type='image/png', headers=HEADERS)
 
+    @router.get('/assets/naver-login.png',include_in_schema=False)
+    def naver_button():
+        return FileResponse(Path(__file__).parent / 'portal_static' / 'naver-login.png',
+                            media_type='image/png', headers=HEADERS)
+
     @router.get('/login',response_class=HTMLResponse)
     def login(request:Request):
         target=login_return(request,settings)
@@ -143,9 +148,11 @@ def make_router(settings):
         if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
         for name,label in [('kakao','카카오'),('naver','네이버')]:
             if name in settings.providers:
-                button = ('<button class="kakao-login" type="submit" aria-label="카카오로 로그인">'
-                          '<img src="/auth/assets/kakao-login.png" alt="카카오 로그인" width="896" height="92" referrerpolicy="no-referrer"></button>'
-                          if name == 'kakao' else f'<button type="submit">{label}로 로그인</button>')
+                # Keep official image bytes/ratios and readable symbol sizes.
+                # Narrow buttons clip only empty side padding, never the marks.
+                width, height = (896, 92) if name == 'kakao' else (1472, 192)
+                button = (f'<button class="provider-login {name}-login" type="submit" aria-label="{label}로 로그인">'
+                          f'<img src="/auth/assets/{name}-login.png" alt="{label} 로그인" width="{width}" height="{height}" referrerpolicy="no-referrer"></button>')
                 body+=f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="provider" value="{name}"><input type="hidden" name="return_to" value="{target}">{button}</form><br>'
         response=page('리치온 로그인',body)
         set_temporary(response,BROWSER,browser)
