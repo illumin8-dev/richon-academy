@@ -17,7 +17,8 @@ ENDPOINTS = {
     'naver': ('https://nid.naver.com/oauth2.0/authorize', 'https://nid.naver.com/oauth2.0/token', 'https://openapi.naver.com/v1/nid/me'),
 }
 RICHON_KAKAO_APP_ID = 1585992
-RETURNS = frozenset({'/portal/mypage','/portal/admin','/portal/enrollments','/portal/manual'})
+PUBLIC_RETURNS = frozenset({'/', '/index.html', '/apply.html'})
+RETURNS = PUBLIC_RETURNS | frozenset({'/portal/mypage','/portal/admin','/portal/enrollments','/portal/manual'})
 
 class ProviderRejected(Exception):
     """Safe fixed error; never contains provider response bodies or credentials."""
