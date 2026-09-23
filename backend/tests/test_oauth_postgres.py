@@ -7,7 +7,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import auth_core as core,auth_http as auth
-import oauth_store as store,oauth_http as h,oauth_providers as p,oauth_migrate
+import oauth_store as store,oauth_http as h,oauth_providers as p,oauth_migrate,login_return_migrate
 from test_orders_postgres import postgres
 from test_auth_postgres import guarded_target,auth_postgres,CONSENT
 from test_oauth import settings,ORIGIN
@@ -16,6 +16,9 @@ pytestmark=pytest.mark.skipif(os.getenv('RICHON_EMPTY_TEST_DB')!='YES' or not os
 @pytest.fixture(scope='module')
 def oauth_db(auth_postgres):
     assert oauth_migrate.apply_migration()
+    previous=store.begin(settings(),'kakao','B'*43,'/portal/mypage')
+    assert login_return_migrate.apply_migration()
+    assert store.consume_attempt(settings(),'kakao',previous,'B'*43)=='/portal/mypage'
     return auth_postgres
 
 
@@ -51,9 +54,9 @@ def client():
     return TestClient(a,base_url=ORIGIN)
 
 
-def start(c,name):
-    r=c.get('/auth/login');csrf=re.search(r'name="csrf" value="([^"]+)"',r.text)[1]
-    r=c.post('/auth/start',data={'csrf':csrf,'provider':name},headers={'Origin':ORIGIN},follow_redirects=False)
+def start(c,name,target='/'):
+    r=c.get('/auth/login',params={'return_to':target});csrf=re.search(r'name="csrf" value="([^"]+)"',r.text)[1]
+    r=c.post('/auth/start',data={'csrf':csrf,'provider':name,'return_to':target},headers={'Origin':ORIGIN},follow_redirects=False)
     assert r.status_code==303
     return parse_qs(urlsplit(r.headers['location']).query)['state'][0]
 
@@ -71,14 +74,14 @@ def test_full_mock_oauth_new_signup_then_repeat_login(oauth_db,monkeypatch,name)
     form={'csrf':csrf,'terms':'yes','privacy':'yes','terms_version':cfg.terms_version,'privacy_version':cfg.privacy_version}
     assert c.post('/auth/signup',data={**form,'terms':'no'},headers={'Origin':ORIGIN}).status_code==422
     r=c.post('/auth/signup',data=form,headers={'Origin':ORIGIN},follow_redirects=False)
-    assert r.status_code==303 and r.headers['location']=='/portal/mypage'
+    assert r.status_code==303 and r.headers['location']=='/'
     assert auth.COOKIE in r.headers.get('set-cookie','')
     me=c.get('/auth/me');assert me.status_code==200 and me.json()['role']=='member'
     assert c.get('/auth/signup',follow_redirects=False).headers['location']=='/auth/login?error=login_failed'
     mid=me.json()['member_id']
     other=client();new=start(other,name)
     r=other.get('/auth/'+name+'/callback',params={'code':'another-code','state':new},follow_redirects=False)
-    assert r.headers['location']=='/portal/mypage' and other.get('/auth/me').json()['member_id']==mid
+    assert r.headers['location']=='/' and other.get('/auth/me').json()['member_id']==mid
     with oauth_db() as db:
         assert db.execute('SELECT count(*) FROM richon.members').fetchone()[0]==before+1
         assert db.execute('SELECT terms_version,privacy_version FROM richon.members WHERE member_id=%s',(mid,)).fetchone()==(cfg.terms_version,cfg.privacy_version)
@@ -161,8 +164,47 @@ def test_mock_http_adapter_through_real_db_to_logout(oauth_db,monkeypatch,name):
     assert response.headers['location']=='/auth/signup'
     response=c.get('/auth/signup');csrf=re.search(r'name="csrf" value="([^"]+)"',response.text)[1]
     response=c.post('/auth/signup',data={'csrf':csrf,'terms':'yes','privacy':'yes','terms_version':settings().terms_version,'privacy_version':settings().privacy_version},headers={'Origin':ORIGIN},follow_redirects=False)
-    assert response.headers['location']=='/portal/mypage'
+    assert response.headers['location']=='/'
     me=c.get('/auth/me');assert me.status_code==200 and me.json()['role']=='member'
     proof=c.get('/auth/csrf').json()['csrf_token']
     assert c.post('/auth/logout',headers={'Origin':ORIGIN,'X-CSRF-Token':proof}).status_code==204
     assert c.get('/auth/me').status_code==401
+
+
+@pytest.mark.parametrize('name',['kakao','naver'])
+@pytest.mark.parametrize('destination',['/','/index.html','/apply.html','/portal/mypage'])
+def test_exact_destination_survives_new_signup_and_repeat(oauth_db,monkeypatch,name,destination):
+    identity=core.VerifiedIdentity(name,settings().providers[name].identity_scope,uuid4().hex,'가상 회원')
+    monkeypatch.setattr(p,'exchange',Mock(return_value=identity))
+    c=client();state=start(c,name,destination)
+    r=c.get('/auth/'+name+'/callback',params={'state':state,'code':'synthetic'},follow_redirects=False)
+    assert r.headers['location']=='/auth/signup'
+    page=c.get('/auth/signup');proof=re.search(r'name="csrf" value="([^"]+)"',page.text)[1]
+    data={'csrf':proof,'terms':'yes','privacy':'yes','terms_version':settings().terms_version,'privacy_version':settings().privacy_version}
+    r=c.post('/auth/signup',data=data,headers={'Origin':ORIGIN},follow_redirects=False)
+    assert r.headers['location']==destination and auth.COOKIE in r.headers.get('set-cookie','')
+    other=client();state=start(other,name,destination)
+    r=other.get('/auth/'+name+'/callback',params={'state':state,'code':'synthetic'},follow_redirects=False)
+    assert r.headers['location']==destination
+    assert c.get('/auth/me').json()['member_id']==other.get('/auth/me').json()['member_id']
+
+
+def test_return_migration_reentry_preserves_records(oauth_db):
+    cfg=settings();browser='B'*43;state=store.begin(cfg,'kakao',browser,'/apply.html')
+    assert login_return_migrate.apply_migration() is False
+    assert store.consume_attempt(cfg,'kakao',state,browser)=='/apply.html'
+
+
+@pytest.mark.parametrize('table',['oauth_attempts','oauth_signups'])
+@pytest.mark.parametrize('bad',['//evil.invalid','https://evil.invalid','/auth/login','/apply.html?code=x'])
+def test_db_return_constraint_still_rejects_arbitrary_urls(oauth_db,table,bad):
+    import psycopg
+    cfg=settings();browser='B'*43
+    if table=='oauth_attempts':
+        token=store.begin(cfg,'kakao',browser,'/portal/mypage');column='state_hash'
+    else:
+        token=store.stage_signup(cfg,core.VerifiedIdentity('kakao','1585992',uuid4().hex,'가상'),browser,'/portal/mypage');column='ticket_hash'
+    # Table and column are hard-coded test selections, not user input.
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with oauth_db() as db:
+            db.execute(f'UPDATE richon.{table} SET return_to=%s WHERE {column}=%s',(bad,core.token_digest(token)))
