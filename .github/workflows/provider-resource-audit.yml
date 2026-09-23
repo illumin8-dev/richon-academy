@@ -1,4 +1,4 @@
-name: Official provider resource review (read-only)
+name: Store verified official Naver asset (no deployment)
 on:
   push:
     branches: ['fix/backend-provider-design-audit']
@@ -6,55 +6,48 @@ on:
 permissions:
   contents: read
 jobs:
-  resources:
+  asset:
+    if: github.repository == 'illumin8-dev/richon-academy' && github.ref == 'refs/heads/fix/backend-provider-design-audit'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 3
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          persist-credentials: false
-      - name: Quarantine official public documents for inspection only
+      - name: Store exact reviewed PNG bytes only; never update a ref or execute downloaded content
         shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          import hashlib, os, pathlib, urllib.request, zipfile, subprocess, json
-          from urllib.parse import urlsplit
-          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'provider-review'
-          out.mkdir()
-          base='https://developers.naver.com/inc/devcenter/downloads/'
-          files=[('naver-official.zip',base+'bi/NAVER_login_KR.zip'),
-                 ('naver-solo-guide.pdf',base+'naveridro/naverlogin_solo_guide.pdf')]
-          class SameHost(urllib.request.HTTPRedirectHandler):
-              def redirect_request(self,req,fp,code,msg,headers,newurl):
-                  u=urlsplit(newurl)
-                  if u.scheme!='https' or u.netloc!='developers.naver.com':
-                      raise ValueError('unexpected_resource_redirect')
-                  return super().redirect_request(req,fp,code,msg,headers,newurl)
-          opener=urllib.request.build_opener(SameHost())
-          manifest=[]
-          for name,url in files:
-              with opener.open(url,timeout=30) as r:
-                  assert r.status==200
-                  data=r.read(24*1024*1024+1)
-                  content_type=r.headers.get('Content-Type','')
-              assert len(data)<=24*1024*1024
-              assert data.startswith(b'PK') if name.endswith('.zip') else data.startswith(b'%PDF-')
-              (out/name).write_bytes(data)
-              record={'name':name,'url':url,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
-                      'content_type':content_type,'signature_hex':data[:8].hex()}
-              manifest.append(record);print(json.dumps(record))
-          (out/'manifest.json').write_text(json.dumps(manifest,indent=2))
-          # Review artifact only; no downloaded code is executed or deployed.
-          with zipfile.ZipFile(out/'review-source.zip','w',zipfile.ZIP_DEFLATED) as z:
-              paths=subprocess.check_output(['git','ls-files','backend','edge','.github/portal','.github/workflows']).decode().splitlines()
-              for name in paths:
-                  p=pathlib.Path(name)
-                  assert p.is_file() and not p.is_symlink()
-                  if p.name.startswith('.env'): continue
-                  z.write(p,name)
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        if: always()
-        with:
-          name: provider-review-public-source
-          path: ${{ runner.temp }}/provider-review/
-          retention-days: 1
-          if-no-files-found: error
+          import base64, hashlib, io, json, os, urllib.request, zipfile
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args): return None
+          opener=urllib.request.build_opener(NoRedirect())
+          try:
+              assert os.environ['GITHUB_REPOSITORY']=='illumin8-dev/richon-academy'
+              assert os.environ['GITHUB_REF']=='refs/heads/fix/backend-provider-design-audit'
+              url='https://developers.naver.com/inc/devcenter/downloads/bi/NAVER_login_KR.zip'
+              with opener.open(url,timeout=30) as response:
+                  assert response.status==200
+                  archive=response.read(1048577)
+              assert len(archive)<=1048576
+              assert hashlib.sha256(archive).hexdigest()=='e589e3c1daf62cfcb6c38906856b953ae955c97d1411b3c3ce85d29e61c4471c'
+              with zipfile.ZipFile(io.BytesIO(archive)) as z:
+                  name='NAVER_login_KR/NAVER_login_Light_KR_green_center_H48.png'
+                  assert z.getinfo(name).file_size==6334
+                  png=z.read(name)
+              assert hashlib.sha256(png).hexdigest()=='4d086f9c7f12e8b99589669042415db9de4fd31a28f5eac8721ebf893caaf06d'
+              expected='358bdabfcb4dfa157f349cbf4b111105db859815'
+              assert hashlib.sha1(b'blob '+str(len(png)).encode()+b'\0'+png).hexdigest()==expected
+              payload=json.dumps({'content':base64.b64encode(png).decode('ascii'),'encoding':'base64'}).encode()
+              request=urllib.request.Request('https://api.github.com/repos/illumin8-dev/richon-academy/git/blobs',
+                  data=payload,method='POST',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                  'Accept':'application/vnd.github+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'})
+              with opener.open(request,timeout=30) as response:
+                  assert response.status==201
+                  result=json.loads(response.read(16384))
+              assert result['sha']==expected
+              print('VERIFIED_OFFICIAL_NAVER_BLOB='+expected)
+              print('No branch ref, deployment, database, cloud credentials, or user data changed by this job.')
+          except Exception:
+              print('STOP: official asset could not be verified/stored. No raw response or credentials printed.')
+              raise SystemExit(1) from None
