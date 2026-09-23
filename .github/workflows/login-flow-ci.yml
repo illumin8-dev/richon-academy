@@ -29,9 +29,12 @@ jobs:
         run: node --test edge/worker.test.mjs edge/login-flow.test.mjs
       - name: Strict origin checks and official asset integrity
         working-directory: backend
-        run: python -m pytest tests/test_login_flow.py tests/test_login_failure_return.py tests/test_login_return_migration.py tests/test_naver_setup.py tests/test_oauth.py tests/test_auth.py -o addopts='' -q
+        run: python -m pytest tests/test_provider_design.py tests/test_login_flow.py tests/test_login_failure_return.py tests/test_login_return_migration.py tests/test_naver_setup.py tests/test_oauth.py tests/test_auth.py -o addopts='' -q
       - name: Real Chromium native forms with mocked DB and providers
         working-directory: backend
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: python tests/login_browser.py
+      - name: Provider design at mobile and desktop sizes (synthetic only)
+        working-directory: backend
+        run: python tests/provider_design_browser.py

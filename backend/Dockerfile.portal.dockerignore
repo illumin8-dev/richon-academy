@@ -30,3 +30,4 @@ backend/portal_static/*
 !backend/portal_static/manual.css
 !backend/portal_static/manual.js
 !backend/portal_static/kakao-login.png
+!backend/portal_static/naver-login.png

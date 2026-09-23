@@ -9,6 +9,7 @@ const AUTH = new Map([
   ['/auth/login', ['GET']], ['/auth/start', ['POST']], ['/auth/signup', ['GET', 'POST']],
   ['/auth/kakao/callback', ['GET']], ['/auth/naver/callback', ['GET']],
   ['/auth/assets/kakao-login.png', ['GET']],
+  ['/auth/assets/naver-login.png', ['GET']],
   ['/auth/me', ['GET']], ['/auth/csrf', ['GET']], ['/auth/logout', ['POST']], ['/auth/logout-all', ['POST']],
 ]);
 export function allowed(path, method) {
@@ -93,7 +94,7 @@ export async function handle(request, env, fetcher = fetch) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 30000);
   try {
     const result = await fetcher(destination.href, {method: request.method, headers, body,
-      redirect: 'manual', signal: controller.signal, cf: {cacheTtl: 0, cacheEverything: false}});
+      redirect: 'manual', signal: controller.signal, cache: 'no-store'});
     const output = new Headers({'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
     for (const key of ['content-type', 'content-security-policy', 'retry-after']) {
       const value = result.headers.get(key); if (value) output.set(key, value);

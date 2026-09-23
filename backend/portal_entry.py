@@ -27,6 +27,7 @@ def allowed(path, method):
     auth_methods = {
         '/auth/login': {'GET'}, '/auth/start': {'POST'},
         '/auth/assets/kakao-login.png': {'GET'},
+        '/auth/assets/naver-login.png': {'GET'},
         '/auth/signup': {'GET', 'POST'},
         '/auth/kakao/callback': {'GET'}, '/auth/naver/callback': {'GET'},
         '/auth/me': {'GET'}, '/auth/csrf': {'GET'},
