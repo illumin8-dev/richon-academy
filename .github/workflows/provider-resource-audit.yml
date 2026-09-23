@@ -34,9 +34,10 @@ jobs:
           for name,url in files:
               with opener.open(url,timeout=30) as r:
                   assert r.status==200
-                  data=r.read(2*1024*1024+1)
+                  data=r.read(24*1024*1024+1)
                   content_type=r.headers.get('Content-Type','')
-              assert len(data)<=2*1024*1024
+              assert len(data)<=24*1024*1024
+              assert data.startswith(b'PK') if name.endswith('.zip') else data.startswith(b'%PDF-')
               (out/name).write_bytes(data)
               record={'name':name,'url':url,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
                       'content_type':content_type,'signature_hex':data[:8].hex()}
@@ -51,6 +52,7 @@ jobs:
                   if p.name.startswith('.env'): continue
                   z.write(p,name)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: provider-review-public-source
           path: ${{ runner.temp }}/provider-review/
