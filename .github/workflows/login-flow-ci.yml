@@ -18,15 +18,10 @@ jobs:
               payload=response.read(20*1024*1024+1)
           assert len(payload)<=20*1024*1024
           archive=zipfile.ZipFile(io.BytesIO(payload))
-          files=[x for x in archive.infolist() if x.filename.lower().endswith('.png') and not x.filename.startswith('__MACOSX')]
-          print('PNG_MEMBERS',json.dumps([x.filename for x in files],ensure_ascii=False))
-          choices=[x for x in files if 'large_wide' in x.filename.lower() and ('/ko/' in x.filename or '_ko' in x.filename)]
-          if not choices:
-              choices=[x for x in files if 'complete' in x.filename.lower() and 'ko' in x.filename.lower()]
-          assert choices, 'No unambiguous official Korean wide PNG found'
-          info=sorted(choices,key=lambda x:x.filename)[0]
+          member='Kakao Login/PNG @2x/kakao_login_kr_xlarge.png'
+          info=archive.getinfo(member)
           assert info.file_size<=32768
           data=archive.read(info)
           assert data.startswith(b'\x89PNG\r\n\x1a\n')
-          print('OFFICIAL_ASSET',json.dumps({'source':url,'member':info.filename,'bytes':len(data),'dimensions':struct.unpack('>II',data[16:24]),'sha256':hashlib.sha256(data).hexdigest()}))
+          print('OFFICIAL_ASSET',json.dumps({'source':url,'member':member,'bytes':len(data),'dimensions':struct.unpack('>II',data[16:24]),'sha256':hashlib.sha256(data).hexdigest()}))
           print('PUBLIC_PNG_BASE64',base64.b64encode(data).decode())
