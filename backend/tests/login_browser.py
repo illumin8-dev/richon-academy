@@ -27,14 +27,15 @@ def browser_case(browser, *, legacy=False, signup=False, screenshot=None):
     cfg=replace(settings(),origin=ORIGIN)
     app=FastAPI();app.include_router(h.make_router(cfg))
     app.add_middleware(EdgeBoundary,enabled=True,secret=KEY)
-    captured=[]
-    context=browser.new_context(ignore_https_errors=True,viewport={'width':390,'height':844})
+    captured=[];navigation=[];failures=[];console_errors=[]
+    context=browser.new_context(ignore_https_errors=True,service_workers='block',viewport={'width':390,'height':844})
     if signup:
         context.add_cookies([{'name':name,'value':value,'url':ORIGIN,'secure':True,'httpOnly':True,'sameSite':'Lax'}
                             for name,value in [(h.BROWSER,'B'*43),(h.TICKET,'T'*43)]])
     def intercept(route):
         request=route.request;url=urlsplit(request.url)
         assert url.scheme+'://'+url.netloc==ORIGIN, 'Unexpected network request blocked'
+        navigation.append((request.method,url.path))
         if url.path in ('/','/apply.html'):
             route.fulfill(status=200,content_type='text/html',body='<h1>RETURNED</h1>');return
         headers=dict(request.all_headers());headers['X-Richon-Edge-Key']=KEY
@@ -46,7 +47,8 @@ def browser_case(browser, *, legacy=False, signup=False, screenshot=None):
         if legacy and request.method=='GET' and url.path in ('/auth/login','/auth/signup'):
             outgoing['referrer-policy']='no-referrer'
         if request.method=='POST':
-            captured.append((url.path,headers.get('origin'),response.status_code))
+            captured.append((url.path,headers.get('origin'),response.status_code,
+                             urlsplit(response.headers.get('location','')).path))
         if url.path=='/auth/start' and response.status_code==303:
             assert response.headers['location'].startswith('https://kauth.kakao.com/oauth/authorize?')
             route.fulfill(status=200,content_type='text/html',body='<h1>MOCK PROVIDER REDIRECT CAPTURED</h1>')
@@ -54,6 +56,8 @@ def browser_case(browser, *, legacy=False, signup=False, screenshot=None):
             route.fulfill(status=response.status_code,headers=outgoing,body=response.content)
     context.route('**/*',intercept)
     page=context.new_page()
+    page.on('requestfailed',lambda request:failures.append((urlsplit(request.url).path,request.failure)))
+    page.on('console',lambda message:console_errors.append('csp' if 'Content Security Policy' in message.text or 'form-action' in message.text else 'browser-error') if message.type=='error' else None)
     identity=VerifiedIdentity('kakao','1585992','synthetic-browser','테스트')
     try:
         with patch.object(store,'begin',return_value='S'*43), \
@@ -65,12 +69,22 @@ def browser_case(browser, *, legacy=False, signup=False, screenshot=None):
             if signup:
                 page.check('input[name=terms]');page.check('input[name=privacy]')
             page.locator('button').first.click()
-            page.wait_for_timeout(250)
+            if not legacy and signup:
+                page.wait_for_url(ORIGIN+'/apply.html',wait_until='domcontentloaded',timeout=5000)
+                assert page.locator('h1').inner_text()=='RETURNED'
+            else:
+                page.wait_for_load_state('domcontentloaded')
         expected_path='/auth/signup' if signup else '/auth/start'
-        assert captured==[(expected_path,'null' if legacy else ORIGIN,403 if legacy else 303)], captured
+        expected_location='' if legacy else ('/apply.html' if signup else '/oauth/authorize')
+        assert captured==[(expected_path,'null' if legacy else ORIGIN,403 if legacy else 303,expected_location)], captured
         if not legacy and signup:
             assert page.url==ORIGIN+'/apply.html'
         print('PASS: '+('signup' if signup else 'login')+' native form / '+('legacy null Origin reproduced' if legacy else 'real same-origin Origin accepted'))
+    except Exception:
+        print('LOCAL BROWSER DIAGNOSTIC:', {'legacy':legacy,'signup':signup,
+              'page_path':urlsplit(page.url).path,'posts':captured,
+              'intercepted_paths':navigation,'failures':failures,'console_categories':console_errors})
+        raise
     finally:
         context.close()
 
