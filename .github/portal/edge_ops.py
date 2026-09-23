@@ -152,7 +152,10 @@ def main():
            'existing_candidate_or_traffic_split_requires_review')
     op.summary('PASS: fixed richon-portal / existing public invoker / enabled app gate / pinned secret references / runtime limits')
     op.summary('Current revision: ' + info['revision'])
-    op.summary('Naver runtime binding: absent. No Naver enablement or secret payload access in this operation.')
+    env = c.environment(svc['spec']['template']['spec']['containers'][0])
+    naver = c.naver_references(env, boundary='edge')
+    op.summary('Naver runtime binding: ' + ('paired pinned references present' if naver else 'absent') +
+               '. No provider-key payloads were inspected.')
     probe_origin(c.URL)
     op.summary('PASS: missing and wrong origin keys both denied by application (403 edge_required).')
     access = access_status()

@@ -3,7 +3,7 @@ on:
   push:
     branches: ['fix/login-csrf-return-kakao']
   pull_request:
-    paths: ['backend/**', 'edge/**', '.github/workflows/login-flow-ci.yml']
+    paths: ['backend/**', 'edge/**', 'ops/**', '.github/portal/**', '.github/workflows/login-flow-ci.yml']
 permissions:
   contents: read
 jobs:
@@ -29,7 +29,9 @@ jobs:
         run: node --test edge/worker.test.mjs edge/login-flow.test.mjs
       - name: Strict origin checks and official asset integrity
         working-directory: backend
-        run: python -m pytest tests/test_provider_design.py tests/test_login_flow.py tests/test_login_failure_return.py tests/test_login_return_migration.py tests/test_naver_setup.py tests/test_oauth.py tests/test_auth.py -o addopts='' -q
+        run: |
+          bash -n ../ops/prepare_login_release.sh
+          python -m pytest tests/test_login_release_owner.py tests/test_login_release_readiness.py tests/test_provider_design.py tests/test_login_flow.py tests/test_login_failure_return.py tests/test_login_return_migration.py tests/test_naver_setup.py tests/test_oauth.py tests/test_auth.py -o addopts='' -q
       - name: Real Chromium native forms with mocked DB and providers
         working-directory: backend
         env:
