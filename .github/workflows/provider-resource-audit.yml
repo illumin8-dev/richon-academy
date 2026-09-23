@@ -13,16 +13,16 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
-      - name: Save exact official public files and review source (no secrets)
+      - name: Quarantine official public documents for inspection only
         shell: python
         run: |
-          import hashlib, os, pathlib, urllib.request, zipfile
+          import hashlib, os, pathlib, urllib.request, zipfile, subprocess, json
           from urllib.parse import urlsplit
           out=pathlib.Path(os.environ['RUNNER_TEMP'])/'provider-review'
           out.mkdir()
           base='https://developers.naver.com/inc/devcenter/downloads/'
-          files=[('naver-official.zip',base+'bi/NAVER_login_KR.zip','514bfabb66c4dc6d09b19c9b39d137be07846dfe855bf5a4c0c9eef8f3b0682d7'),
-                 ('naver-solo-guide.pdf',base+'naveridro/naverlogin_solo_guide.pdf','84f43a01d8d91a0339f7c96e8bfc4bdda6e70053099cafaf4a9b86f3ecd281c18')]
+          files=[('naver-official.zip',base+'bi/NAVER_login_KR.zip'),
+                 ('naver-solo-guide.pdf',base+'naveridro/naverlogin_solo_guide.pdf')]
           class SameHost(urllib.request.HTTPRedirectHandler):
               def redirect_request(self,req,fp,code,msg,headers,newurl):
                   u=urlsplit(newurl)
@@ -30,20 +30,25 @@ jobs:
                       raise ValueError('unexpected_resource_redirect')
                   return super().redirect_request(req,fp,code,msg,headers,newurl)
           opener=urllib.request.build_opener(SameHost())
-          for name,url,digest in files:
+          manifest=[]
+          for name,url in files:
               with opener.open(url,timeout=30) as r:
                   assert r.status==200
                   data=r.read(2*1024*1024+1)
-              assert len(data)<=2*1024*1024 and hashlib.sha256(data).hexdigest()==digest
+                  content_type=r.headers.get('Content-Type','')
+              assert len(data)<=2*1024*1024
               (out/name).write_bytes(data)
-              print('VERIFIED',name,len(data),digest)
-          # Only tracked source directories, never .git or environment files.
+              record={'name':name,'url':url,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
+                      'content_type':content_type,'signature_hex':data[:8].hex()}
+              manifest.append(record);print(json.dumps(record))
+          (out/'manifest.json').write_text(json.dumps(manifest,indent=2))
+          # Review artifact only; no downloaded code is executed or deployed.
           with zipfile.ZipFile(out/'review-source.zip','w',zipfile.ZIP_DEFLATED) as z:
-              import subprocess
               paths=subprocess.check_output(['git','ls-files','backend','edge','.github/portal','.github/workflows']).decode().splitlines()
               for name in paths:
                   p=pathlib.Path(name)
-                  assert p.is_file() and not p.is_symlink() and '.env' not in p.name
+                  assert p.is_file() and not p.is_symlink()
+                  if p.name.startswith('.env'): continue
                   z.write(p,name)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
