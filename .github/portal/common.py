@@ -122,7 +122,7 @@ def read_request(value=None):
         need(REQUEST.stat().st_size <= 2048, 'request_too_large')
         value = json.loads(REQUEST.read_text())
     need(isinstance(value, dict) and set(value) == {'operation', 'request_id'}, 'invalid_request')
-    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login'), 'unsupported_operation')
+    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge'), 'unsupported_operation')
     need(isinstance(value['request_id'], str) and re.fullmatch('[A-Za-z0-9_.-]{1,80}', value['request_id']), 'invalid_request_id')
     return value
 
@@ -142,11 +142,34 @@ def private(policy, svc):
                  for m in b.get('members', [])), 'public_boundary_requires_separate_review')
 
 
-def inspect(svc, policy, *, require_ready=True):
+def edge_boundary(policy, svc):
+    """Recognize ONLY the owner's already-approved public invoker + app gate.
+
+    Does not edit IAM. The legacy private validator stays strict and unchanged.
+    The application gate must also be tested against the actual network endpoint.
+    """
+    annotations = svc.get('metadata', {}).get('annotations', {})
+    need(annotations.get('run.googleapis.com/invoker-iam-disabled', 'false') == 'false',
+         'unreviewed_iam_check_mode')
+    need(annotations.get('run.googleapis.com/ingress', 'all') == 'all',
+         'unexpected_edge_ingress')
+    count = 0
+    for binding in policy.get('bindings', []):
+        members = binding.get('members', [])
+        need('allAuthenticatedUsers' not in members, 'unapproved_public_principal')
+        if 'allUsers' in members:
+            need(binding.get('role') == 'roles/run.invoker' and not binding.get('condition')
+                 and members.count('allUsers') == 1, 'unapproved_public_grant')
+            count += 1
+    need(count == 1, 'expected_public_invoker_missing')
+
+
+def inspect(svc, policy, *, require_ready=True, boundary='private'):
     meta = svc.get('metadata', {})
     need(meta.get('name') == SERVICE and str(meta.get('namespace')) == NUMBER, 'wrong_service_target')
     need(meta.get('labels', {}).get('managed-by') == 'richon-portal-bootstrap-v1', 'unmanaged_service')
-    private(policy, svc)
+    need(boundary in ('private', 'edge'), 'invalid_boundary_mode')
+    (private if boundary == 'private' else edge_boundary)(policy, svc)
     annotations = meta.get('annotations', {})
     template = svc.get('spec', {}).get('template', {})
     spec = template.get('spec', {})
@@ -183,6 +206,8 @@ def inspect(svc, policy, *, require_ready=True):
     if require_ready:
         need(any(c.get('type') == 'Ready' and c.get('status') == 'True' for c in status.get('conditions', [])), 'service_not_ready')
         need(status.get('latestCreatedRevisionName') == status.get('latestReadyRevisionName'), 'unready_revision_pending')
+    if boundary == 'edge':
+        need(modes == {'true'}, 'edge_login_must_remain_enabled')
     return {'enabled': modes == {'true'}, 'revision': status['latestReadyRevisionName'], 'image': c['image']}
 
 
