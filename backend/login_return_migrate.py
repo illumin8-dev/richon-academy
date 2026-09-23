@@ -9,10 +9,10 @@ DIRECTORY = Path(__file__).parent / 'migrations'
 DEPENDENCIES = ('001_pending_orders', '002_auth_foundation', '007_oauth_handoff')
 
 
-def apply_migration():
+def apply_migration(*, connection_url=None):
     def checksum(name):
         return hashlib.sha256((DIRECTORY / (name + '.sql')).read_bytes()).hexdigest()
-    with db._connect(db.database_url()) as conn:
+    with db._connect(db.database_url() if connection_url is None else connection_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout='15s'")
             cur.execute("SET LOCAL lock_timeout='10s'")

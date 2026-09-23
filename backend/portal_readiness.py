@@ -1,5 +1,6 @@
 """Read-only startup verification for the isolated portal; never performs DDL."""
 import os
+import re
 import sys
 import db
 
@@ -60,12 +61,66 @@ def check_cursor(cur):
     check_role(cur)
 
 
+# SQL catalog check, not a query against customer rows or the migration ledger.
+RETURN_PATHS = frozenset({'/', '/index.html', '/apply.html', '/portal/mypage',
+                         '/portal/admin', '/portal/enrollments', '/portal/manual'})
+
+
+def constraint_paths(definition):
+    """Accept only PostgreSQL's exact text-array membership CHECK expression."""
+    if not isinstance(definition, str) or len(definition) > 2048:
+        raise ValueError('portal_return_constraint_mismatch')
+    compact = re.sub(r"'[^']*'|\s+", lambda m: m[0] if m[0].startswith("'") else '', definition)
+    match = re.fullmatch(r"CHECK\(\(return_to=ANY\(ARRAY\[(.*)\]\)\)\)", compact)
+    if not match:
+        raise ValueError('portal_return_constraint_mismatch')
+    values = match[1].split(',')
+    paths = []
+    for value in values:
+        atom = re.fullmatch(r"'(/[A-Za-z0-9_./-]*)'::text", value)
+        if not atom:
+            raise ValueError('portal_return_constraint_mismatch')
+        paths.append(atom[1])
+    if len(paths) != len(set(paths)):
+        raise ValueError('portal_return_constraint_mismatch')
+    return frozenset(paths)
+
+
+def check_return_paths(cur, *, expected_paths=RETURN_PATHS):
+    """Refuse to start the new app before migration 008's behavior is present.
+
+    The restricted runtime need not read schema_migrations or gain DDL rights.
+    A missing/unvalidated/broadened/extra return_to CHECK fails closed.
+    """
+    for table in ('oauth_attempts', 'oauth_signups'):
+        cur.execute("""
+            SELECT c.conname, c.convalidated, c.connoinherit,
+                   pg_get_constraintdef(c.oid, false), c.conkey, a.attnum
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid=c.conrelid
+            JOIN pg_namespace n ON n.oid=t.relnamespace
+            JOIN pg_attribute a ON a.attrelid=t.oid AND a.attname='return_to'
+            WHERE n.nspname='richon' AND t.relname=%s AND c.contype='c'
+              AND a.attnum=ANY(c.conkey)
+        """, (table,))
+        rows = cur.fetchall()
+        if len(rows) != 1:
+            raise ValueError('portal_return_constraint_mismatch')
+        name, validated, noinherit, definition, columns, column = rows[0]
+        if (name != table + '_return_to_check' or validated is not True
+                or noinherit is not False or list(columns or []) != [column]
+                or constraint_paths(definition) != expected_paths):
+            raise ValueError('portal_return_constraint_mismatch')
+
+
 def verify_database():
     with db._connect(db.database_url()) as conn:
         conn.read_only = True
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout='5s'")
             check_cursor(cur)
+            if os.getenv('RICHON_OAUTH_ENABLED', 'false') == 'true':
+                check_return_paths(cur)
 
 
 def main():

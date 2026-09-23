@@ -43,6 +43,25 @@ SECRET_NAMES = {'DATABASE_URL': 'richon-portal-database-url',
                 'KAKAO_CLIENT_ID': 'richon-kakao-rest-api-key',
                 'KAKAO_CLIENT_SECRET': 'richon-kakao-client-secret',
                 'RICHON_EDGE_SECRET': 'richon-portal-edge-secret'}
+NAVER_NAMES = {'NAVER_CLIENT_ID': 'richon-naver-client-id',
+               'NAVER_CLIENT_SECRET': 'richon-naver-client-secret'}
+
+
+def naver_references(env, *, boundary):
+    present = set(env) & set(NAVER_NAMES)
+    if not present:
+        return {}
+    need(boundary == 'edge' and present == set(NAVER_NAMES), 'partial_or_unapproved_naver_binding')
+    result = {}
+    for name, secret in NAVER_NAMES.items():
+        item = env[name]
+        ref = item.get('valueFrom', {}).get('secretKeyRef', {})
+        need('value' not in item and ref.get('name') == secret and
+             re.fullmatch('[1-9][0-9]*', str(ref.get('key', ''))), 'invalid_naver_secret_reference')
+        result[name] = {'name': name, 'valueFrom': {'secretKeyRef': dict(ref)}}
+    return result
+
+
 FLAGS = ('RICHON_EDGE_ENABLED', 'RICHON_AUTH_ENABLED',
          'RICHON_OAUTH_ENABLED', 'RICHON_PORTAL_ENABLED')
 INTERNAL = {**{k: 'true' for k in FLAGS},
@@ -188,7 +207,9 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     need(str(annotations.get('run.googleapis.com/minScale', '0')) == '0' and
          str(annotations.get('run.googleapis.com/maxScale', '1')) == '1', 'service_scaling_changed')
     env = environment(c)
-    need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(INTERNAL), 'unreviewed_env')
+    naver_references(env, boundary=boundary)
+    need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(INTERNAL) |
+         (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
     for name, secret in SECRET_NAMES.items():
         item = env.get(name, {})
         ref = item.get('valueFrom', {}).get('secretKeyRef', {})
