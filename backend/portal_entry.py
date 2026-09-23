@@ -26,6 +26,7 @@ def allowed(path, method):
         return False
     auth_methods = {
         '/auth/login': {'GET'}, '/auth/start': {'POST'},
+        '/auth/assets/kakao-login.png': {'GET'},
         '/auth/signup': {'GET', 'POST'},
         '/auth/kakao/callback': {'GET'}, '/auth/naver/callback': {'GET'},
         '/auth/me': {'GET'}, '/auth/csrf': {'GET'},
@@ -83,7 +84,12 @@ class EdgeBoundary:
         async def secure_send(message):
             if message['type'] == 'http.response.start':
                 headers = [(k,v) for k,v in message['headers'] if k.lower() not in {b'cache-control', b'referrer-policy'}]
-                message = {**message, 'headers': headers + [(b'cache-control', b'no-store'), (b'referrer-policy', b'no-referrer')]}
+                form_page = (scope['method'] == 'GET' and scope['path'] in {'/auth/login', '/auth/signup'}
+                             and message['status'] == 200
+                             and any(k.lower() == b'content-type' and v.lower().split(b';')[0] == b'text/html'
+                                     for k,v in headers))
+                policy = b'same-origin' if form_page else b'no-referrer'
+                message = {**message, 'headers': headers + [(b'cache-control', b'no-store'), (b'referrer-policy', policy)]}
             await send(message)
         await self.app(scope, replay, secure_send)
 
