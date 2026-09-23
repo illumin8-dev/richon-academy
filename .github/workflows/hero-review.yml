@@ -1,0 +1,31 @@
+name: Hero source review (read only)
+on:
+  push:
+    branches: ['release/home-hero']
+    paths: ['.github/workflows/hero-review.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Export committed source and branch graph only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hero-review"
+          git bundle create "$RUNNER_TEMP/hero-review/public-source.bundle" --all
+          git for-each-ref --format='%(refname) %(objectname)' refs/remotes/origin/ > "$RUNNER_TEMP/hero-review/refs.txt"
+          git ls-tree -r --name-only HEAD | grep -E '(^|/)(AGENTS.md|CLAUDE.md|CONTRIBUTING.md)$' > "$RUNNER_TEMP/hero-review/instructions.txt" || true
+          echo 'Tracked public repository objects only; no working credentials, secrets, production requests, or cloud operations.'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hero-source-review
+          path: ${{ runner.temp }}/hero-review/
+          retention-days: 2
+          if-no-files-found: error
