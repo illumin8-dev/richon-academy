@@ -208,6 +208,12 @@ def protected(svc):
     result.pop('traffic', None)
     template = result['template']
     template.get('metadata', {}).pop('name', None)
+    # gcloud changes this revision-creation marker even for the same settings.
+    # Observed in real read-only inspection; no other labels are discarded.
+    labels = template.get('metadata', {}).get('labels', {})
+    labels.pop('client.knative.dev/nonce', None)
+    if not labels:
+        template.get('metadata', {}).pop('labels', None)
     for annotations in (template.get('metadata', {}).get('annotations', {}),):
         for key in ('run.googleapis.com/client-name', 'run.googleapis.com/client-version'):
             annotations.pop(key, None)
