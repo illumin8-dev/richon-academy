@@ -1,0 +1,59 @@
+name: Official provider resource review (read-only)
+on:
+  push:
+    branches: ['fix/backend-provider-design-audit']
+    paths: ['.github/workflows/provider-resource-audit.yml']
+permissions:
+  contents: read
+jobs:
+  resources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Install document readers in disposable runner
+        run: python3 -m pip install --disable-pip-version-check pypdf==6.1.1 Pillow==11.3.0
+      - name: Read exact official resources requested by owner
+        shell: python
+        run: |
+          import base64, hashlib, io, json, struct, urllib.request, zipfile
+          from urllib.parse import urlsplit
+          from pypdf import PdfReader
+          from PIL import Image
+          BASE='https://developers.naver.com/inc/devcenter/downloads/'
+          URLS={'png':BASE+'bi/NAVER_login_KR.zip','pdf':BASE+'naveridro/naverlogin_solo_guide.pdf'}
+          class SameHost(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl):
+                  u=urlsplit(newurl)
+                  if u.scheme!='https' or u.netloc!='developers.naver.com':
+                      raise ValueError('unexpected_resource_redirect')
+                  return super().redirect_request(req,fp,code,msg,headers,newurl)
+          opener=urllib.request.build_opener(SameHost())
+          for kind,url in URLS.items():
+              try:
+                  with opener.open(urllib.request.Request(url),timeout=30) as r:
+                      assert r.status==200
+                      payload=r.read(24*1024*1024+1)
+                  assert len(payload)<=24*1024*1024
+                  print('RESOURCE',kind,'bytes',len(payload),'sha256',hashlib.sha256(payload).hexdigest())
+                  if kind=='pdf':
+                      assert payload.startswith(b'%PDF-')
+                      doc=PdfReader(io.BytesIO(payload));print('PDF_PAGES',len(doc.pages))
+                      assert len(doc.pages)<=80
+                      for number,page in enumerate(doc.pages):
+                          print('PAGE',number+1,json.dumps((page.extract_text() or '')[:9000],ensure_ascii=False))
+                  else:
+                      archive=zipfile.ZipFile(io.BytesIO(payload));assert len(archive.infolist())<=200
+                      assert sum(x.file_size for x in archive.infolist())<=48*1024*1024
+                      for item in archive.infolist():
+                          if not item.filename.lower().endswith('.png') or '__MACOSX' in item.filename: continue
+                          assert item.file_size<=1024*1024
+                          data=archive.read(item);image=Image.open(io.BytesIO(data)).convert('RGBA')
+                          assert image.width*image.height<=4000000
+                          colors=image.getcolors(image.width*image.height)
+                          top=sorted(colors or [],reverse=True)[:3]
+                          print('PNG',json.dumps(item.filename,ensure_ascii=False),image.size,len(data),'sha256',hashlib.sha256(data).hexdigest(),'TOP',top)
+                          if len(data)<=8000:
+                              print('PNG_BASE64',json.dumps(item.filename,ensure_ascii=False),base64.b64encode(data).decode())
+              except Exception as exc:
+                  print('RESOURCE_UNAVAILABLE',kind,type(exc).__name__)
+          print('Read-only public documents. No credentials, live service, database, or provider login accessed.')
