@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 from urllib.parse import parse_qsl
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,18 +153,57 @@ def with_grant(policy):
     return desired
 
 
+def secret_policy_key(policy):
+    """Normalize only valid IAM schema metadata, never permission content.
+
+    Empty/default policies can omit version (protobuf default 0); the first
+    unconditional binding can make the API return explicit version 1.
+    Conditional bindings must remain fully represented by schema version 3.
+    This comparison is local to these Secret grants, not the Cloud Run guards.
+    """
+    result = c.policy_key(policy)
+    version = result.get('version', 0)
+    c.need(type(version) is int and version in (0, 1, 3), 'invalid_secret_policy_version')
+    bindings = result.get('bindings', [])
+    c.need(not any('_withcond_' in b.get('role', '') for b in bindings),
+           'incomplete_secret_policy_conditions')
+    conditional = any(b.get('condition') for b in bindings)
+    c.need(not conditional or version == 3, 'incomplete_secret_policy_conditions')
+    result['version'] = 3 if conditional else 1
+    return result
+
+
 def ensure_grant(name, before):
-    c.need(c.policy_key(secret_policy(name)) == c.policy_key(before), 'secret_policy_changed')
-    if not has_grant(before):
+    c.need(name in NAVER, 'unexpected_secret_target')
+    before_key = secret_policy_key(before)
+    c.need(secret_policy_key(secret_policy(name)) == before_key, 'secret_policy_changed')
+    expected = secret_policy_key(with_grant(before))
+    added = not has_grant(before)
+    if added:
         REPORT['naver_runtime_grants'].append({'secret': name, 'status': 'grant_attempted'})
         c.gc('secrets', 'add-iam-policy-binding', name, '--member=' + RUNTIME_MEMBER,
              '--role=' + GRANT, '--condition=None')
-    after = secret_policy(name)
-    c.need(c.policy_key(after) == c.policy_key(with_grant(before)), 'secret_grant_not_confirmed')
-    return not has_grant(before)
+        REPORT['naver_runtime_grants'][-1]['status'] = 'write_acknowledged'
+    # Retry reads only, and only when the exact old policy is still visible.
+    # An unrelated change is not explained away as IAM propagation delay.
+    for delay in (0, 1, 2, 4, 8):
+        if delay:
+            time.sleep(delay)
+        after = secret_policy(name)
+        after_key = secret_policy_key(after)
+        if after_key == expected and has_grant(after):
+            REPORT.pop('grant_readback', None)
+            return added
+        REPORT['grant_readback'] = {
+            'secret': name, 'policy_version': after.get('version', 0),
+            'runtime_binding_present': has_grant(after),
+            'old_policy_still_visible': after_key == before_key,
+        }
+        c.need(added and after_key == before_key, 'secret_grant_unexpected_policy')
+    raise c.Stop('secret_grant_readback_pending')
 
 
-def run(*, apply=False):
+def run(*, apply=False, resume_grants=False):
     reset_report()
     c.need(not os.getenv('GITHUB_ACTIONS'), 'owner_shell_required')
     c.need(not os.getenv('DATABASE_URL'), 'unset_shell_database_url_first')
@@ -190,7 +230,8 @@ def run(*, apply=False):
         runtime_target = validate_database(runtime, ready.ROLE)
         c.need(owner_target.hostname.replace('-pooler.', '.') == runtime_target.hostname.replace('-pooler.', '.'),
                'database_endpoint_mismatch')
-        existing = check_schema(owner)
+        existing = check_schema(owner, require_current=True) if resume_grants else check_schema(owner)
+        c.need(not resume_grants or existing, 'resume_requires_verified_008')
         print('PASS: fixed project/service/database and existing limited runtime. No customer rows read.')
         print('008 migration: ' + ('already applied and checked' if existing else 'needs forward update'))
         print('Naver: both existing secrets have enabled versions. Values were NOT read.')
@@ -200,7 +241,10 @@ def run(*, apply=False):
         if not apply:
             print('READ CHECKS PASSED. No writes. Re-run with --apply for the printed prerequisites.')
             return 0
-        print('Changes: only missing 008 return-path constraints and per-secret read access for richon-portal runtime.')
+        if resume_grants:
+            print('Resume: DB008 is read-verified only. No migration/DDL will run; only missing Naver runtime grants.')
+        else:
+            print('Changes: only missing 008 return-path constraints and per-secret read access for richon-portal runtime.')
         print('No new secrets/passwords/roles, no project-wide permissions, no WIF/Access, no server deployment.')
         if input('Type PREPARE LOGIN to apply these prerequisites: ').strip() != 'PREPARE LOGIN':
             print('Cancelled; no writes.')
@@ -208,14 +252,15 @@ def run(*, apply=False):
         c.need(c.source() == sha, 'source_changed')
         same_service(before, policy)
         for name in NAVER:
-            c.need(secret_version(name, preferred.get(name)) == versions[name] and c.policy_key(secret_policy(name)) == c.policy_key(policies[name]),
+            c.need(secret_version(name, preferred.get(name)) == versions[name] and secret_policy_key(secret_policy(name)) == secret_policy_key(policies[name]),
                    'naver_metadata_changed')
         check_schema(owner)
-        REPORT['database_008'] = 'apply_attempted'
-        migration.apply_migration(connection_url=owner)
+        if not resume_grants:
+            REPORT['database_008'] = 'apply_attempted'
+            migration.apply_migration(connection_url=owner)
         check_schema(owner, require_current=True)
         restricted_check(runtime)
-        REPORT['database_008'] = 'verified'
+        REPORT['database_008'] = 'verified_existing' if resume_grants else 'verified'
         for name in NAVER:
             added = ensure_grant(name, policies[name])
             REPORT['naver_runtime_grants'] = [r for r in REPORT['naver_runtime_grants'] if r['secret'] != name]
@@ -233,9 +278,11 @@ def run(*, apply=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Owner-only database/Naver prerequisites; does not deploy.')
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--resume-grants', action='store_true',
+                        help='Require existing valid 008, read-check DB only, and resume Naver IAM grants.')
     args = parser.parse_args()
     try:
-        raise SystemExit(run(apply=args.apply))
+        raise SystemExit(run(apply=args.apply, resume_grants=args.resume_grants))
     except (Exception, KeyboardInterrupt) as exc:
         code = str(exc) if isinstance(exc, c.Stop) else 'prerequisite_check_failed'
         print('STOP: login prerequisites / ' + code + '. No raw credentials or errors printed.', file=sys.stderr)
