@@ -1,0 +1,572 @@
+
+    :root {
+      --richon-orange: #f47920;
+      --hero-ink: #191919;
+      --sub-ink: #5f5a55;
+      --hero-progress: 0;
+      --reveal-size: 150vmax;
+      --switch-x: 59.5%;
+      --switch-y: 46%;
+    }
+
+    .hero-scroll {
+      position: relative;
+      height: 195vh;
+      min-height: 1150px;
+      background: #fff;
+    }
+
+    .hero-sticky {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      height: 100svh;
+      min-height: 620px;
+      overflow: hidden;
+      isolation: isolate;
+      background: #171717;
+    }
+
+    .hero-layer {
+      position: absolute;
+      inset: 0;
+      background-image: url("richon-hero-desktop.webp");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      transform: scale(1.012);
+      will-change: filter, transform, opacity;
+    }
+
+    /* 같은 밝은 원본을 어둡게 만든 OFF 배경 */
+    .hero-bg-dark {
+      z-index: 0;
+      filter: brightness(.27) saturate(.52) contrast(1.04);
+    }
+
+    /* 같은 구도의 밝은 원본을 화면 전체에 겹쳐 노출을 올리듯 보여준다. */
+    .hero-bg-light {
+      z-index: 1;
+      opacity: 1;
+    }
+
+    .hero-js .hero-bg-light {
+      opacity: 0;
+    }
+
+    /* OFF 시 따뜻한 검정 계열. 녹색 tint 사용 안 함 */
+    .hero-dim {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg,
+          rgba(10, 9, 8, .66) 0%,
+          rgba(13, 12, 11, .55) 34%,
+          rgba(16, 14, 13, .31) 58%,
+          rgba(18, 16, 14, .20) 100%);
+      opacity: .88;
+      will-change: opacity;
+    }
+
+    /* 스위치 주변에 경계가 보이지 않는 넓은 온기만 먼저 생긴다. */
+    .switch-glow {
+      position: absolute;
+      z-index: 3;
+      left: var(--switch-x);
+      top: var(--switch-y);
+      width: clamp(360px, 38vw, 720px);
+      aspect-ratio: 1.28;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(.72);
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(ellipse at center,
+        rgba(255, 225, 176, .24) 0%,
+        rgba(255, 231, 196, .12) 28%,
+        rgba(244, 121, 32, .045) 48%,
+        rgba(244, 121, 32, 0) 74%);
+      filter: blur(46px);
+      mix-blend-mode: screen;
+      will-change: opacity, transform;
+    }
+
+    .copy-wrap {
+      position: absolute;
+      z-index: 6;
+      left: clamp(28px, 8vw, 150px);
+      top: 50%;
+      width: min(800px, 51vw);
+      transform: translateY(-54%);
+    }
+
+    .copy {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin: 0;
+      will-change: opacity, transform;
+    }
+
+    .copy h1 {
+      margin: 0;
+      font-size: clamp(38px, 4vw, 72px);
+      line-height: 1.16;
+      letter-spacing: -.045em;
+      font-weight: 800;
+      text-wrap: balance;
+    }
+
+    .copy-off {
+      color: #fff;
+      opacity: 0;
+      transform: translateY(0);
+      text-shadow: 0 2px 28px rgba(0,0,0,.22);
+    }
+
+    .hero-js .copy-off { opacity: 1; }
+
+    .copy-on {
+      color: var(--hero-ink);
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hero-js .copy-on {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+
+    .copy-on h1 {
+      font-size: clamp(36px, 3.35vw, 62px);
+    }
+
+    .copy-on .line {
+      display: block;
+      white-space: nowrap;
+    }
+
+    .copy-on .accent {
+      color: var(--richon-orange);
+      white-space: nowrap;
+    }
+
+    .subcopy {
+      margin: 26px 0 0;
+      font-size: clamp(16px, 1.28vw, 22px);
+      line-height: 1.65;
+      letter-spacing: -.02em;
+      color: var(--sub-ink);
+      font-weight: 500;
+    }
+
+    .subcopy strong {
+      color: #2b2927;
+      font-weight: 750;
+    }
+
+    /* 첫 화면에서만 보이는 아주 조용한 스크롤 힌트 */
+    .scroll-guide {
+      position: absolute;
+      z-index: 8;
+      left: 50%;
+      bottom: clamp(26px, 4vh, 46px);
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      color: rgba(255,255,255,.72);
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: .24em;
+      line-height: 1;
+      text-shadow: 0 2px 18px rgba(0,0,0,.34);
+      pointer-events: none;
+      will-change: opacity, transform;
+    }
+
+    .scroll-guide .chevron {
+      width: 9px;
+      height: 9px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg);
+      animation: scrollNudge 1.7s ease-in-out infinite;
+    }
+
+    @keyframes scrollNudge {
+      0%, 100% { transform: translateY(0) rotate(45deg); opacity: .55; }
+      50% { transform: translateY(6px) rotate(45deg); opacity: 1; }
+    }
+
+    /* 기존 리치온 헤더를 오프닝 뒤에만 노출 */
+    .site-nav {
+      position: fixed;
+      z-index: 60;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      border-bottom: 1px solid rgba(28,31,38,.08);
+      box-shadow: 0 10px 30px -24px rgba(0,0,0,.25);
+      opacity: 1;
+      visibility: visible;
+      transform: none;
+      pointer-events: auto;
+      will-change: opacity, transform;
+    }
+
+    .site-logo {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      color: inherit;
+      text-decoration: none;
+      font-weight: 900;
+      font-size: 23px;
+      letter-spacing: -.02em;
+      white-space: nowrap;
+    }
+
+    .site-logo .r { color: #1c1f26; }
+    .site-logo .o { color: var(--richon-orange); }
+    .site-logo small {
+      margin-left: 8px;
+      align-self: center;
+      color: #a9842f;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .25em;
+    }
+
+    .site-menu {
+      display: flex;
+      gap: 26px;
+      align-items: center;
+      font-size: 14.5px;
+      font-weight: 500;
+    }
+
+    .site-menu a {
+      color: #686b72;
+      text-decoration: none;
+      transition: color .2s ease;
+    }
+
+    .site-menu a:hover { color: #1c1f26; }
+
+    .site-nav-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .site-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 11px 20px;
+      white-space: nowrap;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      transition: .22s;
+    }
+
+    .site-btn-line {
+      color: #1c1f26;
+      border: 1px solid #d8d4c8;
+    }
+
+    .site-btn-line:hover {
+      border-color: #c9a86a;
+      color: #a9842f;
+    }
+
+    .site-btn-o {
+      color: #fff;
+      background: var(--richon-orange);
+    }
+
+    .site-btn-o:hover {
+      background: #ff913f;
+      transform: translateY(-2px);
+      box-shadow: 0 14px 26px -12px rgba(244,121,32,.5);
+    }
+
+    .site-burger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      padding: 6px;
+      border: 0;
+      background: none;
+      cursor: pointer;
+    }
+
+    .site-burger span {
+      width: 24px;
+      height: 2px;
+      border-radius: 2px;
+      background: #1c1f26;
+      transition: .3s;
+    }
+
+    .site-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .site-burger.open span:nth-child(2) { opacity: 0; }
+    .site-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    @media (max-width: 900px) {
+      .site-menu {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 28px;
+        background: rgba(255,255,255,.98);
+        font-size: 22px;
+      }
+
+      .site-menu.show { display: flex; }
+      .site-nav-right .site-btn:not(.site-btn-o) { display: none; }
+      .site-burger { display: flex; z-index: 61; }
+      .site-logo small { display: none; }
+    }
+
+    @media (max-width: 900px) {
+      :root {
+        --switch-x: 64%;
+        --switch-y: 50%;
+      }
+
+      .hero-scroll {
+        height: 165vh;
+        min-height: 900px;
+      }
+
+      .hero-sticky {
+        min-height: 560px;
+      }
+
+      .hero-layer {
+        background-position: 60% center;
+        transform: scale(1.02);
+      }
+
+      .hero-dim {
+        background:
+          linear-gradient(180deg,
+            rgba(8,8,8,.56) 0%,
+            rgba(10,10,10,.38) 48%,
+            rgba(12,11,10,.26) 100%);
+      }
+
+      .copy-wrap {
+        left: 24px;
+        right: 24px;
+        top: 23%;
+        width: auto;
+        transform: none;
+      }
+
+      .copy h1 {
+        font-size: clamp(34px, 9vw, 52px);
+        line-height: 1.18;
+      }
+
+      .copy-on .line {
+        white-space: normal;
+      }
+
+      .subcopy {
+        margin-top: 20px;
+        font-size: 16px;
+        line-height: 1.62;
+      }
+    }
+
+    @media (max-width: 560px) {
+      :root {
+        --switch-x: 68%;
+        --switch-y: 54%;
+      }
+
+      .hero-layer {
+        background-position: 61% center;
+      }
+
+      .copy-wrap {
+        top: 17%;
+      }
+
+      .copy h1 {
+        font-size: clamp(31px, 9.2vw, 44px);
+      }
+
+      .subcopy strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+    }
+
+
+
+    /* ============ 모바일 전용 히어로 ============ */
+    @media (max-width: 768px) {
+      :root {
+        --switch-x: 60.5%;
+        --switch-y: 45%;
+      }
+
+      .hero-scroll {
+        height: 155svh;
+        min-height: 760px;
+      }
+
+      .hero-sticky {
+        height: 100svh;
+        min-height: 600px;
+      }
+
+      .hero-layer {
+        background-image: url("richon-hero-mobile.webp");
+        background-size: cover;
+        background-position: center center;
+        transform: scale(1.006);
+      }
+
+      .hero-dim {
+        background:
+          linear-gradient(180deg,
+            rgba(8,8,8,.68) 0%,
+            rgba(10,10,10,.48) 32%,
+            rgba(12,11,10,.25) 70%,
+            rgba(12,11,10,.16) 100%);
+      }
+
+      .switch-glow {
+        width: clamp(300px, 92vw, 460px);
+        aspect-ratio: 1.12;
+        filter: blur(52px);
+      }
+
+      .copy-wrap {
+        left: 24px;
+        right: 20px;
+        top: clamp(166px, 21svh, 204px);
+        width: auto;
+        max-width: calc(100vw - 44px);
+        transform: none;
+      }
+
+      .copy h1 {
+        font-size: clamp(31px, 8.4vw, 38px);
+        line-height: 1.14;
+        letter-spacing: -.04em;
+      }
+
+      .copy-on h1 {
+        font-size: clamp(30px, 8vw, 36px);
+        line-height: 1.14;
+      }
+
+      .copy-on .line {
+        display: block;
+        white-space: nowrap;
+      }
+
+      .copy-on .criteria,
+      .copy-on .on-phrase {
+        display: block;
+      }
+
+      .subcopy {
+        margin-top: 18px;
+        max-width: 330px;
+        font-size: 14.5px;
+        line-height: 1.55;
+      }
+
+      .subcopy strong {
+        display: block;
+        margin-bottom: 2px;
+      }
+
+      .scroll-guide {
+        bottom: max(24px, 3.5svh);
+        font-size: 10px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .copy-wrap {
+        left: 21px;
+        right: 18px;
+        top: clamp(154px, 20svh, 188px);
+      }
+
+      .copy h1 {
+        font-size: clamp(29px, 8.1vw, 33px);
+      }
+
+      .copy-on h1 {
+        font-size: clamp(28px, 7.8vw, 32px);
+      }
+
+      .subcopy {
+        font-size: 13.5px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-scroll {
+        height: 100svh;
+        min-height: 620px;
+      }
+
+      .hero-bg-dark,
+      .hero-dim,
+      .copy-off,
+      .switch-glow,
+      .scroll-guide {
+        display: none;
+      }
+
+      .hero-bg-light {
+        opacity: 1 !important;
+      }
+
+      .copy-on {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      .site-nav {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        pointer-events: auto !important;
+      }
+    }
+  
+/* Production-only integration: no preview interaction disabling. */
+.hero-js .site-nav {opacity:0;visibility:hidden;transform:translateY(-16px);pointer-events:none}
+html:not(.hero-js) .hero-scroll {height:100svh;min-height:620px}
+html:not(.hero-js) .hero-dim {display:none}
+html:not(.hero-js) .reveal {opacity:1;transform:none}
+#top {display:block;height:0}
+#proof,#programs,#instructor {scroll-margin-top:90px}
+@media(max-width:900px){.site-menu {height:100dvh;padding:100px 24px 32px;justify-content:flex-start}}
+@media(prefers-reduced-motion:reduce){.hero-js .site-nav {opacity:1;visibility:visible;transform:none;pointer-events:auto}}
