@@ -105,7 +105,7 @@ jobs:
         if: needs.request.outputs.operation == 'inspect'
         env:
           PORTAL_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
-        run: python3 -B .github/portal/operate.py inspect
+        run: python3 -B .github/portal/revision_inspection.py
       - name: Verify candidate and promote only after checks
         if: needs.request.outputs.operation != 'inspect'
         env:
