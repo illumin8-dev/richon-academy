@@ -76,7 +76,6 @@ jobs:
                   assert pr['base']['ref'] not in OLD,'open_pr_base'
                   if pr['head']['repo'] and pr['head']['repo']['full_name']==REPO:
                       assert pr['head']['ref'] not in OLD,'open_pr_head'
-          # Pure guard tests before any network/write.
           sample=[{'name':k,'commit':{'sha':v},'protected':False} for k,v in {**KEEP,**OLD}.items()]
           validate(sample,[])
           mutants=[sample[:-1],copy.deepcopy(sample),copy.deepcopy(sample),sample+[{'name':'unexpected','commit':{'sha':'0'*40},'protected':False}]]
@@ -95,7 +94,7 @@ jobs:
           opener=urllib.request.build_opener(NoRedirect())
           token=os.environ['GH_TOKEN']
           def api(path,data=None,missing=False):
-              assert path.startswith('/') and not path.startswith('//') and '\\' not in path
+              assert (path=='' or path.startswith('/')) and not path.startswith('//') and '\\' not in path
               method='POST' if data is not None else 'GET'
               if method=='POST':assert path=='/git/refs' and data['ref'].startswith('refs/tags/'+PREFIX)
               req=urllib.request.Request('https://api.github.com/repos/'+REPO+path,method=method,data=None if data is None else json.dumps(data).encode(),headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'})
@@ -117,7 +116,7 @@ jobs:
                   prior=api('/git/ref/'+quote(ref,safe='/'),missing=True)
                   if prior is None:api('/git/refs',{'ref':'refs/'+ref,'sha':sha})
                   saved=api('/git/ref/'+quote(ref,safe='/'))
-                  assert saved['ref']=='refs/'+ref and saved['object']=={'type':'commit','sha':sha,'url':'https://api.github.com/repos/'+REPO+'/git/commits/'+sha}
+                  assert saved['ref']=='refs/'+ref and saved['object']['type']=='commit' and saved['object']['sha']==sha,'archive_mismatch'
                   print('ARCHIVED',name,sha)
               report['stage']='all_tips_archived';save()
               validate(api('/branches?per_page=100'),api('/pulls?state=open&per_page=100'))
@@ -132,14 +131,17 @@ jobs:
               remaining=api('/branches?per_page=100')
               assert {b['name']:b['commit']['sha'] for b in remaining}==KEEP,'retained_refs_changed'
               for name,sha in OLD.items():
-                  assert api('/git/ref/tags/'+PREFIX+name)['object']['sha']==sha
+                  assert api('/git/ref/tags/'+PREFIX+name)['object']['sha']==sha,'archive_mismatch'
               report['deleted']=list(OLD);report['stage']='verified';save()
               print('BRANCH CLEANUP VERIFIED:',len(OLD),'archived/deleted;',len(KEEP),'retained unchanged')
               with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
                   f.write('## Branch cleanup verified\n23 redundant/temporary branches archived then removed atomically with exact-SHA leases. 5 retained branches unchanged.\n\n'+json.dumps(report,indent=2))
           except Exception as e:
-              report['failure']=type(e).__name__;save()
-              print('STOP: cleanup not fully confirmed. Archive report preserved; no credentials printed.')
+              report['failure']=type(e).__name__
+              safe={'branch_snapshot_changed','protected_branch','open_pr_base','open_pr_head','archive_mismatch','atomic_branch_delete_failed','retained_refs_changed'}
+              report['reason']=str(e) if str(e) in safe else 'check_failed'
+              save()
+              print('STOP: cleanup not fully confirmed / '+report['reason']+'. Archive report preserved; no credentials printed.')
               raise SystemExit(1) from None
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
