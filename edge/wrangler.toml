@@ -1,0 +1,16 @@
+name = "richon-account-router"
+main = "worker.mjs"
+compatibility_date = "2026-09-22"
+workers_dev = false
+preview_urls = false
+# No live routes in this preparation config. After rollout approval, attach only:
+# routes = [
+#   { pattern = "https://richonacademy.com/auth/*", zone_name = "richonacademy.com" },
+#   { pattern = "https://richonacademy.com/portal/*", zone_name = "richonacademy.com" }
+# ]
+[vars]
+PORTAL_ENABLED = "false"
+PORTAL_UPSTREAM = ""
+# RICHON_EDGE_SECRET must be stored as a Worker secret, never in Git.
+[observability]
+enabled = false

@@ -1,0 +1,45 @@
+name: Same-domain login edge and portal image (no deployment)
+on:
+  push:
+    branches: ['feat/backend-social-login']
+    paths: ['backend/**', 'edge/**', '.github/workflows/social-login-ci.yml']
+  pull_request:
+    paths: ['backend/**', 'edge/**', '.github/workflows/social-login-ci.yml']
+permissions:
+  contents: read
+concurrency:
+  group: login-edge-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  edge-and-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Test the edge proxy without a Cloudflare account or live network
+        run: node --test edge/worker.test.mjs
+      - name: Build portal-only image with the Dockerfile-specific allowlist
+        run: docker build --pull --no-cache -f backend/Dockerfile.portal -t richon-portal:ci .
+      - name: Check private code and migrations are absent from portal image
+        run: >-
+          docker run --rm --entrypoint python richon-portal:ci -c
+          "from pathlib import Path; assert all(not Path(p).exists() for p in ('/app/orders.py','/app/main.py','/app/migrations','/app/oauth_migrate.py')); print('PASS: no private order entry or migrations')"
+      - name: Start with synthetic credentials, no database
+        run: |
+          docker run --detach --name richon-portal-ci -p 127.0.0.1:8081:8080 \
+            -e RICHON_EDGE_ENABLED=true -e RICHON_EDGE_SECRET=sssssssssssssssssssssssssssssssssssssssssss \
+            -e RICHON_AUTH_ENABLED=true -e RICHON_OAUTH_ENABLED=true -e RICHON_PORTAL_ENABLED=true \
+            -e RICHON_OAUTH_ORIGIN=https://richonacademy.com -e RICHON_AUTH_ALLOWED_ORIGINS=https://richonacademy.com \
+            -e KAKAO_CLIENT_ID=synthetic -e KAKAO_CLIENT_SECRET=synthetic \
+            -e RICHON_TERMS_VERSION=test-v1 -e RICHON_PRIVACY_VERSION=test-v1 \
+            -e RICHON_TERMS_URL=https://richonacademy.com/terms.html -e RICHON_PRIVACY_URL=https://richonacademy.com/privacy.html \
+            richon-portal:ci
+          python3 edge/check_image.py
+      - name: Diagnostic logs only on failure (synthetic config)
+        if: failure()
+        run: docker logs richon-portal-ci 2>&1 || true
+      - name: Clean up container
+        if: always()
+        run: docker rm -f richon-portal-ci >/dev/null 2>&1 || true

@@ -1,7 +1,7 @@
 name: Deploy private Richon test backend
 
-# A deliberate request commit triggers deployment; normal source/PR pushes do not.
-# This works without merging workflows into the website/default branch.
+# An explicit JSON request selects deployment OR bounded existing-service checks.
+# Normal source/PR pushes never invoke Google Cloud.
 on:
   push:
     branches: ['feat/backend-gcp-deploy']
@@ -15,18 +15,86 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  checks:
+  request:
     if: >-
       github.repository_id == '1380040761' &&
       github.repository_owner_id == '251193658' &&
       github.ref == 'refs/heads/feat/backend-gcp-deploy' &&
       github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      operation: ${{ steps.request.outputs.operation }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - id: request
+        shell: bash
+        run: python3 .github/gcp/order_smoke.py --mode-only >> "$GITHUB_OUTPUT"
+
+  checks:
+    needs: request
     uses: ./.github/workflows/backend-ci.yml
     permissions:
       contents: read
 
+  orders:
+    name: Verify existing private order API (no deployment)
+    needs: [request, checks]
+    if: needs.request.outputs.operation == 'order-smoke'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      PROJECT: richon-academy
+      REGION: asia-southeast1
+      SERVICE: richon-backend-test
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: 'true'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - id: identity
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: richon-academy
+          workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-test/providers/github-test
+          service_account: richon-github-deploy@richon-academy.iam.gserviceaccount.com
+          token_format: id_token
+          id_token_audience: https://richon-backend-test-amjmgyepbq-as.a.run.app
+          id_token_include_email: true
+      - name: Confirm the fixed private test revision before any test order
+        run: |
+          set +x
+          umask 077
+          gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-service.json"
+          gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-policy.json"
+          python3 .github/gcp/order_smoke.py --metadata-only
+      - name: Test bounded synthetic orders through the existing HTTP endpoint
+        env:
+          TEST_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
+        run: python3 .github/gcp/order_smoke.py
+      - name: Verify no service revision or routing change occurred
+        run: |
+          set +x
+          gcloud run services describe "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-service.json"
+          gcloud run services get-iam-policy "$SERVICE" --project="$PROJECT" --region="$REGION" --format=json > "$RUNNER_TEMP/richon-policy.json"
+          python3 .github/gcp/order_smoke.py --metadata-only
+      - name: Remove local metadata files
+        if: always()
+        run: rm -f "$RUNNER_TEMP/richon-service.json" "$RUNNER_TEMP/richon-policy.json"
+
   deploy:
-    needs: checks
+    needs: [request, checks]
+    if: needs.request.outputs.operation == 'deploy'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

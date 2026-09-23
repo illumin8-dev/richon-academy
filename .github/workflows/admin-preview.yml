@@ -1,0 +1,51 @@
+name: Build standalone admin preview (synthetic only)
+on:
+  push:
+    branches: ['feat/backend-manual-registry']
+    paths: ['backend/portal_static/manual.*', 'preview/**', '.github/workflows/admin-preview.yml']
+  pull_request:
+    paths: ['backend/portal_static/manual.*', 'preview/**', 'admin-test.html', '.github/workflows/admin-preview.yml']
+permissions:
+  contents: read
+concurrency:
+  group: admin-preview-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Generate and test only synthetic preview data
+        run: |
+          python preview/build_admin_preview.py
+          node --check backend/portal_static/manual.js
+          python -m pip install 'playwright==1.57.0'
+          python -m playwright install --with-deps chromium
+          python preview/check_admin_preview.py
+  save-generated-preview:
+    needs: preview
+    if: github.event_name == 'push' && github.repository == 'illumin8-dev/richon-academy' && github.ref == 'refs/heads/feat/backend-manual-registry'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+      - name: Save only the generated public demo on the approved feature branch
+        run: |
+          python3 preview/build_admin_preview.py
+          git add -- admin-test.html
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'build(preview): generate network-free admin-test.html'
+            git push origin HEAD:refs/heads/feat/backend-manual-registry
+          fi

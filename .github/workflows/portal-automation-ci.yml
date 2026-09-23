@@ -1,0 +1,19 @@
+name: Portal automation guards (no cloud)
+on:
+  push:
+    branches: ['feat/backend-portal-deploy']
+    paths: ['.github/portal/**', '.github/workflows/portal-*.yml', '.github/portal-deploy.request']
+  pull_request:
+    paths: ['.github/portal/**', '.github/workflows/portal-*.yml', '.github/portal-deploy.request']
+permissions:
+  contents: read
+jobs:
+  guards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Run metadata, approval, isolation and transport tests without cloud
+        run: python3 -B -m unittest discover -s .github/portal -p 'test_*.py' -v

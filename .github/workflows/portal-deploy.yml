@@ -1,0 +1,126 @@
+name: Portal operations (explicit private or edge request)
+
+# Only changing this request on the dedicated branch can request cloud work.
+# Code/PR pushes and the initial "hold" request perform no GCP operation.
+on:
+  push:
+    branches: ['feat/backend-portal-deploy']
+    paths: ['.github/portal-deploy.request']
+permissions:
+  contents: read
+concurrency:
+  group: richon-private-portal-operations
+  cancel-in-progress: false
+jobs:
+  request:
+    if: >-
+      github.repository_id == '1380040761' &&
+      github.repository_owner_id == '251193658' &&
+      github.ref == 'refs/heads/feat/backend-portal-deploy' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      operation: ${{ steps.read.outputs.operation }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: read
+        run: python3 -B .github/portal/operate.py request >> "$GITHUB_OUTPUT"
+
+  checks:
+    needs: request
+    if: needs.request.outputs.operation != 'hold'
+    uses: ./.github/workflows/backend-ci.yml
+    permissions:
+      contents: read
+
+  portal:
+    needs: [request, checks]
+    if: needs.request.outputs.operation != 'hold'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      CLOUDSDK_CORE_LOG_HTTP: 'false'
+      CLOUDSDK_CORE_DISABLE_USAGE_REPORTING: 'true'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Test automation guards and edge proxy (no cloud credentials)
+        run: |
+          python3 -B -m unittest discover -s .github/portal -p 'test_*.py' -v
+          node --test edge/worker.test.mjs
+      - name: Build portal image before cloud authentication
+        if: contains(fromJSON('["deploy","stage-edge"]'), needs.request.outputs.operation)
+        run: |
+          docker build --pull --no-cache -f backend/Dockerfile.portal \
+            -t "asia-southeast1-docker.pkg.dev/richon-academy/richon-portal-ci/portal:$GITHUB_SHA" .
+          docker run --rm --entrypoint python \
+            "asia-southeast1-docker.pkg.dev/richon-academy/richon-portal-ci/portal:$GITHUB_SHA" \
+            -c "from pathlib import Path; assert all(not Path(p).exists() for p in ('/app/main.py','/app/orders.py','/app/migrations','/app/oauth_migrate.py')); assert Path('/app/portal_readiness.py').is_file()"
+      - name: Smoke-test image with synthetic credentials and no database
+        if: contains(fromJSON('["deploy","stage-edge"]'), needs.request.outputs.operation)
+        run: |
+          docker run --detach --name richon-portal-ci -p 127.0.0.1:8081:8080 \
+            -e RICHON_EDGE_ENABLED=true -e RICHON_EDGE_SECRET=sssssssssssssssssssssssssssssssssssssssssss \
+            -e RICHON_AUTH_ENABLED=true -e RICHON_OAUTH_ENABLED=true -e RICHON_PORTAL_ENABLED=true \
+            -e RICHON_OAUTH_ORIGIN=https://richonacademy.com -e RICHON_AUTH_ALLOWED_ORIGINS=https://richonacademy.com \
+            -e KAKAO_CLIENT_ID=synthetic -e KAKAO_CLIENT_SECRET=synthetic \
+            -e RICHON_TERMS_VERSION=test-v1 -e RICHON_PRIVACY_VERSION=test-v1 \
+            -e RICHON_TERMS_URL=https://richonacademy.com/terms.html -e RICHON_PRIVACY_URL=https://richonacademy.com/privacy.html \
+            "asia-southeast1-docker.pkg.dev/richon-academy/richon-portal-ci/portal:$GITHUB_SHA"
+          python3 edge/check_image.py
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+      - id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          project_id: richon-academy
+          workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-portal/providers/github-portal
+          service_account: richon-portal-deploy@richon-academy.iam.gserviceaccount.com
+      - name: Inspect or stage approved edge-gated service (never auto-promote)
+        if: contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation)
+        run: python3 -B .github/portal/edge_ops.py
+      - name: Snapshot fixed service and pinned configuration
+        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation) }}
+        run: python3 -B .github/portal/operate.py snapshot
+      - name: Deploy zero-traffic candidate (or internal-login configuration)
+        if: contains(fromJSON('["deploy","configure-internal-login"]'), needs.request.outputs.operation)
+        run: python3 -B .github/portal/operate.py candidate
+      # Request a fresh token after build/deployment, not a possibly expired early token.
+      - id: identity
+        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation) }}
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          project_id: richon-academy
+          workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-portal/providers/github-portal
+          service_account: richon-portal-deploy@richon-academy.iam.gserviceaccount.com
+          token_format: id_token
+          id_token_audience: https://richon-portal-amjmgyepbq-as.a.run.app
+          id_token_include_email: true
+      - name: Read-only private service inspection
+        if: needs.request.outputs.operation == 'inspect'
+        env:
+          PORTAL_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
+        run: python3 -B .github/portal/revision_inspection.py
+      - name: Verify candidate and promote only after checks
+        if: contains(fromJSON('["deploy","configure-internal-login"]'), needs.request.outputs.operation)
+        env:
+          PORTAL_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
+        run: python3 -B .github/portal/operate.py promote
+      - name: Safe failure diagnosis (no application log export)
+        if: failure() && steps.auth.outcome == 'success' && !contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation)
+        run: python3 -B .github/portal/operate.py diagnose
+      - name: Clean local temporary files and synthetic container
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/richon-portal-operation.json"
+          docker rm -f richon-portal-ci >/dev/null 2>&1 || true
