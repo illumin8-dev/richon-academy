@@ -1,10 +1,14 @@
 /** A-plan edge proxy. Disabled until a separate portal origin is approved. */
 const ORIGIN = 'https://richonacademy.com';
 const LIMIT = 65536;
+const PUBLIC_RETURNS = new Set(['/', '/index.html', '/apply.html']);
+const PORTAL_RETURNS = new Set(['/portal/mypage', '/portal/admin', '/portal/enrollments', '/portal/manual']);
+const COMPLETIONS = new Set(['/auth/kakao/callback', '/auth/naver/callback', '/auth/signup']);
 const COOKIES = new Set(['__Host-richon-session', '__Host-richon-oauth', '__Host-richon-signup']);
 const AUTH = new Map([
   ['/auth/login', ['GET']], ['/auth/start', ['POST']], ['/auth/signup', ['GET', 'POST']],
   ['/auth/kakao/callback', ['GET']], ['/auth/naver/callback', ['GET']],
+  ['/auth/assets/kakao-login.png', ['GET']],
   ['/auth/me', ['GET']], ['/auth/csrf', ['GET']], ['/auth/logout', ['POST']], ['/auth/logout-all', ['POST']],
 ]);
 export function allowed(path, method) {
@@ -18,6 +22,8 @@ export function safeLocation(value, path) {
   const url = new URL(value, ORIGIN);
   if (url.username || url.password || url.hash) throw new Error('unsafe_redirect');
   if (url.origin === ORIGIN && allowed(url.pathname, 'GET')) return url.href;
+  if (url.origin === ORIGIN && COMPLETIONS.has(path) && PUBLIC_RETURNS.has(url.pathname) && !url.search
+    && [url.pathname, ORIGIN + url.pathname].includes(value)) return url.href;
   if (path === '/auth/start' && ((url.origin === 'https://kauth.kakao.com' && url.pathname === '/oauth/authorize')
     || (url.origin === 'https://nid.naver.com' && url.pathname === '/oauth2.0/authorize'))) return url.href;
   throw new Error('unsafe_redirect');
@@ -38,6 +44,22 @@ async function readBody(request) {
   const body = new Uint8Array(total); let offset = 0;
   for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
   return body;
+}
+export function returnReferer(value) {
+  // Navigation hint only, with query/fragment stripped before sending upstream.
+  if (!value || value.length > 2048 || /[\x00-\x20\x7f\\]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    if (url.origin === ORIGIN && !url.username && !url.password
+      && (PUBLIC_RETURNS.has(url.pathname) || PORTAL_RETURNS.has(url.pathname))
+      && value.split(/[?#]/, 1)[0] === ORIGIN + url.pathname) return ORIGIN + url.pathname;
+  } catch { /* No raw input is logged. */ }
+  return null;
+}
+export function responseReferrerPolicy(path, method, status, type) {
+  return method === 'GET' && ['/auth/login', '/auth/signup'].includes(path)
+    && status === 200 && type?.toLowerCase().split(';')[0].trim() === 'text/html'
+    ? 'same-origin' : 'no-referrer';
 }
 export async function handle(request, env, fetcher = fetch) {
   const url = new URL(request.url);
@@ -60,6 +82,10 @@ export async function handle(request, env, fetcher = fetch) {
   for (const key of ['accept', 'content-type', 'origin', 'sec-fetch-site', 'x-csrf-token']) {
     const value = request.headers.get(key); if (value !== null) headers.set(key, value);
   }
+  if (url.pathname === '/auth/login' && request.method === 'GET') {
+    const previous = returnReferer(request.headers.get('referer'));
+    if (previous) headers.set('Referer', previous);
+  }
   const cookies = (request.headers.get('cookie') || '').split(';').map(x => x.trim()).filter(x => COOKIES.has(x.split('=',1)[0]));
   if (cookies.length) headers.set('Cookie', cookies.join('; '));
   headers.set('X-Richon-Edge-Key', env.RICHON_EDGE_SECRET);
@@ -72,6 +98,7 @@ export async function handle(request, env, fetcher = fetch) {
     for (const key of ['content-type', 'content-security-policy', 'retry-after']) {
       const value = result.headers.get(key); if (value) output.set(key, value);
     }
+    output.set('Referrer-Policy', responseReferrerPolicy(url.pathname, request.method, result.status, result.headers.get('content-type')));
     if (result.status >= 300 && result.status < 400) {
       const location = result.headers.get('location');
       if (!location) throw new Error('missing_location');

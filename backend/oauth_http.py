@@ -6,9 +6,10 @@ import logging
 import os
 import re
 import secrets
-from urllib.parse import parse_qsl
+from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit, urlencode
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from starlette.concurrency import run_in_threadpool
 import auth_core as core
 import auth_http as auth
@@ -18,7 +19,7 @@ import oauth_providers as providers
 BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
-CSP="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://kauth.kakao.com https://nid.naver.com"
+CSP="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://kauth.kakao.com https://nid.naver.com"
 logger=logging.getLogger('richon.oauth')
 
 
@@ -48,14 +49,19 @@ def redirect(target):
     return RedirectResponse(target,status_code=303,headers=HEADERS)
 
 
-def failed():
+def failed(return_to='/'):
     logger.warning('oauth_flow_not_completed')
-    return redirect('/auth/login?error=login_failed')
+    target = '/auth/login?error=login_failed'
+    if return_to in providers.RETURNS and return_to != '/':
+        target += '&' + urlencode({'return_to': return_to})
+    return redirect(target)
 
 
 def page(title,body):
-    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
-    return HTMLResponse(content,headers={**HEADERS,'Content-Security-Policy':CSP})
+    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.kakao-login{border:0;background:none;padding:0;width:100%;min-height:44px;display:flex;align-items:center;justify-content:center;line-height:0}.kakao-login img{display:block;width:100%;height:auto}.kakao-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    # Native form POSTs need a non-null same-origin Origin. Cross-site referrers
+    # remain suppressed; callback/redirect/error responses keep no-referrer.
+    return HTMLResponse(content,headers={**HEADERS,'Referrer-Policy':'same-origin','Content-Security-Policy':CSP})
 
 
 async def form(request,allowed):
@@ -85,6 +91,7 @@ def check_post(request,data,settings,*,signup=False):
 
 
 def complete(member_id,request,return_to):
+    if return_to not in providers.RETURNS: raise store.InvalidFlow()
     old=auth.cookie_token(request)
     session=core.issue_session(member_id,replace_token=old)
     response=redirect(return_to)
@@ -94,20 +101,52 @@ def complete(member_id,request,return_to):
     return response
 
 
+def login_return(request, settings):
+    """Explicit allowlisted target wins. Referer is only a navigation hint.
+
+    Never accept an external target or infer identity/CSRF validity from it.
+    Query strings/fragments and entered form data are intentionally not retained.
+    """
+    values = request.query_params.getlist('return_to')
+    if values:
+        if len(values) != 1 or values[0] not in providers.RETURNS:
+            raise HTTPException(422, 'invalid_return', headers=HEADERS)
+        return values[0]
+    refs = request.headers.getlist('referer')
+    if len(refs) == 1 and len(refs[0]) <= 2048 and not re.search(r'[\x00-\x20\x7f\\]', refs[0]):
+        try:
+            previous = urlsplit(refs[0])
+            if (not previous.username and not previous.password
+                and previous.scheme + '://' + previous.netloc == settings.origin
+                and previous.path in providers.RETURNS):
+                return previous.path
+        except ValueError:
+            pass
+    return '/'
+
+
 def make_router(settings):
     router=APIRouter(prefix='/auth')
 
+    @router.get('/assets/kakao-login.png',include_in_schema=False)
+    def kakao_button():
+        return FileResponse(Path(__file__).parent / 'portal_static' / 'kakao-login.png',
+                            media_type='image/png', headers=HEADERS)
+
     @router.get('/login',response_class=HTMLResponse)
     def login(request:Request):
-        target=request.query_params.get('return_to','/portal/mypage')
-        if target not in providers.RETURNS: raise HTTPException(422,'invalid_return',headers=HEADERS)
+        target=login_return(request,settings)
         try: browser=cookie(request,BROWSER,required=False) or secrets.token_urlsafe(32)
         except store.InvalidFlow: return page('다시 시작해 주세요','<p>로그인 쿠키가 올바르지 않습니다. 이 사이트의 쿠키를 지우고 다시 접속해 주세요.</p>')
-        body='<p>카카오 또는 네이버 계정으로 로그인합니다.</p>'
+        labels=' 또는 '.join(label for name,label in [('kakao','카카오'),('naver','네이버')] if name in settings.providers)
+        body=f'<p>{labels} 계정으로 로그인합니다. 로그인 후 이전 페이지로 돌아갑니다.</p>'
         if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
         for name,label in [('kakao','카카오'),('naver','네이버')]:
             if name in settings.providers:
-                body+=f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="provider" value="{name}"><input type="hidden" name="return_to" value="{target}"><button type="submit">{label}로 로그인</button></form><br>'
+                button = ('<button class="kakao-login" type="submit" aria-label="카카오로 로그인">'
+                          '<img src="/auth/assets/kakao-login.png" alt="카카오 로그인" width="896" height="92" referrerpolicy="no-referrer"></button>'
+                          if name == 'kakao' else f'<button type="submit">{label}로 로그인</button>')
+                body+=f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="provider" value="{name}"><input type="hidden" name="return_to" value="{target}">{button}</form><br>'
         response=page('리치온 로그인',body)
         set_temporary(response,BROWSER,browser)
         return response
@@ -116,16 +155,17 @@ def make_router(settings):
     async def start(request:Request):
         data=await form(request,{'csrf','provider','return_to'})
         browser=check_post(request,data,settings)
-        name=data.get('provider');target=data.get('return_to','/portal/mypage')
+        name=data.get('provider');target=data.get('return_to','/')
         if name not in settings.providers or target not in providers.RETURNS:
             raise HTTPException(422,'invalid_login_request',headers=HEADERS)
         try:
             state=await run_in_threadpool(store.begin,settings,name,browser,target)
             return redirect(providers.authorization_url(settings,name,state,browser))
-        except Exception: return failed()
+        except Exception: return failed(target)
 
     @router.get('/{provider}/callback')
     def callback(provider:str,request:Request):
+        target='/'
         try:
             pairs=list(request.query_params.multi_items());q=dict(pairs)
             if (len(pairs)!=len(q) or len(str(request.url.query))>8192 or not set(q)<= {'state','code','error','error_description'}
@@ -135,14 +175,14 @@ def make_router(settings):
             code=q.get('code')
             if not q.get('error') and (not isinstance(code,str) or not 1<=len(code)<=2048 or any(ord(char)<33 or ord(char)>126 for char in code)): raise store.InvalidFlow()
             target=store.consume_attempt(settings,provider,state,browser)
-            if q.get('error'): return failed()
+            if q.get('error'): return failed(target)
             identity=providers.exchange(settings,provider,code,state,browser)
             member_id=store.member_for(identity)
             if member_id is not None: return complete(member_id,request,target)
             ticket=store.stage_signup(settings,identity,browser,target)
             response=redirect('/auth/signup');set_temporary(response,TICKET,ticket)
             return response
-        except Exception: return failed()
+        except Exception: return failed(target)
 
     @router.get('/signup',response_class=HTMLResponse)
     def signup_page(request:Request):
@@ -167,9 +207,15 @@ def make_router(settings):
             or data.get('privacy_version')!=settings.privacy_version):
             raise HTTPException(422,'consent_required',headers=HEADERS)
         def finish():
-            identity,target=store.pending(settings,cookie(request,TICKET),browser,consume=True)
-            member=core.register_verified_identity(identity,core.SignupConsent(settings.terms_version,settings.privacy_version))
-            return complete(member,request,target)
+            target='/'
+            try:
+                identity,target=store.pending(settings,cookie(request,TICKET),browser,consume=True)
+                member=core.register_verified_identity(identity,core.SignupConsent(settings.terms_version,settings.privacy_version))
+                return complete(member,request,target)
+            except Exception:
+                # Only a return target recovered from the validated signup
+                # ticket may survive this error. Never read it from the POST.
+                return failed(target)
         try: return await run_in_threadpool(finish)
         except Exception: return failed()
     return router

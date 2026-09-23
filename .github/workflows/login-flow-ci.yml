@@ -1,0 +1,37 @@
+name: Login flow regression (no deployment)
+on:
+  push:
+    branches: ['fix/login-csrf-return-kakao']
+  pull_request:
+    paths: ['backend/**', 'edge/**', '.github/workflows/login-flow-ci.yml']
+permissions:
+  contents: read
+jobs:
+  backend-regression:
+    uses: ./.github/workflows/backend-ci.yml
+    permissions:
+      contents: read
+  browser-and-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Install test-only browser and declared dependencies
+        run: |
+          python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Router and redirect regression tests
+        run: node --test edge/worker.test.mjs edge/login-flow.test.mjs
+      - name: Strict origin checks and official asset integrity
+        working-directory: backend
+        run: python -m pytest tests/test_login_flow.py tests/test_login_failure_return.py tests/test_login_return_migration.py tests/test_naver_setup.py tests/test_oauth.py tests/test_auth.py -o addopts='' -q
+      - name: Real Chromium native forms with mocked DB and providers
+        working-directory: backend
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python tests/login_browser.py
