@@ -9,7 +9,7 @@ preview_urls = false
 #   { pattern = "https://richonacademy.com/portal/*", zone_name = "richonacademy.com" }
 # ]
 [vars]
-PORTAL_ENABLED = "false"
+PORTAL_ENABLED = "true"
 PORTAL_UPSTREAM = "https://richon-portal-amjmgyepbq-as.a.run.app"
 # RICHON_EDGE_SECRET must be stored as a Worker secret, never in Git.
 [observability]
