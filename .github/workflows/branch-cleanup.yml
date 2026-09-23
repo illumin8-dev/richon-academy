@@ -1,0 +1,150 @@
+name: Approved branch cleanup (archive before atomic deletion)
+on:
+  push:
+    branches: ['maintenance/branch-cleanup']
+    paths: ['.github/workflows/branch-cleanup.yml']
+permissions:
+  contents: read
+concurrency:
+  group: richon-approved-branch-cleanup
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: github.repository == 'illumin8-dev/richon-academy' && github.ref == 'refs/heads/maintenance/branch-cleanup'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Validate fixed scope, archive exact tips, delete atomically with SHA leases
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import base64,copy,json,os,pathlib,re,subprocess,urllib.request,urllib.error
+          from urllib.parse import quote
+          REPO='illumin8-dev/richon-academy'; SELF='maintenance/branch-cleanup'
+          KEEP={
+            'main':'a6700a7f800b87507daa259a77525d02cd439d9d',
+            'feat/backend-portal-deploy':'a0ef6fc4108bf9ffa3e20901aabbf2e925a71982',
+            'feat/backend-social-login':'209887a0f685e720eeb203a2e319b7992ee355b2',
+            'feat/backend-gcp-deploy':'596427658d5b6d1f1a2e5ceb8eb098de040fa7b6',
+            'feat/backend-pricing-notes-oauth':'2498c38743a4655a36e89331a45b99c570b7f3ee'}
+          OLD={
+            'feat/backend-auth-foundation':'d2bd5027d7476c5829c16bf37f53a9809d3613d2',
+            'feat/backend-bootstrap':'0fea72db8b22c04df60f7ea07c95f176eebb3185',
+            'feat/backend-ci':'a2c5c89b87ecb4b45c4c6a581b9eb85ec95004e2',
+            'feat/backend-enrollment-overview':'2d364aa7a2a7305246f06e45494724bebb10e556',
+            'feat/backend-manual-registry':'6687532c4dc1ae1594be61d0eee8e3512252b328',
+            'feat/backend-monthly-enrollments':'6dac44608785c535f6170dcf0999183228da3c7c',
+            'feat/backend-orders-api-tests':'bd339ca919e7dc4e7f6f4b3df4c46ed45bcb3296',
+            'feat/backend-pending-orders':'af80a878c41a0287e12ae6db90d48225ed7bcbfb',
+            'feat/backend-portal-bootstrap':'565b02fa590fa8c7ba8e2e540fb3edd83445e887',
+            'feat/backend-portal-readonly':'d9fa315e7cf0f5e1f52d026cf2b92a74dd06c93f',
+            'feat/hero-full-page-preview-v4':'7f52ce93e38771a924a9a61e59fe52cbe5a4516b',
+            'feat/hero-light-transition-v2':'269ea09f691134761d9181c3b3303c807507e09b',
+            'feat/hero-scroll-guide-header-v3':'4640bba30898f7d75499689506ae5971b4e13cee',
+            'feat/hero-scroll-test':'a989306882502d465dd27047f027bccece69b65f',
+            'feat/mobile-copy-spacing-v6':'7ce3a7d11ffa9ceb940691216759e1bb28340ac5',
+            'feat/mobile-copy-spacing-v7':'57efbbe6bdeed9e73ca6f05790e598dc8cf2a58a',
+            'feat/mobile-hero-v5':'1c59196965655f5195d468df188147d5c3bcbb48',
+            'fix/backend-edge-deploy-guards':'9ae7e72d0eb57c844d715466ba9822bed5045520',
+            'fix/backend-login-cookie-cache':'7cb63f9c41e41a079f17fdd6881a5dd81f29a5fd',
+            'fix/backend-provider-design-audit':'b6469c697472bb9fd167c86ab4c6a8b324371a60',
+            'fix/login-csrf-return-kakao':'bc5159b4f1ddce7d399015a00acb38918fc8c87c',
+            'release/home-hero':'6edd629621ee58dd31d8da267c71f9f881755126'}
+          assert os.environ['GITHUB_REPOSITORY']==REPO
+          assert os.environ['GITHUB_REF']=='refs/heads/'+SELF
+          assert os.environ['GITHUB_EVENT_NAME']=='push'
+          assert re.fullmatch('[0-9a-f]{40}',os.environ['GITHUB_SHA'])
+          OLD[SELF]=os.environ['GITHUB_SHA']; assert not (KEEP.keys() & OLD.keys())
+          PREFIX='archive/2026-09-24/'
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'branch-cleanup.json'
+          report={'stage':'preflight','keep':KEEP,'archive':{PREFIX+k:v for k,v in OLD.items()},'deleted':[]}
+          def save():out.write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          save()
+          def validate(branches,prs):
+              assert len(branches)<100 and len(prs)<100
+              got={b['name']:b['commit']['sha'] for b in branches}
+              assert got=={**KEEP,**OLD},'branch_snapshot_changed'
+              assert not any(b['protected'] for b in branches if b['name'] in OLD),'protected_branch'
+              for pr in prs:
+                  assert pr['base']['ref'] not in OLD,'open_pr_base'
+                  if pr['head']['repo'] and pr['head']['repo']['full_name']==REPO:
+                      assert pr['head']['ref'] not in OLD,'open_pr_head'
+          # Pure guard tests before any network/write.
+          sample=[{'name':k,'commit':{'sha':v},'protected':False} for k,v in {**KEEP,**OLD}.items()]
+          validate(sample,[])
+          mutants=[sample[:-1],copy.deepcopy(sample),copy.deepcopy(sample),sample+[{'name':'unexpected','commit':{'sha':'0'*40},'protected':False}]]
+          mutants[1][0]['commit']['sha']='0'*40
+          next(x for x in mutants[2] if x['name'] in OLD)['protected']=True
+          for mutant in mutants:
+              try:validate(mutant,[])
+              except AssertionError:pass
+              else:raise AssertionError('unsafe_snapshot_accepted')
+          try:validate(sample,[{'base':{'ref':next(iter(OLD))},'head':{'ref':'main','repo':{'full_name':REPO}}}])
+          except AssertionError:pass
+          else:raise AssertionError('open_pr_accepted')
+          print('PASS: fixed-scope/snapshot/protection/open-PR guards')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,*args):return None
+          opener=urllib.request.build_opener(NoRedirect())
+          token=os.environ['GH_TOKEN']
+          def api(path,data=None,missing=False):
+              assert path.startswith('/') and not path.startswith('//') and '\\' not in path
+              method='POST' if data is not None else 'GET'
+              if method=='POST':assert path=='/git/refs' and data['ref'].startswith('refs/tags/'+PREFIX)
+              req=urllib.request.Request('https://api.github.com/repos/'+REPO+path,method=method,data=None if data is None else json.dumps(data).encode(),headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','Content-Type':'application/json'})
+              try:
+                  with opener.open(req,timeout=30) as r:
+                      assert r.status==(201 if data is not None else 200)
+                      assert 'rel="next"' not in r.headers.get('Link','')
+                      body=r.read(8*1024*1024+1);assert len(body)<=8*1024*1024
+                      return json.loads(body)
+              except urllib.error.HTTPError as e:
+                  if missing and e.code==404:return None
+                  raise RuntimeError('github_request_failed_'+str(e.code)) from None
+          try:
+              repo=api('');assert repo['id']==1380040761 and repo['default_branch']=='main'
+              branches=api('/branches?per_page=100');prs=api('/pulls?state=open&per_page=100')
+              validate(branches,prs)
+              for name,sha in OLD.items():
+                  ref='tags/'+PREFIX+name
+                  prior=api('/git/ref/'+quote(ref,safe='/'),missing=True)
+                  if prior is None:api('/git/refs',{'ref':'refs/'+ref,'sha':sha})
+                  saved=api('/git/ref/'+quote(ref,safe='/'))
+                  assert saved['ref']=='refs/'+ref and saved['object']=={'type':'commit','sha':sha,'url':'https://api.github.com/repos/'+REPO+'/git/commits/'+sha}
+                  print('ARCHIVED',name,sha)
+              report['stage']='all_tips_archived';save()
+              validate(api('/branches?per_page=100'),api('/pulls?state=open&per_page=100'))
+              env=dict(os.environ)
+              env.update({'GIT_TERMINAL_PROMPT':'0','GIT_CONFIG_COUNT':'1','GIT_CONFIG_KEY_0':'http.https://github.com/.extraheader','GIT_CONFIG_VALUE_0':'AUTHORIZATION: basic '+base64.b64encode(('x-access-token:'+token).encode()).decode()})
+              command=['git','-c','http.followRedirects=false','push','--atomic','--porcelain']
+              command += ['--force-with-lease=refs/heads/'+name+':'+sha for name,sha in OLD.items()]
+              command += ['https://github.com/'+REPO+'.git']+[':refs/heads/'+name for name in OLD]
+              pushed=subprocess.run(command,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
+              assert pushed.returncode==0,'atomic_branch_delete_failed'
+              report['stage']='atomic_delete_submitted';save()
+              remaining=api('/branches?per_page=100')
+              assert {b['name']:b['commit']['sha'] for b in remaining}==KEEP,'retained_refs_changed'
+              for name,sha in OLD.items():
+                  assert api('/git/ref/tags/'+PREFIX+name)['object']['sha']==sha
+              report['deleted']=list(OLD);report['stage']='verified';save()
+              print('BRANCH CLEANUP VERIFIED:',len(OLD),'archived/deleted;',len(KEEP),'retained unchanged')
+              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+                  f.write('## Branch cleanup verified\n23 redundant/temporary branches archived then removed atomically with exact-SHA leases. 5 retained branches unchanged.\n\n'+json.dumps(report,indent=2))
+          except Exception as e:
+              report['failure']=type(e).__name__;save()
+              print('STOP: cleanup not fully confirmed. Archive report preserved; no credentials printed.')
+              raise SystemExit(1) from None
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: branch-cleanup-receipt
+          path: ${{ runner.temp }}/branch-cleanup.json
+          retention-days: 14
+          if-no-files-found: error
