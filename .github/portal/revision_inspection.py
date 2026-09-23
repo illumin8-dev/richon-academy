@@ -12,6 +12,8 @@ SPEC_FIELDS = ('serviceAccountName', 'containerConcurrency', 'timeoutSeconds', '
 ANNOTATIONS = ('autoscaling.knative.dev/minScale', 'autoscaling.knative.dev/maxScale',
                'run.googleapis.com/client-name', 'run.googleapis.com/client-version',
                'run.googleapis.com/cpu-throttling', 'run.googleapis.com/startup-cpu-boost')
+CONTAINER_FIELDS = ('name', 'image', 'env', 'ports', 'resources', 'startupProbe', 'livenessProbe',
+                    'command', 'args', 'volumeMounts', 'dependsOn', 'workingDir')
 
 
 def serving_view(svc, policy, revision):
@@ -49,6 +51,18 @@ def differences(svc, serving):
     count = sum(actual_spec.get(k) != expected_spec.get(k) for k in other)
     if count:
         out.append('DIAGNOSTIC other spec field differences: ' + str(count))
+    for actual, previous in zip(actual_spec.get('containers', []), expected_spec.get('containers', [])):
+        for key in CONTAINER_FIELDS:
+            if actual.get(key) != previous.get(key):
+                out.append('DIAGNOSTIC differing container field: ' + key)
+        other = (set(actual) | set(previous)) - set(CONTAINER_FIELDS)
+        count = sum(actual.get(k) != previous.get(k) for k in other)
+        out.append('DIAGNOSTIC other container field differences: ' + str(count))
+        actual_env = {x['name']: x for x in actual.get('env', [])}
+        previous_env = {x['name']: x for x in previous.get('env', [])}
+        for key in sorted(set(c.PLAIN) | set(c.INTERNAL) | set(c.SECRET_NAMES)):
+            if actual_env.get(key) != previous_env.get(key):
+                out.append('DIAGNOSTIC differing environment field: ' + key)
     labels = current.get('metadata', {}).get('labels', {})
     old_labels = expected.get('metadata', {}).get('labels', {})
     out.append('DIAGNOSTIC template label client.knative.dev/nonce: ' +
