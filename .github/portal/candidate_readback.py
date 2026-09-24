@@ -40,8 +40,6 @@ def validate_revision(revision, name, svc, policy):
            'revision_identity_mismatch')
     c.need(any(x.get('type') == 'Ready' and x.get('status') == 'True'
                for x in revision.get('status', {}).get('conditions', [])), 'revision_not_ready')
-    # Validate immutable revision data with existing strict application guards.
-    # Revision system labels are not service-template labels.
     view = deepcopy(svc)
     view['spec']['template']['spec'] = deepcopy(revision.get('spec', {}))
     view['spec']['template']['metadata']['annotations'] = deepcopy(meta.get('annotations', {}))
@@ -50,11 +48,19 @@ def validate_revision(revision, name, svc, policy):
     c.inspect(view, policy, boundary='edge')
     if name == CANDIDATE:
         if view['spec']['template']['spec'] != svc['spec']['template']['spec']:
-            # Reuse the tested fixed-field reporter: names/categories only,
-            # never API-provided keys, raw values, env contents or credentials.
             from revision_inspection import differences
             for line in differences(svc, view):
                 op.summary(line)
+            # Only fixed labels from this allowlist are printed. Unknown API
+            # names/values are never echoed. This adds diagnostics, not a pass.
+            def category(container):
+                if 'name' not in container: return 'absent'
+                value = container['name']
+                if value in ('portal-1', 'richon-portal-1', 'app', ''):
+                    return value or 'empty'
+                return 'other'
+            op.summary('NAME CATEGORY service=' + category(svc['spec']['template']['spec']['containers'][0])
+                       + ' revision=' + category(view['spec']['template']['spec']['containers'][0]))
         c.need(view['spec']['template']['spec'] == svc['spec']['template']['spec'],
                'candidate_template_mismatch')
     else:
