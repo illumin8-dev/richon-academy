@@ -1,6 +1,20 @@
 # 리치온아카데미 / 작업·배포 지도
 
-마지막 확인: 2026-09-24 / **CHECKPOINT-027, PR22**. 이 문서 → 최신 체크포인트 → 실제 refs/클라우드 상태 순서로 확인한다. 코드 병합, 후보 배포, 기존 주소의 트래픽 전환, 실제 OAuth 성공을 구분한다.
+## CHECKPOINT-028 / GitHub 쓰기 경로 재검증 / 2026-09-24
+
+**쓰기 도구를 다시 조회한 뒤 기존 연결로 실제 파일 생성과 commit 재조회를 성공했다. 계정 재연결·권한 확대는 하지 않았다.**
+
+- 실제 생성: `GITHUB_WRITE_RECOVERY.md`, commit `303f46660c11b7091c654c0722148709fec690e7`. 같은 commit에서 파일 내용과 blob `df689ed58f7e4f77bb7b42960d763ce16f71148c`를 다시 읽었다.
+- 대상은 작업 저장소 `illumin8-dev/richon-academy` / `main`, 연결 계정은 기존 `illumin8-dev`다. 원본 `marururu00`의 쓰기까지 검증한 것이 아니다.
+- 현재 앱별 승인 설정은 Allow all actions / 저장소 메타데이터 push:true. 이 둘만 보고 성공을 단정하지 않고 실제 파일 쓰기를 검증했다.
+- 직전에는 필요한 도구 검색이 빈 결과였고 전체 목록48개가 반환됐다. 현재는 update_file 등 쓰기 스키마가 제공된다. **시점별 노출 차이는 관측했지만, 플랫폼 내부 원인은 확인하지 못했다.** 과거 원본 저장소 API403, Cloudflare BIC403과 다른 문제다.
+- 처리 절차와 오류 분류: [GITHUB_WRITE_RECOVERY.md](GITHUB_WRITE_RECOVERY.md). 이후 필요한 도구의 정확한 이름 확인 → 현재 파일/blob 조회 → 승인 범위의 실제 쓰기 → commit 재조회 순서로 검증한다. 명시적 권한/안전 거절을 우회하거나 도구 목록이 비었다는 이유만으로 계정 권한을 확대하지 않는다.
+- 사용자는 이미 본인이메일 Access 제한을 유지한 새 후보 연결을 승인했다. 그 후 로컬로 준비한 전환 패치는 아직 원격 코드 반영 증거가 없다. 후보/tag·Worker 기준 SHA·패치를 재확인한 뒤 원격 반영과 배포를 재개한다. 승인 질문을 처음부터 반복하지 않는다.
+- 이번 진단은 문서 저장만 한다. Cloud Run/Worker/DB/IAM/키/배포 요청/공개 홈페이지 코드는 변경하지 않는다. 아래 운영 상태는 CHECKPOINT027의 마지막 관측이며 이번에 클라우드를 독립 재조회한 것은 아니다.
+
+---
+
+마지막 운영 확인: 2026-09-24 / **CHECKPOINT-027, PR22**. 이 문서 → 최신 체크포인트 → 실제 refs/클라우드 상태 순서로 확인한다. 코드 병합, 후보 배포, 기존 주소의 트래픽 전환, 실제 OAuth 성공을 구분한다.
 
 ## 사용자 6단계 표에서 현재 위치
 
@@ -107,4 +121,4 @@ PR20 helper source0e1190bdbeb6b84ac325cd81d3db7bcf520aafa6 사용자실행:
 - 첨부PDF/공식가이드대조: backend/LOGIN_RELEASE_CHECKPOINT.md. state/서버Secret/안전쿠키/provider+app+response.id식별유지. 탈퇴/revoke/세션회수·파기·국외처리·방침은후속. 전체준수/검수완료로표시하지않는다.
 - branch정리run35895921493: 이전23개는archive/2026-09-24/<이전branch명>태그로복구가능. PR13/17/18은과거実행증거.
 
-최신재개점: [PR22 CHECKPOINT-027](https://github.com/illumin8-dev/richon-academy/pull/22#issuecomment-5806256318). 키·쿠키·인가코드·고객정보는Git/로그/artifact에저장하지않는다. Cloudflare관리커넥터는이전검색결과없음. 유료TinyFish는이번에사용하지않았다.
+마지막 운영 재개점: [PR22 CHECKPOINT-027](https://github.com/illumin8-dev/richon-academy/pull/22#issuecomment-5806256318). 쓰기 도구 진단은 상단 CHECKPOINT028 및 GITHUB_WRITE_RECOVERY.md를 먼저 확인한다. 키·쿠키·인가코드·고객정보는Git/로그/artifact에저장하지않는다. Cloudflare관리커넥터는이전검색결과없음. 유료TinyFish는이번에사용하지않았다.
