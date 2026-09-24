@@ -1,6 +1,8 @@
 /** A-plan edge proxy. Disabled until a separate portal origin is approved. */
 const ORIGIN = 'https://richonacademy.com';
 const LIMIT = 65536;
+// Owner-approved internal test target. No wildcard tag or arbitrary origin.
+const TEST_CANDIDATE_HOST = 'portal-candidate---richon-portal-amjmgyepbq-as.a.run.app';
 const PUBLIC_RETURNS = new Set(['/', '/index.html', '/apply.html']);
 const PORTAL_RETURNS = new Set(['/portal/mypage', '/portal/admin', '/portal/enrollments', '/portal/manual']);
 const COMPLETIONS = new Set(['/auth/kakao/callback', '/auth/naver/callback', '/auth/signup']);
@@ -17,7 +19,7 @@ export function allowed(path, method) {
   return path.startsWith('/auth/') ? (AUTH.get(path) || []).includes(method) : ['GET', 'POST'].includes(method);
 }
 function failure(status, detail) {
-  return new Response(JSON.stringify({detail}), {status, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'}});
+  return new Response(JSON.stringify({detail}), {status, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Referrer-Policy':'no-referrer'}});
 }
 export function safeLocation(value, path) {
   const url = new URL(value, ORIGIN);
@@ -70,7 +72,8 @@ export async function handle(request, env, fetcher = fetch) {
   let upstream;
   try {
     upstream = new URL(env.PORTAL_UPSTREAM);
-    if (upstream.protocol !== 'https:' || !/^richon-portal-[a-z0-9.-]+\.run\.app$/.test(upstream.hostname)
+    if (upstream.protocol !== 'https:' || (!/^richon-portal-[a-z0-9.-]+\.run\.app$/.test(upstream.hostname)
+      && upstream.hostname !== TEST_CANDIDATE_HOST)
       || upstream.port || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash
       || !/^[A-Za-z0-9_-]{43,128}$/.test(env.RICHON_EDGE_SECRET || '')) throw new Error('invalid_config');
   } catch { return failure(503, 'portal_not_configured'); }
@@ -93,6 +96,8 @@ export async function handle(request, env, fetcher = fetch) {
   const destination = new URL(url.pathname + url.search, upstream.origin);
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 30000);
   try {
+    // TTL zero still forces caching and may strip Set-Cookie. Authentication
+    // responses must bypass the CDN cache, not enter it with immediate expiry.
     const result = await fetcher(destination.href, {method: request.method, headers, body,
       redirect: 'manual', signal: controller.signal, cache: 'no-store'});
     const output = new Headers({'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
