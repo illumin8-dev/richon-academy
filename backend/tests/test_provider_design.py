@@ -58,7 +58,7 @@ def test_only_configured_providers_get_original_image_submit_buttons(names):
     response = client(names).get('/auth/login?return_to=%2Fapply.html')
     assert response.status_code == 200
     tags = Tags(); tags.feed(response.text)
-    buttons = [a for t, a in tags.items if t == 'button']
+    buttons = [a for t, a in tags.items if t == 'button' and 'provider-login' in a.get('class', '').split()]
     images = [a for t, a in tags.items if t == 'img']
     forms = [a for t, a in tags.items if t == 'form']
     assert len(buttons) == len(images) == len(forms) == len(names)

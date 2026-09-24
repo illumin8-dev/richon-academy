@@ -20,6 +20,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from shared_ui_fixture import shared_asset
 from playwright.sync_api import sync_playwright
 from test_oauth import settings
 import oauth_http as h
@@ -86,6 +87,7 @@ def browser_case(browser, origin, landed, *, legacy=False, signup=False, screens
         context.add_cookies([{'name':name,'value':value,'url':origin,'secure':True,'httpOnly':True,'sameSite':'Lax'}
                             for name,value in [(h.BROWSER,'B'*43),(h.TICKET,'T'*43)]])
     def intercept(route):
+        if shared_asset(route, origin): return
         request=route.request;url=urlsplit(request.url)
         if url.scheme+'://'+url.netloc!=origin:
             route.abort('blockedbyclient')
@@ -127,7 +129,7 @@ def browser_case(browser, origin, landed, *, legacy=False, signup=False, screens
             if screenshot:page.screenshot(path=screenshot,full_page=True)
             if signup:
                 page.check('input[name=terms]');page.check('input[name=privacy]')
-            page.locator('button').first.click()
+            page.locator('form button[type=submit]').first.click()
             if not legacy and signup:
                 page.wait_for_url(origin+'/apply.html',wait_until='domcontentloaded',timeout=5000)
                 assert page.locator('h1').inner_text()=='RETURNED'

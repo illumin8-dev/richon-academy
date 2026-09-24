@@ -5,8 +5,8 @@ const ORIGIN='https://richonacademy.com';
 const env={PORTAL_ENABLED:'true',PORTAL_UPSTREAM:'https://richon-portal-example-as.a.run.app',RICHON_EDGE_SECRET:'S'.repeat(43)};
 
 test('form documents get same-origin; callback/error/asset responses stay no-referrer',()=>{
-  for(const path of ['/auth/login','/auth/signup']) assert.equal(responseReferrerPolicy(path,'GET',200,'text/html; charset=utf-8'),'same-origin');
-  for(const [path,method,status,type] of [['/auth/login','POST',200,'text/html'],['/auth/login','GET',422,'text/html'],['/auth/kakao/callback','GET',303,'text/html'],['/auth/assets/kakao-login.png','GET',200,'image/png'],['/portal/mypage','GET',200,'text/html']]) assert.equal(responseReferrerPolicy(path,method,status,type),'no-referrer');
+  for(const path of ['/auth/login','/auth/signup','/portal/mypage']) assert.equal(responseReferrerPolicy(path,'GET',200,'text/html; charset=utf-8'),'same-origin');
+  for(const [path,method,status,type] of [['/auth/login','POST',200,'text/html'],['/auth/login','GET',422,'text/html'],['/auth/kakao/callback','GET',303,'text/html'],['/auth/assets/kakao-login.png','GET',200,'image/png'],['/portal/admin','GET',200,'text/html']]) assert.equal(responseReferrerPolicy(path,method,status,type),'no-referrer');
 });
 test('prior-page hint is exact same-origin and discards query/fragment',()=>{
   for(const path of ['/','/index.html','/apply.html','/portal/mypage']) assert.equal(returnReferer(ORIGIN+path+'?code=do-not-forward#fragment'),ORIGIN+path);

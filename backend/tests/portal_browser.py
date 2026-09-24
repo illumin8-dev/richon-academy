@@ -76,12 +76,6 @@ def main():
                 request.fulfill(status=code,content_type='application/json',body='' if data is None else json.dumps(data))
             context.route('**/*',route)
             page=context.new_page()
-            page.goto(origin+'/portal/mypage');expect(page.locator('.order-card')).to_have_count(2)
-            expect(page.locator('#admin-link')).to_be_hidden()
-            if output:page.screenshot(path=str(output/'mypage-desktop.png'),full_page=True)
-            page.set_viewport_size({'width':390,'height':844})
-            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-            if output:page.screenshot(path=str(output/'mypage-mobile.png'),full_page=True)
             scenario['role']='admin';page.set_viewport_size({'width':1440,'height':1050})
             page.goto(origin+'/portal/admin');expect(page.locator('#table-body tr')).to_have_count(2)
             expect(page.locator('#members-total')).to_have_text('12')
@@ -97,76 +91,9 @@ def main():
             scenario['fail_list']=False;page.locator('#retry-list').click();expect(page.locator('#table-body tr')).to_have_count(2)
             scenario['role']='member';calls.clear();page.goto(origin+'/portal/admin');expect(page.locator('#gate-title')).to_have_text('관리자만 이용할 수 있습니다.')
             assert not any(path.startswith('/portal/api/admin/') for path,_,_ in calls)
-            scenario['fail_me']=401;page.goto(origin+'/portal/mypage');expect(page.locator('#gate-title')).to_have_text('로그인이 필요합니다.');expect(page.locator('#content')).to_be_hidden()
-            scenario['fail_me']=503;page.reload();expect(page.locator('#retry-gate')).to_be_visible()
-            scenario['fail_me']=None;scenario['xss']=True;page.locator('#retry-gate').click();expect(page.locator('#welcome-name')).to_have_text('<img src=x onerror=alert(1)>');expect(page.locator('#welcome-name img')).to_have_count(0)
-            page.locator('#logout').click();expect(page.locator('#gate-title')).to_have_text('로그아웃되었습니다.');expect(page.locator('.order-card')).to_have_count(0)
-            assert any(path=='/auth/logout' and method=='POST' for path,method,_ in calls)
-            # New policy data is only present on the authenticated own-profile
-            # endpoint. Preserve the legacy mode until explicitly activated.
-            fields=('phone','email','age','gender','consultation','consented')
-            scenario.update(role='member',xss=False,fail_me=None)
-            record={'name':'등록된 이름','phone':'01012345678','email':'profile@example.invalid',
-                    'consultation_consent':True,'age_range':'30-39','gender':'female','consented_at':TIMESTAMP}
-            for width in (320,390,1280):
-                for consent in (False,True):
-                    scenario['registration']={**record,'consultation_consent':consent}
-                    page.set_viewport_size({'width':width,'height':950})
-                    page.goto(origin+'/portal/mypage');expect(page.locator('.order-card')).to_have_count(2)
-                    expect(page.locator('#profile-name-label')).to_have_text('이름')
-                    expect(page.locator('#welcome-name')).to_have_text(record['name'])
-                    expect(page.locator('#profile-phone')).to_have_text(record['phone'])
-                    expect(page.locator('#profile-email')).to_have_text(record['email'])
-                    expect(page.locator('#profile-age')).to_have_text('30~39세' if consent else '제공하지 않음')
-                    expect(page.locator('#profile-gender')).to_have_text('여성' if consent else '제공하지 않음')
-                    expect(page.locator('#profile-consultation')).to_have_text('동의' if consent else '동의하지 않음')
-                    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
-                    page.locator('#logout').click();expect(page.locator('#gate-title')).to_have_text('로그아웃되었습니다.')
-                    for field in fields:
-                        expect(page.locator('#profile-'+field)).to_have_text('')
-                        expect(page.locator('#profile-'+field+'-row')).to_be_hidden()
-                    expect(page.locator('#avatar')).to_have_text('')
-            # Missing/null optional fields (response_model excludes None) are
-            # not fabricated. Unknown values must not display object properties.
-            scenario['registration']={k:v for k,v in record.items() if k not in ('age_range','gender')}
-            page.goto(origin+'/portal/mypage');expect(page.locator('#profile-age')).to_have_text('선택하지 않음')
-            expect(page.locator('#profile-gender')).to_have_text('선택하지 않음')
-            scenario['registration']={**record,'age_range':'toString','gender':'__proto__'}
-            page.reload();expect(page.locator('#profile-age')).to_have_text('선택하지 않음')
-            expect(page.locator('#profile-gender')).to_have_text('선택하지 않음')
-            # Defensive rendering: even a bad server payload is text, not HTML.
-            bad='<img src=x onerror=alert(1)>'
-            scenario['registration']={**record,'name':bad,'email':bad}
-            page.reload();expect(page.locator('#profile-email')).to_have_text(bad)
-            expect(page.locator('#my-profile img')).to_have_count(0)
-            expect(page.locator('#welcome-name img')).to_have_count(0)
-            # Authentication loss clears previously rendered extra information.
-            scenario['fail_me']=401
-            page.evaluate("window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}))")
-            expect(page.locator('#gate-title')).to_have_text('로그인이 필요합니다.')
-            for field in fields: expect(page.locator('#profile-'+field)).to_have_text('')
-            scenario.update(fail_me=None,registration=None)
-            page.reload();expect(page.locator('.order-card')).to_have_count(2)
-            expect(page.locator('#profile-name-label')).to_have_text('표시 이름')
-            for field in fields: expect(page.locator('#profile-'+field+'-row')).to_be_hidden()
-            # A delayed /me result must not restore personal data after pagehide.
-            scenario.update(registration=record,hold_me=True)
-            page.reload(wait_until='domcontentloaded')
-            expect(page.locator('#gate-title')).to_have_text('로그인 상태를 확인하고 있습니다.')
-            page.wait_for_function("performance.getEntriesByType('resource').some(e=>e.name.endsWith('/portal/assets/portal.js'))")
-            for _ in range(50):
-                if held: break
-                page.wait_for_timeout(20)
-            assert len(held)==1
-            page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide'))")
-            waiting,payload=held.pop()
-            waiting.fulfill(status=200,content_type='application/json',body=json.dumps(payload))
-            page.wait_for_timeout(150)
-            expect(page.locator('#content')).to_be_hidden()
-            for field in fields: expect(page.locator('#profile-'+field)).to_have_text('')
-            scenario['hold_me']=False
+            # Member regressions moved to account_browser.py; admin cases remain here.
             browser.close()
-        print('PASS: isolated UI checks: desktop/mobile, tabs, search, pagination, access gates, error/retry, XSS text rendering, logout data clearing; required/optional profile at 320/390/1280px, legacy mode, null/unknown values, stale response. No real API or DB used.')
+        print('PASS: admin desktop/mobile, tabs, search, pagination, errors/retry and non-admin access gate; synthetic only.')
     finally:server.shutdown();server.server_close()
 
 

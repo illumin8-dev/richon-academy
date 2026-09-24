@@ -34,3 +34,11 @@ backend/portal_static/*
 !backend/portal_static/manual.js
 !backend/portal_static/kakao-login.png
 !backend/portal_static/naver-login.png
+
+!backend/portal_static/site.css
+!backend/portal_static/site.js
+!backend/portal_static/login.js
+!backend/portal_static/account.css
+!backend/portal_static/account.js
+!backend/portal_static/site-header.html
+!backend/portal_static/site-footer.html

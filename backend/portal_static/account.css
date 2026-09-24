@@ -1,0 +1,29 @@
+/* Member page uses the public site's width, typography, borders and buttons. */
+body.account-page{margin:0;background:#faf8f3;color:var(--site-ink);font-family:var(--site-font);line-height:1.65;min-width:320px;-webkit-font-smoothing:antialiased}
+.account-page *{box-sizing:border-box}.account-main input{font:inherit}
+.account-main{width:100%;max-width:var(--site-width);margin:0 auto;padding:44px 24px 64px;min-height:calc(100svh - 310px)}
+.account-main h1{font-size:32px;line-height:1.25;letter-spacing:-.035em;margin:0 0 30px;font-weight:800}
+.account-panel{border:1px solid var(--site-border);border-radius:14px;background:#fff;padding:26px;margin:0 0 22px}
+.account-panel h2{font-size:21px;letter-spacing:-.025em;line-height:1.4;margin:0;font-weight:750}
+.account-section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.account-text-button{background:none;border:0;padding:8px 0;color:#686b72;cursor:pointer;font-size:13px!important;line-height:1.6}
+.account-text-button:hover{text-decoration:underline;text-underline-offset:4px}
+.account-main :focus-visible{outline:3px solid #9a4b10;outline-offset:4px}
+.account-course{padding:20px 0;border-top:1px solid var(--site-border)}.account-course:first-child{border-top:0;padding-top:0}.account-course:last-child{padding-bottom:0}
+.account-course-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.account-course h3{font-size:17px;line-height:1.55;margin:0 0 5px;font-weight:700;overflow-wrap:anywhere}
+.account-meta{font-size:13px;color:#686b72;line-height:1.7;overflow-wrap:anywhere}
+.account-badge{border-radius:7px;background:#f7f2e7;color:#665642;padding:5px 10px;font-size:12px;white-space:nowrap}
+.account-course details{font-size:12px;color:#686b72;margin-top:10px}.account-course summary{cursor:pointer;list-style:none}.account-course details[open] summary{margin-bottom:7px}.account-course details p{margin:4px 0;overflow-wrap:anywhere}
+.account-empty{text-align:center;padding:30px 8px;color:#686b72;font-size:14px}.account-empty p{margin:0 0 16px}
+.account-values{margin:0;max-width:820px}.account-values>div{display:grid;grid-template-columns:140px minmax(0,1fr);gap:24px;padding:13px 0;border-bottom:1px solid #efede7;font-size:14px}.account-values>div:last-child{border:0}.account-values dt{color:#686b72}.account-values dd{margin:0;overflow-wrap:anywhere}
+.account-providers{display:flex;gap:10px;flex-wrap:wrap}.account-provider{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--site-border);border-radius:8px;padding:4px 10px;font-size:13px}
+.account-actions{display:flex;gap:20px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--site-border);margin-top:22px;padding-top:16px}
+/* Quiet, but not invisible: readable contrast, normal keyboard focus and hit area. */
+.account-withdrawal{font-size:12px;line-height:1.5;font-weight:400;color:#8a857d;text-decoration:none;padding:8px 0;margin-left:auto;background:none;border:0;cursor:pointer}
+.account-withdrawal:hover,.account-withdrawal:focus-visible{color:#686b72;text-decoration:underline;text-underline-offset:3px}
+.account-pagination{display:flex;justify-content:space-between;gap:16px;align-items:center;border-top:1px solid var(--site-border);padding-top:18px;margin-top:22px;font-size:13px;color:#686b72}.account-pagination div{display:flex;gap:10px}.account-pagination button{border:1px solid var(--site-border);background:#fff;border-radius:999px;padding:8px 15px;cursor:pointer}.account-pagination button:disabled{opacity:.45;cursor:default}
+.account-status{font-size:13px;color:#8d3529;margin:12px 0;line-height:1.7}.account-status:empty{display:none}
+.account-gate{text-align:center;padding:48px 24px}.account-gate h2{margin:0 0 14px}.account-gate p{color:#686b72;margin:0 0 18px}
+.account-skip{position:fixed;top:-80px;left:12px;z-index:100;padding:10px;background:#fff;color:#1c1f26}.account-skip:focus{top:12px}
+@media(max-width:720px){.account-main{padding:30px 18px 40px}.account-main h1{font-size:27px;margin-bottom:24px}.account-panel{padding:20px 18px}.account-panel h2{font-size:19px}.account-values>div{grid-template-columns:95px minmax(0,1fr);gap:16px;font-size:13px}.account-course h3{font-size:15px}.account-course-top{gap:10px}.account-badge{font-size:11px;padding:4px 8px}.account-meta{font-size:12px}}

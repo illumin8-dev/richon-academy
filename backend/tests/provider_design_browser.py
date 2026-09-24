@@ -6,18 +6,20 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fastapi.testclient import TestClient
+from shared_ui_fixture import shared_asset
 from playwright.sync_api import sync_playwright
 from test_oauth import app, ORIGIN
 
 
 def main():
     with TestClient(app(), base_url=ORIGIN) as client, sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, **({'executable_path':os.environ['RICHON_TEST_CHROMIUM']} if os.getenv('RICHON_TEST_CHROMIUM') else {}))
         try:
             for width in (320, 390, 1280):
                 context = browser.new_context(viewport={'width': width, 'height': 900}, service_workers='block')
                 failures = []
                 def fulfill(route):
+                    if shared_asset(route, ORIGIN): return
                     request = route.request; url = urlsplit(request.url)
                     if (url.scheme + '://' + url.netloc != ORIGIN or request.method != 'GET'
                             or url.path not in {'/auth/login', '/auth/assets/kakao-login.png', '/auth/assets/naver-login.png'}):

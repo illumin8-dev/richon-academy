@@ -9,7 +9,7 @@ import secrets
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit, urlencode
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
 from starlette.concurrency import run_in_threadpool
 import auth_core as core
 import auth_http as auth
@@ -22,7 +22,7 @@ import signup_views
 BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
-CSP="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://kauth.kakao.com https://nid.naver.com"
+CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://kauth.kakao.com https://nid.naver.com"
 logger=logging.getLogger('richon.oauth')
 
 
@@ -61,7 +61,14 @@ def failed(return_to='/'):
 
 
 def page(title,body):
-    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.collection-notice{font-size:13px;margin:16px 0}.collection-notice summary{cursor:pointer}.collection-notice table{width:100%;border-collapse:collapse;table-layout:fixed}.collection-notice td,.collection-notice th{padding:8px 4px;text-align:left;border-bottom:1px solid #eee;overflow-wrap:anywhere}.collection-notice caption{margin-top:12px}input:not([type=checkbox]):not([type=hidden]),select{box-sizing:border-box;width:100%;padding:10px;font:inherit;min-width:0}fieldset{min-width:0;border:1px solid #e7d6c5;border-radius:8px}fieldset p{font-size:13px}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 var(--site-font);margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.collection-notice{font-size:13px;margin:16px 0}.collection-notice summary{cursor:pointer}.collection-notice table{width:100%;border-collapse:collapse;table-layout:fixed}.collection-notice td,.collection-notice th{padding:8px 4px;text-align:left;border-bottom:1px solid #eee;overflow-wrap:anywhere}.collection-notice caption{margin-top:12px}input:not([type=checkbox]):not([type=hidden]),select{box-sizing:border-box;width:100%;padding:10px;font:inherit;min-width:0}fieldset{min-width:0;border:1px solid #e7d6c5;border-radius:8px}fieldset p{font-size:13px}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    static = Path(__file__).parent / 'portal_static'
+    header = (static / 'site-header.html').read_text()
+    footer = (static / 'site-footer.html').read_text()
+    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/portal/assets/site.css"><script src="/portal/assets/site.js"></script>'
+    content = content.replace('</head>', assets + '</head>', 1)
+    content = content.replace('<body><main><p>RICHON ACADEMY</p>', '<body class="richon-page auth-page">' + header + '<main>', 1)
+    content = content.replace('</main></body>', '</main>' + footer + '</body>', 1)
     # Native form POSTs need a non-null same-origin Origin. Cross-site referrers
     # remain suppressed; callback/redirect/error responses keep no-referrer.
     return HTMLResponse(content,headers={**HEADERS,'Referrer-Policy':'same-origin','Content-Security-Policy':CSP})
@@ -147,8 +154,20 @@ def make_router(settings):
         target=login_return(request,settings)
         try: browser=cookie(request,BROWSER,required=False) or secrets.token_urlsafe(32)
         except store.InvalidFlow: return page('다시 시작해 주세요','<p>로그인 쿠키가 올바르지 않습니다. 이 사이트의 쿠키를 지우고 다시 접속해 주세요.</p>')
-        labels=' 또는 '.join(label for name,label in [('kakao','카카오'),('naver','네이버')] if name in settings.providers)
-        body=f'<p>{labels} 계정으로 로그인합니다. 로그인 후 이전 페이지로 돌아갑니다.</p>'
+        views = request.query_params.getlist('view')
+        if views and views != ['modal']:
+            raise HTTPException(422, 'invalid_login_view', headers=HEADERS)
+        if views:
+            # Browser-bound form proof only; never a session/provider token.
+            response = JSONResponse({
+                'csrf': proof(browser), 'return_to': target,
+                'providers': [name for name in ('kakao','naver') if name in settings.providers],
+                'collect_profile': collect_profile,
+                'notice': signup_views.notice(settings) if collect_profile else None,
+            }, headers=HEADERS)
+            set_temporary(response, BROWSER, browser)
+            return response
+        body=''
         if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
         if collect_profile:
             body += signup_views.notice(settings)
@@ -166,7 +185,7 @@ def make_router(settings):
                     body+=f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="provider" value="{name}"><input type="hidden" name="return_to" value="{target}">{button}</form><br>'
         if collect_profile:
             body += '</form>'
-        response=page('리치온 로그인',body)
+        response=page('간편 로그인',body)
         set_temporary(response,BROWSER,browser)
         return response
 
