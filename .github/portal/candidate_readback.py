@@ -49,6 +49,12 @@ def validate_revision(revision, name, svc, policy):
     view['status']['latestReadyRevisionName'] = name
     c.inspect(view, policy, boundary='edge')
     if name == CANDIDATE:
+        if view['spec']['template']['spec'] != svc['spec']['template']['spec']:
+            # Reuse the tested fixed-field reporter: names/categories only,
+            # never API-provided keys, raw values, env contents or credentials.
+            from revision_inspection import differences
+            for line in differences(svc, view):
+                op.summary(line)
         c.need(view['spec']['template']['spec'] == svc['spec']['template']['spec'],
                'candidate_template_mismatch')
     else:
