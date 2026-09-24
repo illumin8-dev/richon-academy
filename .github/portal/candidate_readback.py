@@ -47,22 +47,27 @@ def validate_revision(revision, name, svc, policy):
     view['status']['latestReadyRevisionName'] = name
     c.inspect(view, policy, boundary='edge')
     if name == CANDIDATE:
-        if view['spec']['template']['spec'] != svc['spec']['template']['spec']:
+        declared = svc['spec']['template']['spec']
+        observed = deepcopy(view['spec']['template']['spec'])
+        # Read-only run35950905055 observed service name absent and this
+        # immutable revision name portal-1. Cloud Run generates omitted names.
+        # Match ONLY that exact one-container pair, not arbitrary names and
+        # not before/after deployment configurations. All other fields match.
+        if ('name' not in declared['containers'][0]
+                and observed['containers'][0].get('name') == 'portal-1'):
+            c.need(len(declared['containers']) == len(observed['containers']) == 1,
+                   'unexpected_containers')
+            for spec in (declared, observed):
+                c.need(not spec['containers'][0].get('dependsOn'), 'unexpected_container_dependencies')
+            for metadata in (svc['spec']['template'].get('metadata', {}), meta):
+                c.need(not metadata.get('annotations', {}).get('run.googleapis.com/container-dependencies'),
+                       'unexpected_container_dependencies')
+            observed['containers'][0].pop('name')
+        if observed != declared:
             from revision_inspection import differences
             for line in differences(svc, view):
                 op.summary(line)
-            # Only fixed labels from this allowlist are printed. Unknown API
-            # names/values are never echoed. This adds diagnostics, not a pass.
-            def category(container):
-                if 'name' not in container: return 'absent'
-                value = container['name']
-                if value in ('portal-1', 'richon-portal-1', 'app', ''):
-                    return value or 'empty'
-                return 'other'
-            op.summary('NAME CATEGORY service=' + category(svc['spec']['template']['spec']['containers'][0])
-                       + ' revision=' + category(view['spec']['template']['spec']['containers'][0]))
-        c.need(view['spec']['template']['spec'] == svc['spec']['template']['spec'],
-               'candidate_template_mismatch')
+        c.need(observed == declared, 'candidate_template_mismatch')
     else:
         refs = c.naver_references(c.environment(view['spec']['template']['spec']['containers'][0]), boundary='edge')
         c.need(not refs, 'rollback_revision_changed')
