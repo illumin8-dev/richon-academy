@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-edge",
-  "request_id": "login-rollout-readback-20260924-02"
+  "operation": "stage-edge-naver",
+  "request_id": "naver-stage-v1-20260924-01"
 }
