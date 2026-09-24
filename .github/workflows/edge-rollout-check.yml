@@ -18,7 +18,7 @@ jobs:
           persist-credentials: false
       - name: Current Worker tests and form policy compatibility
         run: |
-          node --test edge/worker.test.mjs
+          node --test edge/*.test.mjs
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict';
           import {handle} from './edge/worker.mjs';
@@ -54,7 +54,9 @@ jobs:
               def redirect_request(self,req,fp,code,msg,headers,newurl): return None
           def get(url,wrong=False):
               assert url in ALLOWED
-              headers={'Cache-Control':'no-cache'}
+              # Public diagnostic identity, not authentication or a browser.
+              # Same fixed GET paths and BIC-only exception approved in PR22.
+              headers={'Cache-Control':'no-cache','Accept':'text/html','User-Agent':'RichonPortalDeployCheck/1.0'}
               if wrong:
                   assert url==ORIGIN+'/auth/login'
                   headers['X-Richon-Edge-Key']='deliberately-invalid-test-key'
