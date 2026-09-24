@@ -31,10 +31,12 @@ def finish(settings, ticket, browser, registration):
         raise InvalidFlow()
     digest, browser_digest = core.token_digest(ticket), core.token_digest(browser)
     with core._transaction() as cur:
-        cur.execute('''SELECT provider,app_id,subject,display_name,return_to
-            FROM richon.oauth_signups WHERE ticket_hash=%s AND browser_hash=%s
+        # DELETE RETURNING uses the existing DELETE grant, unlike SELECT FOR
+        # UPDATE which would also require an unapproved ticket UPDATE grant.
+        # A later failure rolls this deletion back in the same transaction.
+        cur.execute('''DELETE FROM richon.oauth_signups WHERE ticket_hash=%s AND browser_hash=%s
             AND expires_at>CURRENT_TIMESTAMP AND terms_version=%s AND privacy_version=%s
-            FOR UPDATE''', (digest, browser_digest, settings.terms_version, settings.privacy_version))
+            RETURNING provider,app_id,subject,display_name,return_to''', (digest, browser_digest, settings.terms_version, settings.privacy_version))
         row = cur.fetchone()
         if (not row or row[0] not in settings.providers
                 or settings.providers[row[0]].identity_scope != row[1] or row[4] not in RETURNS):
@@ -69,5 +71,4 @@ def finish(settings, ticket, browser, registration):
                 (member_id, registration.name, registration.phone, registration.email,
                  registration.age_range, registration.gender, registration.consultation_consent,
                  True, settings.terms_version, settings.privacy_version))
-        cur.execute('DELETE FROM richon.oauth_signups WHERE ticket_hash=%s', (digest,))
     return member_id, row[4]
