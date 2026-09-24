@@ -1,4 +1,4 @@
 {
-  "operation": "stage-edge-naver",
-  "request_id": "naver-stage-after-bic-20260924-02"
+  "operation": "inspect-edge",
+  "request_id": "existing-candidate-before-worker-switch-20260924-01"
 }
