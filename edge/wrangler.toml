@@ -10,7 +10,9 @@ preview_urls = false
 # ]
 [vars]
 PORTAL_ENABLED = "true"
-PORTAL_UPSTREAM = "https://richon-portal-amjmgyepbq-as.a.run.app"
+# Internal test: tag must point to richon-portal-gh-35946050229-1 before deployment.
+# Rollback: restore PORTAL_UPSTREAM to https://richon-portal-amjmgyepbq-as.a.run.app
+PORTAL_UPSTREAM = "https://portal-candidate---richon-portal-amjmgyepbq-as.a.run.app"
 # RICHON_EDGE_SECRET must be stored as a Worker secret, never in Git.
 [observability]
 enabled = false
