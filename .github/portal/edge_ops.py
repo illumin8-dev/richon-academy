@@ -4,6 +4,7 @@
 No IAM/secret/schema changes. No provider or customer calls. Existing private
 operations remain private. Staging cannot be substituted for a migration check.
 """
+from copy import deepcopy
 import json
 import os
 import re
@@ -17,7 +18,11 @@ import operate as op
 ORIGIN = 'https://richonacademy.com'
 ACCESS_HOST = 'raspy-bush-b23c.cloudflareaccess.com'
 CANDIDATE = 'https://' + c.TAG + '---' + urlsplit(c.URL).netloc
-PATHS = ('/auth/login', '/auth/kakao/callback', '/portal/mypage')
+PATHS = ('/auth/login', '/auth/kakao/callback', '/auth/naver/callback', '/portal/mypage')
+STAGE_OPERATIONS = ('stage-edge', 'stage-edge-naver')
+# Exact versions confirmed by owner helper 0e1190bd in CHECKPOINT-019.
+NAVER_VERSIONS = {'NAVER_CLIENT_ID': ('richon-naver-client-id', '1'),
+                  'NAVER_CLIENT_SECRET': ('richon-naver-client-secret', '1')}
 PUBLIC = ('/', '/apply.html')
 URLS = {c.URL + '/auth/login', CANDIDATE + '/auth/login'} | {ORIGIN + p for p in PATHS + PUBLIC}
 
@@ -33,7 +38,9 @@ def request(url, *, wrong_key=False):
     c.need(url in URLS, 'unsafe_probe_url')
     c.need(not wrong_key or url in {c.URL + '/auth/login', CANDIDATE + '/auth/login'},
            'unsafe_probe_header')
-    headers = {'X-Richon-Edge-Key': 'deliberately-invalid-test-key'} if wrong_key else {}
+    headers = {'Accept': 'text/html'}
+    if wrong_key:
+        headers['X-Richon-Edge-Key'] = 'deliberately-invalid-test-key'
     req = urllib.request.Request(url, headers=headers, method='GET')
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), op.NoRedirect())
     try:
@@ -61,26 +68,50 @@ def probe_origin(url):
 
 
 def access_status():
-    """Evidence of an Access sign-in gateway, NOT proof of its email allow rule.
+    """Observe all fixed public paths without auth, following no redirects.
 
-    403 alone is inconclusive (runner/WAF/network may block it), never a PASS.
-    No raw redirects, query strings, cookies, or page bodies are logged.
+    Log only status/categories, never Location/query/cookies/body. A 403,
+    challenge, foreign redirect, or transport failure is NOT a passing gate.
     """
-    try:
-        for path in PATHS:
+    confirmed = True
+    for path in PATHS + PUBLIC:
+        try:
             status, headers, _ = request(ORIGIN + path)
             target = urlsplit(headers.get('Location', ''))
-            if not (status in (302, 303) and target.scheme == 'https'
-                    and target.netloc == ACCESS_HOST and not target.username
-                    and target.path == '/cdn-cgi/access/login/richonacademy.com'):
-                return 'inconclusive'
-        for path in PUBLIC:
-            status, headers, _ = request(ORIGIN + path)
-            if status != 200 or 'text/html' not in headers.get('Content-Type', ''):
-                return 'inconclusive'
-    except (c.Stop, ValueError):
-        return 'inconclusive'
-    return 'signin-gateway-confirmed'
+            signin = (status in (302, 303) and target.scheme == 'https'
+                      and target.netloc == ACCESS_HOST and not target.username
+                      and target.path == '/cdn-cgi/access/login/richonacademy.com')
+            public = (status == 200 and
+                      'text/html' in headers.get('Content-Type', ''))
+            passed = signin if path in PATHS else public
+            op.summary('ACCESS PROBE ' + path + ': ' + json.dumps({
+                'status': status, 'expected_response': passed,
+                'signin_gateway': signin,
+                'cloudflare_marker': bool(headers.get('CF-Ray')),
+                'challenge': headers.get('CF-Mitigated') == 'challenge',
+            }, sort_keys=True))
+            confirmed = confirmed and passed
+        except (c.Stop, ValueError):
+            confirmed = False
+            op.summary('ACCESS PROBE ' + path + ': transport_or_redirect_unconfirmed')
+    return 'signin-gateway-confirmed' if confirmed else 'inconclusive'
+
+
+def candidate_configuration(before, operation):
+    """Only this explicitly requested mode may add the two approved refs."""
+    c.need(operation in STAGE_OPERATIONS, 'wrong_stage_operation')
+    result = deepcopy(before)
+    if operation == 'stage-edge-naver':
+        container = result['spec']['template']['spec']['containers'][0]
+        env = c.environment(container)
+        refs = c.naver_references(env, boundary='edge')
+        approved = {name: {'name': name, 'valueFrom': {
+            'secretKeyRef': {'name': secret, 'key': version}}}
+            for name, (secret, version) in NAVER_VERSIONS.items()}
+        c.need(not refs or refs == approved, 'naver_version_changed_requires_review')
+        env.update(approved)
+        container['env'] = list(env.values())
+    return result
 
 
 def unchanged(before, policy, current, current_policy):
@@ -96,7 +127,7 @@ def verify_candidate(state, svc, policy):
     c.need(svc['status']['latestCreatedRevisionName'] == state['candidate']
            and svc['status']['latestReadyRevisionName'] == state['candidate'], 'candidate_not_ready')
     c.need(svc['spec']['template']['spec']['containers'][0]['image'] == state['image'], 'candidate_image_mismatch')
-    c.need(c.protected(svc) == c.protected(state['before']), 'unexpected_configuration_change')
+    c.need(c.protected(svc) == c.protected(candidate_configuration(state['before'], state['request']['operation'])), 'unexpected_configuration_change')
     c.need(c.policy_key(policy) == c.policy_key(state['policy']), 'iam_policy_changed')
     c.need(c.traffic(svc) == c.traffic(state['before']), 'traffic_changed_during_staging')
     c.need(all(not row.get('tag') or row.get('tag') == c.TAG for row in svc['status'].get('traffic', [])),
@@ -106,7 +137,9 @@ def verify_candidate(state, svc, policy):
 
 def stage(state):
     """Only a candidate image is changed. No code path promotes it to customers."""
-    c.need(state['request']['operation'] == 'stage-edge', 'wrong_operation')
+    c.need(state['request']['operation'] in STAGE_OPERATIONS, 'wrong_operation')
+    intended = candidate_configuration(state['before'], state['request']['operation'])
+    c.inspect(intended, state['policy'], boundary='edge')
     c.need(state['access'] == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
     c.source(live=True)
     current, policy = get_service()
@@ -128,9 +161,14 @@ def stage(state):
     current, policy = get_service()
     unchanged(state['before'], state['policy'], current, policy)
     c.source(live=True)
-    c.gc('run', 'services', 'update', c.SERVICE, '--region=' + c.REGION,
-         '--image=' + state['image'], '--revision-suffix=' + suffix,
-         '--tag=' + c.TAG, '--no-traffic', timeout=600)
+    args = ['run', 'services', 'update', c.SERVICE, '--region=' + c.REGION,
+            '--image=' + state['image'], '--revision-suffix=' + suffix,
+            '--tag=' + c.TAG, '--no-traffic']
+    if state['request']['operation'] == 'stage-edge-naver':
+        args.append('--update-secrets=' + ','.join(
+            name + '=' + secret + ':' + version
+            for name, (secret, version) in NAVER_VERSIONS.items()))
+    c.gc(*args, timeout=600)
     current, policy = get_service()
     url = verify_candidate(state, current, policy)
     probe_origin(url)
@@ -144,7 +182,7 @@ def stage(state):
 def main():
     sha = c.source(live=True)
     req = c.read_request()
-    c.need(req['operation'] in ('inspect-edge', 'stage-edge'), 'wrong_operation')
+    c.need(req['operation'] in ('inspect-edge',) + STAGE_OPERATIONS, 'wrong_operation')
     svc, policy = get_service()
     info = c.inspect(svc, policy, boundary='edge')
     c.need(c.traffic(svc) == [(info['revision'], 100)]
@@ -165,7 +203,7 @@ def main():
     state = {'sha': sha, 'run': os.environ['GITHUB_RUN_ID'], 'attempt': os.environ['GITHUB_RUN_ATTEMPT'],
              'request': req, 'before': svc, 'policy': policy, 'access': access}
     op.save(state)
-    if req['operation'] == 'stage-edge':
+    if req['operation'] in STAGE_OPERATIONS:
         stage(state)
     else:
         op.summary('EDGE INSPECT FINISHED: no deployment / IAM / schema / customer writes.')
