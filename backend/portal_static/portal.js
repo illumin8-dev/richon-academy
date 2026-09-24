@@ -3,7 +3,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const admin = document.body.dataset.page === 'admin';
-  const state = {tab: 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false};
+  const state = {tab: 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false, authEpoch: 0, withdrawing: false};
   const profileFields = ['phone', 'email', 'age', 'gender', 'consultation', 'consented'];
   const ageLabels = {'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
   const genderLabels = {female:'여성', male:'남성'};
@@ -14,7 +14,9 @@
   function element(tag, value, cls) { const el = document.createElement(tag); if (value !== undefined) el.textContent = String(value); if (cls) el.className = cls; return el; }
   function pill(value, cls='orange') { return element('span', value, 'pill ' + cls); }
   function gate(title, message, retry=false) {
-    state.unlocked = false; state.request += 1;
+    state.unlocked = false; state.request += 1; state.authEpoch += 1; state.withdrawing = false;
+    if ($('withdraw-consultation')) { $('withdraw-consultation').hidden = true; $('withdraw-consultation').disabled = false; }
+    text('consultation-status', '');
     $('content').hidden = true; $('gate').hidden = false; $('logout').hidden = true;
     if ($('admin-link')) $('admin-link').hidden = true;
     // Do not retain previously rendered private rows after auth loss/logout.
@@ -50,6 +52,8 @@
     const info = profile.registration;
     const registered = info && typeof info.name === 'string' && typeof info.phone === 'string' && typeof info.email === 'string';
     const displayName = registered ? info.name : profile.display_name;
+    $('withdraw-consultation').hidden = !(registered && info.consultation_consent === true && profile.consultation_withdrawal_available === true);
+    text('consultation-status', '');
     text('welcome-name', displayName); text('profile-name', displayName);
     text('profile-name-label', registered ? '이름' : '표시 이름');
     text('avatar', [...displayName][0] || 'R'); text('joined', date(profile.created_at));
@@ -154,6 +158,32 @@
     try{const csrf=await api('/auth/csrf');await api('/auth/logout',{method:'POST',headers:{'X-CSRF-Token':csrf.csrf_token}});gate('로그아웃되었습니다.','다시 이용하려면 간편 로그인해 주세요.');}
     catch(error){if(!authError(error))text('action-status','로그아웃을 완료하지 못했습니다. 다시 시도해 주세요.');}
     finally{$('logout').disabled=false;}
+  });
+  if ($('withdraw-consultation')) $('withdraw-consultation').addEventListener('click', async () => {
+    const button = $('withdraw-consultation');
+    if (!state.unlocked || state.withdrawing || button.hidden) return;
+    if (!window.confirm('상담정보 수집·이용 동의를 철회하고 등록된 연령대 / 성별을 비우시겠습니까? 회원정보 / 주문 / 수강권은 유지됩니다.')) return;
+    const epoch = state.authEpoch;
+    state.withdrawing = true; button.disabled = true; text('consultation-status', '처리 중입니다.');
+    try {
+      const csrf = await api('/auth/csrf');
+      if (epoch !== state.authEpoch || !state.unlocked) return;
+      const result = await api('/portal/api/me/consultation-consent/withdraw', {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf.csrf_token},
+        body:JSON.stringify({confirm:true})
+      });
+      if (epoch !== state.authEpoch || !state.unlocked) return;
+      if (!result || result.consultation_consent !== false || result.age_range !== null || result.gender !== null) throw new Error('withdrawal_not_confirmed');
+      text('profile-age', '제공하지 않음'); text('profile-gender', '제공하지 않음');
+      text('profile-consultation', '동의 철회'); button.hidden = true;
+      text('consultation-status', '선택 동의를 철회했습니다. 등록된 연령대 / 성별은 비웠으며 회원정보 / 주문 / 수강권은 유지됩니다.');
+    } catch (error) {
+      if (epoch !== state.authEpoch || !state.unlocked) return;
+      if (error.status === 401) { authError(error); return; }
+      text('consultation-status', error.status === 403 ? '요청을 확인하지 못했습니다. 페이지를 새로 열어 다시 시도해 주세요.' : '처리 결과를 확인하지 못했습니다. 다시 시도해 주세요.');
+    } finally {
+      if (epoch === state.authEpoch) { state.withdrawing = false; button.disabled = false; }
+    }
   });
   window.addEventListener('pageshow',event=>{if(event.persisted)boot();});
   window.addEventListener('pagehide',()=>gate('로그인 상태를 확인하고 있습니다.','잠시만 기다려 주세요.'));

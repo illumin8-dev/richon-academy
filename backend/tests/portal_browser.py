@@ -40,9 +40,11 @@ def main():
     origin=f'http://127.0.0.1:{server.server_port}'
     output=Path(sys.argv[1]) if len(sys.argv)>1 else None
     if output: output.mkdir(parents=True,exist_ok=True)
-    scenario={'role':'member','fail_me':None,'fail_list':False,'xss':False,'more':False,'registration':None,'hold_me':False}
+    scenario={'role':'member','fail_me':None,'fail_list':False,'xss':False,'more':False,'registration':None,'hold_me':False,'withdrawal_enabled':False,'fail_withdraw':None,'hold_withdraw':False,'hold_csrf':False}
     calls=[]
     held=[]
+    held_withdraw=[]
+    held_csrf=[]
     try:
         with sync_playwright() as p:
             kwargs={'headless':True}
@@ -61,6 +63,7 @@ def main():
                 if path=='/portal/api/me':
                     data={**PROFILE,'role':scenario['role'],'display_name':'<img src=x onerror=alert(1)>' if scenario['xss'] else PROFILE['display_name']}
                     if scenario['registration'] is not None: data['registration']=scenario['registration']
+                    if scenario['withdrawal_enabled']: data['consultation_withdrawal_available']=True
                     if scenario['hold_me']: held.append((request,data));return
                     if scenario['fail_me']: code=scenario['fail_me'];data={'detail':'test_only'}
                 elif path=='/portal/api/admin/summary':data=SUMMARY
@@ -70,7 +73,16 @@ def main():
                     rows=[] if q.get('q')==['검색결과없음'] else data_rows
                     data={'items':rows,'limit':20,'offset':offset,'has_more':scenario['more'] and offset==0}
                     if scenario['fail_list']:code=503;data={'detail':'test_only'}
-                elif path=='/auth/csrf':data={'csrf_token':'test-only-not-session-token'}
+                elif path=='/portal/api/me/consultation-consent/withdraw':
+                    assert request.request.method=='POST'
+                    assert request.request.post_data_json=={'confirm':True}
+                    assert request.request.headers.get('x-csrf-token')=='test-only-not-session-token'
+                    data={'consultation_consent':False,'age_range':None,'gender':None,'withdrawn_at':TIMESTAMP}
+                    if scenario['fail_withdraw']:code=scenario['fail_withdraw'];data={'detail':'test_only'}
+                    if scenario['hold_withdraw']:held_withdraw.append((request,data));return
+                elif path=='/auth/csrf':
+                    data={'csrf_token':'test-only-not-session-token'}
+                    if scenario['hold_csrf']:held_csrf.append((request,data));return
                 elif path=='/auth/logout':code=204;data=None
                 else:raise AssertionError('Unexpected API path')
                 request.fulfill(status=code,content_type='application/json',body='' if data is None else json.dumps(data))
@@ -114,6 +126,7 @@ def main():
                     page.set_viewport_size({'width':width,'height':950})
                     page.goto(origin+'/portal/mypage');expect(page.locator('.order-card')).to_have_count(2)
                     expect(page.locator('#profile-name-label')).to_have_text('이름')
+                    expect(page.locator('#withdraw-consultation')).to_be_hidden()
                     expect(page.locator('#welcome-name')).to_have_text(record['name'])
                     expect(page.locator('#profile-phone')).to_have_text(record['phone'])
                     expect(page.locator('#profile-email')).to_have_text(record['email'])
@@ -165,6 +178,74 @@ def main():
             expect(page.locator('#content')).to_be_hidden()
             for field in fields: expect(page.locator('#profile-'+field)).to_have_text('')
             scenario['hold_me']=False
+            # Optional withdrawal is opt-in; no mutation without confirmation.
+            scenario.update(registration=record,withdrawal_enabled=True,hold_me=False)
+            page.reload();expect(page.locator('.order-card')).to_have_count(2)
+            expect(page.locator('#withdraw-consultation')).to_be_visible()
+            calls.clear()
+            page.once('dialog',lambda dialog:dialog.dismiss())
+            page.locator('#withdraw-consultation').click()
+            assert not any(path.endswith('/withdraw') for path,_,_ in calls)
+            page.once('dialog',lambda dialog:dialog.accept())
+            page.locator('#withdraw-consultation').click()
+            expect(page.locator('#profile-consultation')).to_have_text('동의 철회')
+            expect(page.locator('#profile-age')).to_have_text('제공하지 않음')
+            expect(page.locator('#profile-gender')).to_have_text('제공하지 않음')
+            expect(page.locator('#profile-phone')).to_have_text(record['phone'])
+            expect(page.locator('.order-card')).to_have_count(2)
+            expect(page.locator('#withdraw-consultation')).to_be_hidden()
+            assert sum(path.endswith('/withdraw') for path,_,_ in calls)==1
+            # Failed writes are not displayed as erasure. CSRF is not admin denial.
+            for code in (503,403,401):
+                scenario['fail_withdraw']=code
+                page.reload();expect(page.locator('#withdraw-consultation')).to_be_visible()
+                page.once('dialog',lambda dialog:dialog.accept())
+                page.locator('#withdraw-consultation').click()
+                if code==401:
+                    expect(page.locator('#gate-title')).to_have_text('로그인이 필요합니다.')
+                    for field in fields: expect(page.locator('#profile-'+field)).to_have_text('')
+                else:
+                    expect(page.locator('#consultation-status')).to_contain_text('확인하지 못했습니다')
+                    expect(page.locator('#profile-age')).to_have_text('30~39세')
+                    expect(page.locator('#withdraw-consultation')).to_be_enabled()
+                    expect(page.locator('#content')).to_be_visible()
+            scenario.update(fail_withdraw=None,hold_withdraw=True)
+            page.reload();expect(page.locator('#withdraw-consultation')).to_be_visible()
+            calls.clear();page.once('dialog',lambda dialog:dialog.accept())
+            page.locator('#withdraw-consultation').click()
+            expect(page.locator('#withdraw-consultation')).to_be_disabled()
+            # A programmatic second click must not bypass the busy guard.
+            page.locator('#withdraw-consultation').dispatch_event('click')
+            for _ in range(50):
+                if held_withdraw:break
+                page.wait_for_timeout(20)
+            assert len(held_withdraw)==1
+            page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide'))")
+            waiting,payload=held_withdraw.pop()
+            waiting.fulfill(status=200,content_type='application/json',body=json.dumps(payload))
+            page.wait_for_timeout(150)
+            expect(page.locator('#content')).to_be_hidden()
+            expect(page.locator('#consultation-status')).to_have_text('')
+            for field in fields:expect(page.locator('#profile-'+field)).to_have_text('')
+            assert sum(path.endswith('/withdraw') for path,_,_ in calls)==1
+            # A CSRF response arriving after pagehide must not start a write.
+            scenario.update(hold_withdraw=False,hold_csrf=True)
+            page.reload();expect(page.locator('#withdraw-consultation')).to_be_visible()
+            calls.clear();page.once('dialog',lambda dialog:dialog.accept())
+            page.locator('#withdraw-consultation').click()
+            for _ in range(50):
+                if held_csrf:break
+                page.wait_for_timeout(20)
+            assert len(held_csrf)==1
+            page.evaluate("window.dispatchEvent(new PageTransitionEvent('pagehide'))")
+            waiting,payload=held_csrf.pop()
+            waiting.fulfill(status=200,content_type='application/json',body=json.dumps(payload))
+            page.wait_for_timeout(150)
+            assert not any(path.endswith('/withdraw') for path,_,_ in calls)
+            scenario.update(hold_csrf=False,registration={**record,'consultation_consent':False})
+            page.reload();expect(page.locator('.order-card')).to_have_count(2)
+            expect(page.locator('#withdraw-consultation')).to_be_hidden()
+            print('PASS: optional withdrawal capability, cancel, scoped request, success, 401/403/503, repeat-click guard, stale mutation and CSRF results. Synthetic only.')
             browser.close()
         print('PASS: isolated UI checks: desktop/mobile, tabs, search, pagination, access gates, error/retry, XSS text rendering, logout data clearing; required/optional profile at 320/390/1280px, legacy mode, null/unknown values, stale response. No real API or DB used.')
     finally:server.shutdown();server.server_close()

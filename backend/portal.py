@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from auth_core import Principal
 from auth_http import require_member, require_admin
 import portal_store as store
+import consultation_privacy as privacy
 
 logger = logging.getLogger("richon.portal")
 STATIC = Path(__file__).parent / "portal_static"
@@ -78,6 +79,7 @@ class RegistrationView(BaseModel):
 
 class AccountProfile(Profile):
     registration: RegistrationView | None = None
+    consultation_withdrawal_available: bool | None = None
 
 
 class MemberItem(Profile):
@@ -145,7 +147,10 @@ def make_router() -> APIRouter:
     @router.get("/me", response_model=AccountProfile, response_model_exclude_none=True)
     def me(response: Response, member: Annotated[Principal, Depends(require_member)],
            params: Annotated[EmptyQuery, Query()]):
-        return read(response, store.profile, member.member_id)
+        result = read(response, store.profile, member.member_id)
+        if privacy.enabled():
+            result = {**result, "consultation_withdrawal_available": True}
+        return result
 
     @router.get("/me/orders", response_model=PageResult[OrderItem])
     def my_orders(response: Response, member: Annotated[Principal, Depends(require_member)],
@@ -184,6 +189,10 @@ def install_if_enabled(app: FastAPI) -> bool:
     if not any(getattr(r, "path", None) == "/auth/me" for r in app.routes):
         raise ValueError("portal_auth_not_installed")
     app.include_router(make_router())
+    if privacy.enabled():
+        from auth_http import AuthSettings
+        origins = frozenset(x.strip() for x in os.getenv("RICHON_AUTH_ALLOWED_ORIGINS", "").split(",") if x.strip())
+        app.include_router(privacy.make_router(AuthSettings(origins)))
 
     @app.middleware("http")
     async def private_portal_headers(request: Request, call_next):

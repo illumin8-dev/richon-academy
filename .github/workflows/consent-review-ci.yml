@@ -1,0 +1,20 @@
+name: Consent withdrawal review (no deployment)
+on:
+  push:
+    branches: [feat/signup-consent-policy]
+    paths: [.github/consent-review.request, .github/workflows/consent-review-ci.yml]
+permissions:
+  contents: read
+jobs:
+  login-and-database:
+    uses: ./.github/workflows/login-flow-ci.yml
+    permissions:
+      contents: read
+  portal-browser:
+    uses: ./.github/workflows/portal-ui-ci.yml
+    permissions:
+      contents: read
+  edge-and-image:
+    uses: ./.github/workflows/social-login-ci.yml
+    permissions:
+      contents: read

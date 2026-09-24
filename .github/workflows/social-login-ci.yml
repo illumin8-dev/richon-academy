@@ -1,5 +1,6 @@
 name: Same-domain login edge and portal image (no deployment)
 on:
+  workflow_call:
   push:
     branches: ['feat/backend-social-login']
     paths: ['backend/**', 'edge/**', '.github/workflows/social-login-ci.yml']

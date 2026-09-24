@@ -37,3 +37,6 @@
 4. 검수/일반공개는 별도다. 메인 계정 메뉴를 자동 노출하지 않는다.
 
 이 PR 재개에서는 운영 DB/IAM/Secret/Worker/Access/트래픽, 배포 request 파일, 공개 메인/정책, provider 콘솔을 변경하지 않았다. 단순 코드 통합을 배포로 표현하지 않는다. 원본 회원정보·키·쿠키·인가 code/state는 기록하지 않는다.
+
+## 2026-09-24 후속 재개 정정
+PR24 실제 조회는 merged=true, merge 9c63f75fb0237c8d43cccf1b370e1af696b06186 / 09:02:16 UTC이다. 앞의 미병합 기록은 당시 시점이다. 같은 feat/signup-consent-policy에서 선택 상담정보 동의 철회를 기본 OFF로 준비했다. 구현·제약·적용 조건은 [CONSENT_WITHDRAWAL_RELEASE.md](CONSENT_WITHDRAWAL_RELEASE.md). 운영 DB009/010, grants, 새 정책 활성화, 정책 공개, 서버 전환은 하지 않았다. 최종 검사 결과는 PR24 최신 후속 기록을 함께 확인한다.
