@@ -9,6 +9,7 @@ import re
 import unicodedata
 from urllib.parse import urlencode, urlsplit
 import httpx
+import member_profile
 from auth_core import VerifiedIdentity, SignupConsent
 from auth_http import AuthSettings
 
@@ -55,6 +56,7 @@ class Settings:
     def __post_init__(self):
         AuthSettings(frozenset({self.origin}))
         SignupConsent(self.terms_version,self.privacy_version)
+        member_profile.enabled(self.terms_version, self.privacy_version)
         if not self.providers or any(n!=p.name for n,p in self.providers.items()):
             raise ValueError('oauth_provider_required')
         for url in (self.terms_url,self.privacy_url):
@@ -130,7 +132,7 @@ def exchange(settings,name,code,state,browser):
                 or type(info.get('expires_in')) is not int or info['expires_in']<=0):
                 raise ProviderRejected()
             profile=_json(client,'GET',ENDPOINTS[name][2],headers=headers,
-                          params={'property_keys':json.dumps(['kakao_account.profile'])})
+                          params={'property_keys':json.dumps(['kakao_account.name'] if member_profile.enabled(settings.terms_version, settings.privacy_version) else ['kakao_account.profile'])})
             subject=profile.get('id')
             if type(subject) is not int or subject!=info['id']: raise ProviderRejected()
             account=profile.get('kakao_account')
@@ -142,8 +144,10 @@ def exchange(settings,name,code,state,browser):
             if profile.get('resultcode')!='00' or not isinstance(response,dict): raise ProviderRejected()
             subject=response.get('id');nickname=response.get('nickname')
             if not isinstance(subject,str) or not 1<=len(subject)<=255: raise ProviderRejected()
+        if member_profile.enabled(settings.terms_version, settings.privacy_version):
+            nickname = account.get('name') if name == 'kakao' and isinstance(account, dict) else (response.get('name') if name == 'naver' else None)
         display=nickname if isinstance(nickname,str) else ''
         display=''.join(c for c in display if not unicodedata.category(c).startswith('C')).strip()[:80]
-        if not display: display='카카오 회원' if name=='kakao' else '네이버 회원'
+        if not display: display='회원' if member_profile.enabled(settings.terms_version, settings.privacy_version) else ('카카오 회원' if name=='kakao' else '네이버 회원')
         try: return VerifiedIdentity(name,provider.identity_scope,str(subject),display)
         except ValueError: raise ProviderRejected() from None

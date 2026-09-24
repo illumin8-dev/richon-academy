@@ -24,7 +24,8 @@ def enabled(terms=None, privacy=None):
 
 
 def clean_name(value):
-    if not isinstance(value, str) or len(value) > 80:
+    if (not isinstance(value, str) or len(value) > 80
+            or any(unicodedata.category(c).startswith('C') for c in value)):
         raise InvalidProfile('invalid_name')
     value = unicodedata.normalize('NFC', value).strip()
     if not value or not any(unicodedata.category(c).startswith('L') for c in value):
@@ -47,7 +48,8 @@ def clean_phone(value):
 
 
 def clean_email(value):
-    if not isinstance(value, str) or len(value) > 254 or not value.isascii():
+    if (not isinstance(value, str) or len(value) > 254 or not value.isascii()
+            or any(ord(c) < 32 or ord(c) == 127 for c in value)):
         raise InvalidProfile('invalid_email')
     value = value.strip()
     if value.count('@') != 1:
