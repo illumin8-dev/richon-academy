@@ -49,7 +49,7 @@ def test_privacy_matches_approved_notice_without_unapproved_claims():
                    '선택정보 제공에 동의하지 않아도', '만 14세 이상', '동의 버전·시점'):
         assert phrase in privacy and phrase in notice
     for phrase in ('Google Cloud', 'Neon', 'Cloudflare', '공식 이메일', '시행일',
-                   '본인인증', '세션', '간편로그인', '직접 수집·저장하지 않습니다', '홍보'):
+                   '본인인증', '세션', '간편로그인', '직접 수집·저장하지 않습니다', '광고성 정보 수신 동의로 취급하지 않습니다'):
         assert phrase in privacy
     assert '만 19세 이상' not in privacy
     assert '생년월일은 수집하지 않습니다' in privacy
