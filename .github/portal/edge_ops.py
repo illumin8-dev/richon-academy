@@ -20,6 +20,9 @@ ACCESS_HOST = 'raspy-bush-b23c.cloudflareaccess.com'
 CANDIDATE = 'https://' + c.TAG + '---' + urlsplit(c.URL).netloc
 PATHS = ('/auth/login', '/auth/kakao/callback', '/auth/naver/callback', '/portal/mypage')
 STAGE_OPERATIONS = ('stage-edge', 'stage-edge-naver')
+# A public diagnostic label, NOT a credential or an authenticated identity.
+# Allows the owner to scope a BIC-only exception without browser impersonation.
+PROBE_USER_AGENT = 'RichonPortalDeployCheck/1.0'
 # Exact versions confirmed by owner helper 0e1190bd in CHECKPOINT-019.
 NAVER_VERSIONS = {'NAVER_CLIENT_ID': ('richon-naver-client-id', '1'),
                   'NAVER_CLIENT_SECRET': ('richon-naver-client-secret', '1')}
@@ -38,7 +41,7 @@ def request(url, *, wrong_key=False):
     c.need(url in URLS, 'unsafe_probe_url')
     c.need(not wrong_key or url in {c.URL + '/auth/login', CANDIDATE + '/auth/login'},
            'unsafe_probe_header')
-    headers = {'Accept': 'text/html'}
+    headers = {'Accept': 'text/html', 'User-Agent': PROBE_USER_AGENT}
     if wrong_key:
         headers['X-Richon-Edge-Key'] = 'deliberately-invalid-test-key'
     req = urllib.request.Request(url, headers=headers, method='GET')
