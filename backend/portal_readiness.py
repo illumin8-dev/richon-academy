@@ -4,7 +4,6 @@ import re
 import sys
 import db
 import member_profile
-import consultation_privacy
 
 ROLE = 'richon_portal_login'
 READ = ('members', 'auth_identities', 'member_sessions', 'oauth_attempts',
@@ -36,10 +35,6 @@ def check_role(cur):
         raise ValueError('portal_schema_privilege_mismatch')
     tables = READ + (('member_profiles',) if member_profile.enabled() else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if member_profile.enabled() else {})}
-    updates = {**UPDATE, **({'member_profiles': consultation_privacy.UPDATE_COLUMNS}
-                           if consultation_privacy.enabled() else {})}
-    if consultation_privacy.enabled():
-        consultation_privacy.check_schema(cur)
     for table in tables:
         relation = 'richon.' + table
         cur.execute('SELECT has_table_privilege(%s,%s,\'SELECT\')', (ROLE,relation))
@@ -51,7 +46,7 @@ def check_role(cur):
                 raise ValueError('portal_table_grant_mismatch')
         cur.execute("SELECT attname FROM pg_attribute WHERE attrelid=%s::regclass AND attnum>0 AND NOT attisdropped", (relation,))
         columns = [r[0] for r in cur.fetchall()]
-        for operation, grants in (('INSERT', inserts), ('UPDATE', updates)):
+        for operation, grants in (('INSERT', inserts), ('UPDATE', UPDATE)):
             for column in columns:
                 cur.execute('SELECT has_column_privilege(%s,%s,%s,%s)', (ROLE,relation,column,operation))
                 if cur.fetchone()[0] != (column in grants.get(table, ())):

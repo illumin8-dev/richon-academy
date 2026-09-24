@@ -1,6 +1,5 @@
 name: Portal UI checks (synthetic data only)
 on:
-  workflow_call:
   push:
     branches: ['feat/backend-*', 'fix/backend-*']
     paths: ['backend/portal_static/**', 'backend/tests/portal_browser.py', '.github/workflows/portal-ui-ci.yml']

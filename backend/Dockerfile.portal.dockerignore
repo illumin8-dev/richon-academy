@@ -5,7 +5,6 @@ backend/*
 !backend/db.py
 !backend/auth_core.py
 !backend/member_profile.py
-!backend/consultation_privacy.py
 !backend/member_profile_store.py
 !backend/signup_views.py
 !backend/auth_http.py

@@ -109,7 +109,7 @@ jobs:
           expected = {
               '.dockerignore', '.gcloudignore', 'Dockerfile', 'requirements.txt',
               'main.py', 'db.py', 'orders.py', 'migrate_orders.py',
-              'auth_core.py', 'member_profile.py', 'consultation_privacy.py', 'auth_http.py', 'portal.py', 'portal_store.py', 'monthly_store.py', 'monthly_portal.py',
+              'auth_core.py', 'member_profile.py', 'auth_http.py', 'portal.py', 'portal_store.py', 'monthly_store.py', 'monthly_portal.py',
               'manual_models.py', 'manual_store.py', 'manual_portal.py',
               'migrations/001_pending_orders.sql',
               'portal_static/mypage.html', 'portal_static/admin.html',

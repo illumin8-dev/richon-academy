@@ -1,6 +1,5 @@
 name: Login flow regression (no deployment)
 on:
-  workflow_call:
   push:
     branches: ['fix/login-csrf-return-kakao']
   pull_request:
