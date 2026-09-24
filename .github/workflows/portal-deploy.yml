@@ -60,7 +60,7 @@ jobs:
           python3 -B -m unittest discover -s .github/portal -p 'test_*.py' -v
           node --test edge/worker.test.mjs
       - name: Build portal image before cloud authentication
-        if: contains(fromJSON('["deploy","stage-edge"]'), needs.request.outputs.operation)
+        if: contains(fromJSON('["deploy","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation)
         run: |
           docker build --pull --no-cache -f backend/Dockerfile.portal \
             -t "asia-southeast1-docker.pkg.dev/richon-academy/richon-portal-ci/portal:$GITHUB_SHA" .
@@ -68,13 +68,14 @@ jobs:
             "asia-southeast1-docker.pkg.dev/richon-academy/richon-portal-ci/portal:$GITHUB_SHA" \
             -c "from pathlib import Path; assert all(not Path(p).exists() for p in ('/app/main.py','/app/orders.py','/app/migrations','/app/oauth_migrate.py')); assert Path('/app/portal_readiness.py').is_file()"
       - name: Smoke-test image with synthetic credentials and no database
-        if: contains(fromJSON('["deploy","stage-edge"]'), needs.request.outputs.operation)
+        if: contains(fromJSON('["deploy","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation)
         run: |
           docker run --detach --name richon-portal-ci -p 127.0.0.1:8081:8080 \
             -e RICHON_EDGE_ENABLED=true -e RICHON_EDGE_SECRET=sssssssssssssssssssssssssssssssssssssssssss \
             -e RICHON_AUTH_ENABLED=true -e RICHON_OAUTH_ENABLED=true -e RICHON_PORTAL_ENABLED=true \
             -e RICHON_OAUTH_ORIGIN=https://richonacademy.com -e RICHON_AUTH_ALLOWED_ORIGINS=https://richonacademy.com \
             -e KAKAO_CLIENT_ID=synthetic -e KAKAO_CLIENT_SECRET=synthetic \
+            -e NAVER_CLIENT_ID=synthetic -e NAVER_CLIENT_SECRET=synthetic \
             -e RICHON_TERMS_VERSION=test-v1 -e RICHON_PRIVACY_VERSION=test-v1 \
             -e RICHON_TERMS_URL=https://richonacademy.com/terms.html -e RICHON_PRIVACY_URL=https://richonacademy.com/privacy.html \
             "asia-southeast1-docker.pkg.dev/richon-academy/richon-portal-ci/portal:$GITHUB_SHA"
@@ -87,17 +88,17 @@ jobs:
           workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-portal/providers/github-portal
           service_account: richon-portal-deploy@richon-academy.iam.gserviceaccount.com
       - name: Inspect or stage approved edge-gated service (never auto-promote)
-        if: contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation)
+        if: contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation)
         run: python3 -B .github/portal/edge_ops.py
       - name: Snapshot fixed service and pinned configuration
-        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation) }}
+        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation) }}
         run: python3 -B .github/portal/operate.py snapshot
       - name: Deploy zero-traffic candidate (or internal-login configuration)
         if: contains(fromJSON('["deploy","configure-internal-login"]'), needs.request.outputs.operation)
         run: python3 -B .github/portal/operate.py candidate
       # Request a fresh token after build/deployment, not a possibly expired early token.
       - id: identity
-        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation) }}
+        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation) }}
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
           project_id: richon-academy
@@ -117,7 +118,7 @@ jobs:
           PORTAL_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
         run: python3 -B .github/portal/operate.py promote
       - name: Safe failure diagnosis (no application log export)
-        if: failure() && steps.auth.outcome == 'success' && !contains(fromJSON('["inspect-edge","stage-edge"]'), needs.request.outputs.operation)
+        if: failure() && steps.auth.outcome == 'success' && !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation)
         run: python3 -B .github/portal/operate.py diagnose
       - name: Clean local temporary files and synthetic container
         if: always()
