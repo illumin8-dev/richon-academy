@@ -1,103 +1,110 @@
 # 리치온아카데미 / 작업·배포 지도
 
-최신 확인: **2026-09-24 / CHECKPOINT-034 / PR23**. 이 문서 → PR 체크포인트 → 실제 refs/서비스 상태 순서로 확인한다. 코드 병합, 후보 기동, Worker 연결, 실제 계정 인증, 일반 공개를 구분한다.
+최신 재개 확인: **2026-09-24 / CHECKPOINT-049 / PR24**.
+이 문서 → 해당 PR의 최신 체크포인트 → 실제 ref·CI·운영 상태 순서로 확인한다. 활동 카드의 '구현 완료'만으로 커밋·검증·배포를 단정하지 않는다.
 
-## 현재 결론
+## 지금 어디까지 완료됐나
 
-**카카오·네이버 새 후보를 기존 로그인 주소에 연결하는 Worker 배포와 배포 후 서버 검사를 완료했다. 이제 사용자가 실제 계정으로 로그인하는 단계다.** 추가 PR 병합·DB008·네이버 키 권한·BIC 규칙 설정을 반복하지 않는다.
+**PR24의 가입정보·동의 처리, 마이페이지 정보 표시와 약관·개인정보 문서 개정안은 원격에 저장되어 있고, 정확한 head의 자동검사 4개가 모두 성공했다. 다시 작성하지 않는다. 아직 PR 병합, 운영 DB009 적용, 추가 수집 활성화, 새 서버 배포, 공개 방침 교체는 하지 않았다.**
 
-사용자 테스트 주소: **https://richonacademy.com/auth/login**. 기존 본인 이메일 Cloudflare Access 제한을 변경하지 않았다. 무인증 검사는 예상 Access gateway까지 확인했으며, 정책의 이메일 내용이나 인증 후 실제 로그인 화면·OAuth 성공을 독립적으로 확인한 것은 아니다.
+- 작업 PR: https://github.com/illumin8-dev/richon-academy/pull/24
+- 작업 branch: `feat/signup-consent-policy`
+- 검증 완료 head: **`9ae550a9bc53fed5e0e785f3a9fb21b274730cc5`**
+- base: `feat/backend-portal-deploy` / `cefbbcf41678ff02bfe0facec077bfc0b17774fd`
+- PR 상태 재조회: open / draft=false / merged=false. 코드 검토 가능 상태와 실제 출시 가능 상태는 다르다.
+- 세부 기록: 해당 head의 `backend/SIGNUP_POLICY_RELEASE.md`, `backend/policy_drafts/member-info-v1/README.md`, PR24 CP045~049.
 
-| 순서 | 작업 | 상태 |
-|---|---|---|
-| 1 | 메인 히어로 | 완료 / 원본 PR8·Pages·사용자 실제 화면 확인 |
-| 2 | DB008 / 최신 카카오 서버·Worker | **제한 테스트용 실제 연결 완료** / DB·후보·Worker·배포 후 검사 확인 |
-| 3 | 네이버 키 서버 연결 | **완료** / 사용 중인 후보에 두 Secret 버전1 연결 |
-| 4 | 실제 계정 전체 동선 | **지금 진행** / 카카오부터, 이어서 네이버 신규가입·재로그인·취소·로그아웃·복귀·일반회원 관리자 차단 |
-| 5 | 개인정보·운영방침·탈퇴·파기 / 검수 | 후속 / 이번에 문구나 기능을 바꾸지 않음. 일반 공개 전 정합성 확인 필요 |
-| 6 | PR10 / 명단 이관 / 결제 | 사용자 지시로 보류 |
+생각 실패 보고 후 재조회에서 위 코드와 CI가 이미 저장된 것을 확인했다. 기존 main의 이 지도만 CP034에 머물러 있어 최신 상태로 갱신했다. 플랫폼의 실패 원인을 진단하거나 고쳤다는 뜻은 아니다.
 
-## 실제 연결 상태와 복구 기준
+## 사용자가 확정한 기준 / 다시 묻거나 임의 변경하지 않음
 
-| 구분 | 값 |
+| 항목 | 결정 |
 |---|---|
-| Worker 운영 branch | feat/backend-social-login |
-| 현재 Worker commit | **b7f4b6d3a37c15d37b59917d73f49b1e23640e5f** |
-| 연결 코드 commit | e640ec223938a057988888df58fde08383af2376 |
-| Cloudflare Worker | richon-account-router |
-| Cloudflare Version | **c01d6cd7-4e2c-4c53-8b51-94b2bd9a31bb** |
-| Cloudflare build | 11c4ea4a-fe2f-48ea-a67c-e78dddd18b4f / completed-success / 03:31:00 UTC |
+| 가입 연령 | 간편로그인 시작 전 만14세 이상 자기확인. 실제 나이·실명 본인인증이 아님 |
+| 필수 가입정보 | 이름(닉네임 아님), 휴대전화번호, 이메일. 가입 직후 필요 |
+| 선택 상담정보 | 연령대·성별 / 상담 내용 준비 및 상담 진행. 미동의 시 서버에 저장하지 않음 |
+| 계정 식별 | 제공자·앱·이용자 식별자. 이름·전화·이메일 일치로 자동 통합하지 않음 |
+| 로그인 안내 | '회원 관리와 상담에 필요한 정보를 수집합니다.' 및 상세 안내. 과도한 긴 본문 노출 지양 |
+| 약관 | 주식회사 표기 제외, 간편로그인 방식, 전용 비밀번호 수집 없음 |
+| 결제 | 카드번호·카드 비밀번호 등 결제 인증정보는 PG 처리, 리치온 직접 저장 없음. 거래기록과 구분 |
+| 문의 | 032-236-8944. 공식 이메일은 사용자 추후 제공, 임의 주소 삽입 금지 |
+| 공개 화면 | 메인 로그인·마이페이지 버튼은 계속 비노출. 히어로·강의 신청 유지 |
+| 우선순위 | 기능 우선, UX/UI 미화는 후속. PR10·명단 이관·결제 보류 |
+
+## PR24에 저장된 구현
+
+- `member_profile.py`, `member_profile_store.py`, `signup_views.py`, `oauth_http.py`: 입력 검증, 연령 자기확인, 필수/선택 동의, 등록정보 저장. 양쪽 정책 버전을 `member-info-v1`으로 명시할 때만 새 수집 흐름 활성화.
+- `migrations/009_member_profiles.sql`, `member_profile_migrate.py`: 최소 추가 스키마와 명시적 적용 도구. 운영 실행은 하지 않음. 가입 ticket 소모와 프로필·동의 저장을 하나의 트랜잭션으로 처리. 기존 회원 ID 보존.
+- `portal.py`, `portal_store.py`, `portal_static/mypage.html`, `portal_static/portal.js`: 본인의 이름·전화·이메일·연령대·성별·선택동의·등록시점 표시. 구 버전 응답에 없는 개인정보를 만들어 표시하지 않음. 인증상실·로그아웃·pagehide 시 비우고 늦은 응답의 재표시도 검사.
+- 입력한 연락처는 소유 인증된 정보라고 표시하지 않음. 제공자 콘솔·scope 확대 및 연락처 자동채움은 이 PR에서 변경하지 않았다. 이름이 없으면 직접 입력하며 닉네임으로 대체하지 않음.
+- `backend/policy_drafts/member-info-v1/terms.html`: 승인된 가입 관련 조항의 교체안. 전체 약관 대체본이나 환불 조건의 최종 승인이 아님.
+- 같은 폴더의 `privacy.html`: 필수/선택 수집·목적·기간·거부권, 운영 구조와 미확정 사항을 구분한 시행 전 개정안.
+- 같은 폴더의 `README.md`: 기존 문구와 수정안의 대조 및 출시 전 확인 목록. 문서 draft는 런타임 이미지·라우트에 포함하지 않음.
+
+## 마지막 CI / 정확한 head 9ae550a9
+
+2026-09-24 CP049에서 아래 네 workflow의 completed/success를 다시 조회했다. 재실행한 것이 아니며 실제 이용자 DB·OAuth 계정 시험도 아니다.
+
+| 검사 | run | 결과 |
+|---|---|---|
+| Backend / 폐기용 PostgreSQL / Gcloud 업로드 목록 / Docker | 35975741193 | success |
+| 로그인·공식 버튼·새 가입폼 Chromium 및 backend 회귀 | 35975741580 | success |
+| Edge / 포털 이미지 | 35975741215 | success |
+| 마이페이지·관리자 UI / 새 등록정보·개인정보 비우기 | 35975741244 | success |
+
+이전 head의 파일 포함 목록 실패·제한 DB 권한 문제·문구 검사 실패는 이 최신 성공 결과와 구분한다. 과거 실패 로그를 읽고 동일한 수정을 반복하지 않는다. 구체적인 시험 개수는 로그에서 확인하지 않고 새로 합산하지 않는다.
+
+## 실제 서비스 상태 / 새 가입정책과 구분
+
+기존 카카오·네이버 로그인 기본 흐름과 리치온 로그아웃은 사용자가 성공을 확인했고 마이페이지 화면도 공유했다(PR23 CP035~039). 모든 취소·권한·세션 시나리오의 독립 검증을 의미하지 않는다. 이를 다시 처음부터 시험하거나 키·DB008·BIC를 재설정하지 않는다.
+
+아래는 **마지막 배포 확인 CP034의 기준**이다. CP049에서 Cloud Run·DB·Cloudflare를 다시 조회하거나 변경하지 않았다. 실제 전환 전에 살아 있는 태그와 설정을 재확인한다.
+
+| 구분 | 마지막 확인 값 |
+|---|---|
+| 사용자 로그인 URL | https://richonacademy.com/auth/login |
+| 마이페이지 URL | https://richonacademy.com/portal/mypage |
+| Worker branch / ref | feat/backend-social-login / b7f4b6d3a37c15d37b59917d73f49b1e23640e5f |
+| Worker | richon-account-router / Version c01d6cd7-4e2c-4c53-8b51-94b2bd9a31bb |
 | Worker upstream | https://portal-candidate---richon-portal-amjmgyepbq-as.a.run.app |
-| 연결된 후보 revision | **richon-portal-gh-35946050229-1** / Ready |
-| 후보 원본 source | d0b2c7389b2394de9c6bfd110c3e7933a90d38f5 |
-| 검증된 image digest | sha256:b5db98ff97299c81ff36aac7ec5e0364e5f1bf1da54af80dc38efd5783aa3495 |
-| Naver 참조 | NAVER_CLIENT_ID=richon-naver-client-id:1 / NAVER_CLIENT_SECRET=richon-naver-client-secret:1 |
+| 실제 연결 후보 | richon-portal-gh-35946050229-1 / source d0b2c7389b2394de9c6bfd110c3e7933a90d38f5 |
+| 후보 image digest | sha256:b5db98ff97299c81ff36aac7ec5e0364e5f1bf1da54af80dc38efd5783aa3495 |
+| 네이버 Secret 참조 | richon-naver-client-id:1 / richon-naver-client-secret:1 |
 | 기본 Cloud Run URL | https://richon-portal-amjmgyepbq-as.a.run.app |
-| 기본 URL rollback revision | richon-portal-gh-35810692921-1 / 기본 URL 트래픽100% |
-| backend 작업 branch / ref | feat/backend-portal-deploy / **cefbbcf41678ff02bfe0facec077bfc0b17774fd** |
+| 기본 URL 롤백 revision | richon-portal-gh-35810692921-1 / 기본 URL 트래픽100% |
+| 기존 정책 버전 | internal-test-v1 / 새 member-info-v1은 미활성화 |
 
-**Cloud Run 기본 URL 트래픽이 후보0%라는 것은 Worker 미연결이라는 뜻이 아니다.** 기본 URL은 이전 버전에 남겨두었지만, 실제 Worker를 통과한 허용 사용자 요청은 태그 URL로 새 후보에 전달된다. tag는 가변이므로 다른 revision으로 이동시키기 전에 이 연결을 반드시 검토한다. 후보 생성용 stage 명령을 무작정 다시 실행하지 않는다.
+Worker는 태그 URL을 통해 후보에 연결되어 있으므로 기본 URL의 후보0%를 미연결로 해석하지 않는다. **현재 쓰는 portal-candidate 태그를 새 stage로 무심코 옮기지 않는다.** 롤백은 승인 범위에서 Worker upstream을 기본 URL로 복원하는 방식이며 DB/IAM을 자동 역변경하지 않는다. 본인 이메일 Access 제한은 유지한다. 비노출 메뉴를 접근통제 대체수단으로 취급하지 않는다.
 
-Rollback은 승인된 범위에서 Worker upstream을 기존 기본 URL로 복원해 배포하는 방식이다. DB·IAM·키를 자동으로 역변경하지 않는다. 후보 직접 URL은 연결키 없으면403이며 사용자 테스트 링크로 주지 않는다. 키를 브라우저·대화에 입력하도록 요청하지 않는다.
+## 다음 작업 / 실제 적용 전 남은 것
 
-## 배포·검증 증거 / PR23
+1. **미확정 운영정보 확정**: 공식 이메일, 실제 계약 수탁자 법인·국가·연락처, 로그·백업 보유기간, 권리행사 채널. GCP/Neon뿐 아니라 Cloudflare 및 공개 호스팅·외부 리소스의 실제 처리 범위를 대조한다. 답을 추측하지 않는다.
+2. **탈퇴·선택동의 철회·연결해제·파기 절차**: 아직 미완료. 처리 방법·보존 대상·실패 시 처리부터 사용자와 확정한 뒤 별도 구현한다. 가입정책 수정 승인을 개인정보 일괄 삭제 승인으로 확대하지 않는다.
+3. **최종 문서와 버전 정합성**: 승인된 조항을 기존 root 약관에 통합하고 개인정보처리방침과 실제 동작·URL·시행일을 일치시킨다. 미검토 환불·가격·수강권 조항을 임의로 재작성하지 않는다.
+4. **DB009·최소권한·후보 배포**: 준비 상태와 롤백을 확인해 별도로 적용·검증한다. 추가 수집 버전에서 기존회원 정보 보완, 선택 미동의 가입, 마이페이지, 로그아웃을 실제 시험한다. 일반 공개·메인 메뉴 노출은 별도 승인이다.
 
-- 코드 PR23 검증 head8e2a89aca6215bdc107bb102c0214eb152894b7a / mergefc32a3b86f5715fd7050f8b33c36e76d326325b3.
-- PR CI4개 성공: Backend35949781829 / Login35949782048 / Edge-image35949781838 / Automation35949781837.
-- 기존 Worker209887a...에서 e640ec...로4파일만 선택 반영했다. backend 전체 역병합 없음. 기존 쿠키·캐시15개 검사 보존, 후보 경로·보안8개 추가. 정확한 Naver PNG GET 및 고정 후보호스트만 추가했다.
-- e640ec... Cloudflare build113876da-ddf9-4ea2-bd4b-2f5aa11a0b17 / Version1b10b021-5ef5-485b-a4e8-16d8996b8c8b 성공.
-- b7f4...는 과거 Worker boundary 검사에 승인된 진단 UA와 Accept를 맞춘 CI 보완이다. 앱 소스와 upstream은 e640과 같다. 최신 Cloudflare check107481632028 completed/success 확인.
-- 실제 Worker CI: Edge-image35951577446 성공. b7f4... Backend35951737480 / boundaries35951737521 성공.
-- 사전 실제 후보 조회: **35951198550 / portal107480106071**, 03:24:41 UTC 성공.
-- 사후 실제 후보 조회: **35951789242 / portal107481911249**, 03:33:10 UTC 성공. sourcecefbbcf41678ff02bfe0facec077bfc0b17774fd.
-- 사후: 고정후보·두revision·Ready·runtime·tag·두Naver참조1·이미지source/digest·기본100% 유지 확인. auth/login·kakao/callback·naver/callback·portal/mypage302 / main·apply200. 원본과 후보의 없는·틀린 연결키는403 edge_required. 서비스·IAM·트래픽 재조회 불변.
-- 해당 작업의 자동화108개 / Worker15개와 전체backend·임시PostgreSQL·Docker검사 통과. CI에 찍히는 모의403/실패예제를 실제 장애로 혼동하지 않는다.
+공식 이메일은 추후 제공하기로 한 미확정 항목이다. 미확정 값을 채워 넣거나 이미 구현한 부분을 다시 설명·승인 요청하는 것으로 작업을 반복하지 않는다.
 
-### 도중 발견한 검사 오류
+## 저장소·브랜치 역할
 
-서비스 API는 컨테이너 name 미기재, 고정 Revision API는 portal-1 자동이름으로 조회됐다(실제run35950905055). rawspec 직접 비교가 이 표기차이를 오류처리했다. 한 후보/한컨테이너/정확한absent→portal-1쌍만 보정하고 다른필드·명시이름·의존성·배포전후 비교는 유지했다. 회귀4개 추가 후 사전·사후 실제검증 성공. 범용 이름정규화 helper는 저장되지 않았으며 사용하지 않는다.
-
-실제 Worker의 과거 edge-rollout-check.yml만 기본 Python UA가 남아 BIC403이었다(run35951577451). 기존 엄격한 판정은 유지하고 소유자가 허용한 동일6주소/GET/빈query/진단 UA를 적용한 후 성공했다. 403을 PASS로 취급하거나 새 방화벽 예외를 만들지 않았다.
-
-## 바로 다음 행동
-
-사용자는 기존 /auth/login을 새로 열고 Cloudflare 인증을 거쳐 카카오부터 확인한다. 카카오 인증 → 처음이면 가입동의 → 리치온 복귀 → 세션유지를 확인하고, 이후 네이버로 같은 흐름을 확인한다. 오류는 화면 본문만 받는다. code/state가 포함된 주소·Cookie·Secret·고객 개인정보는 요청하지 않는다.
-
-정상 로그인을 실제로 확인하기 전 검수통과/일반공개완료로 표시하지 않는다. 다음 기능을 마구 추가하지 않고 취소·재로그인·로그아웃·이전페이지 복귀·권한 차단을 확인한다. 개인정보 문구·탈퇴/연결해제·물리적 파기·국외처리 정합성은 사용자와 별도 확정해 진행한다. 기존 명단/PR10/결제는 지금 섞지 않는다.
-
-## 이미 완료된 설정 / 반복 금지
-
-- PR20 helper source0e1190bdbeb6b84ac325cd81d3db7bcf520aafa6: LOGIN PREREQUISITES READY / database_008 verified_existing / 두Naver runtime grant verified / version1. owner 출력과 이후 후보기동검증이 있다.
-- 후보 생성은 run35946050229에서 완료. 새후보 시작점 portal_readiness가 제한DB접속·권한·008반환경로 catalog를 읽기 검증 후 실행한다.
-- BIC 원인은 사용자 Security Events의 Browser Integrity Check였다. 현재 public UA RichonPortalDeployCheck/1.0, 정확한6GET·빈query에 BIC만Skip하는 소유자규칙 사용. UA는 인증수단이 아니며 누구나복사할수있다. Access·WAF·속도제한을 끄지 않는다. 이번 규칙확대 없음.
-- Access gateway302는 접근제한 진입 증거이지 이메일정책내용 전체의 독립검증이 아니다.
-
-## 작업 저장소·브랜치 구분
-
-공개 홈페이지: **marururu00/richon-academy/main**. 작업 fork main과 혼동하지 않는다. 사용자 직접 원본PR8을 병합했다고 연결앱 원본쓰기권한도 복구됐다고 가정하지 않는다.
+공개 홈페이지 원본은 **marururu00/richon-academy/main**이다. 작업용 fork main과 혼동하지 않는다. 원본 PR8·Pages 배포·사용자 화면 확인으로 히어로는 완료됐다.
 
 | 역할 | illumin8-dev/richon-academy branch |
 |---|---|
-| 홈페이지소스 / 이 작업지도 | main |
-| 로그인·관리서버통합 / GCP작업 | feat/backend-portal-deploy |
-| 실제 Cloudflare Worker Git배포 | feat/backend-social-login |
-| 기존 주문서버 WIF호환 경로 | feat/backend-gcp-deploy |
+| 홈페이지 작업 / 이 상태 지도 | main |
+| 로그인·관리서버 통합 / GCP | feat/backend-portal-deploy |
+| 실제 Worker Git 배포 | feat/backend-social-login |
+| 기존 주문서버 WIF 호환 | feat/backend-gcp-deploy |
+| 이번 승인된 가입정책 PR24 | feat/signup-consent-policy |
 | PR10 보류 초안 | feat/backend-pricing-notes-oauth |
 
-단기branch fix/login-release-prerequisites는 최신backend기준 PR23에 재사용했다. 기존PR들은 merge상태와 운영반영상태를 구분한다. WIF/Cloudflare가 연결한 branch를 임의 이름변경·삭제하지 않는다.
+fix/login-release-prerequisites는 PR23에서 사용한 단기 branch다. 이 표는 역할 안내이며 전체 branch 목록의 재조회 결과가 아니다. WIF/Cloudflare가 연결한 branch 이름을 임의 변경·삭제하지 않는다. 새 PR/branch를 만들지 말고 PR24에서 이어간다.
 
-## GitHub 쓰기 문제 대응
+## 복구 및 근거
 
-**[GITHUB_WRITE_RECOVERY.md](GITHUB_WRITE_RECOVERY.md)**를 참고한다. 기존 illumin8-dev 연결에서 실제 쓰기를 재확인했고 이번 작업도 같은계정으로 완료했다. 도구노출과 앱/API권한, 원본저장소403과Cloudflare403을 구분한다. 필요한 함수 정확히조회 → 최신대상/blob확인 → 승인범위쓰기 → commit재조회 순서. 명시적 권한·안전거절을 우회하지 않는다. 도구목록이빈것만으로 권한을넓히거나 재연결을요구하지 않는다.
+- GitHub 쓰기: [GITHUB_WRITE_RECOVERY.md](GITHUB_WRITE_RECOVERY.md). 정확한 함수 조회 → 계정·대상·최신 blob 확인 → 승인된 쓰기 → commit 재조회. 도구 노출과 API 권한/안전 거절을 구분하고 거절을 우회하지 않는다.
+- [PR24 / CP041~049](https://github.com/illumin8-dev/richon-academy/pull/24): 이번 코드·CI·문서와 미배포 범위.
+- [PR23 / CP034~040](https://github.com/illumin8-dev/richon-academy/pull/23): 실제 로그인 연결, 사용자 성공 확인, 메뉴 비노출 및 가입정보 확정.
+- [갱신 전 배포 지도 원본](https://github.com/illumin8-dev/richon-academy/blob/77a9ff60fc4387fc548cf027795c9906f64120a9/PROJECT_STATUS.md): CP034 상세 사전/사후 검사, 회귀 수정, 과거 branch 보존 이력.
 
-## 보존 이력과 근거
-
-- [PR23 / CHECKPOINT029~034](https://github.com/illumin8-dev/richon-academy/pull/23): 이번진단·배포·검증·남은작업.
-- [PR22 / CHECKPOINT027](https://github.com/illumin8-dev/richon-academy/pull/22#issuecomment-5806256318): 최초후보배포와BIC해결 당시기록. 'Worker연결아직'은과거상태.
-- 히어로 원본PR8 merge097f7b74f995a11ac0360c76f42b081adc5f53ae / Pages35897836106 / 사용자확인. 작업PR18, Chromium7개검사.
-- PR4 주문HTTP·PostgreSQL검사 병합a0ef6fc4108bf9ffa3e20901aabbf2e925a71982. PR10은나중.
-- PR19 준비 / PR20 권한표현비교수정 / PR21 후보배포 / PR22 BIC진단 / PR23 실제연결 순서.
-- 첨부PDF·공식가이드별 대조: backend/LOGIN_RELEASE_CHECKPOINT.md, backend/PROVIDER_REVIEW_AUDIT.md. 서버측Secret/state/안전쿠키/provider+app+response.id식별은보존. 탈퇴/revoke/세션회수·파기·정책·검수는후속이다.
-- 옛branch는 archive/2026-09-24/<이전branch명>태그로보존했다. 모든과거PR을다시합치지않는다.
-
-이번 실제 변경은 Worker연결 및 관련검사/기록이다. CloudRun image/기본traffic/DB/IAM/키값/Access/메인/방침/탈퇴/#10/결제는변경하지않았다. 비밀값·쿠키·인가코드·고객정보를Git/로그/artifact에저장하지않는다. TinyFish미사용. 이후작업은최신실제상태와사용자결과부터확인한다.
+CP049의 변경은 이 진행 문서와 PR 기록뿐이다. 앱 코드, 배포 request, 운영 DB/IAM/Secret/CloudRun/Worker/Access/공개 홈페이지는 바꾸지 않았다. TinyFish 미사용.
