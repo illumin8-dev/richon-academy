@@ -8,9 +8,9 @@ import common as c
 import edge_ops as e
 import operate as op
 
-CANDIDATE = 'richon-portal-gh-35946050229-1'
+CANDIDATE = 'richon-portal-gh-35980631252-1'
 SERVING = 'richon-portal-gh-35810692921-1'
-SOURCE = 'd0b2c7389b2394de9c6bfd110c3e7933a90d38f5'
+SOURCE = '61183057f5392e7af177e10e0c42ccf955b8cafb'
 
 
 def validate_service(svc, policy):
