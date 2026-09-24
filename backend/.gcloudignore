@@ -6,6 +6,7 @@
 !orders.py
 !migrate_orders.py
 !auth_core.py
+!member_profile.py
 !auth_http.py
 !portal.py
 !portal_store.py

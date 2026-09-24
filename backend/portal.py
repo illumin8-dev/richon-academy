@@ -66,6 +66,20 @@ class Profile(BaseModel):
     linked_order_count: int
 
 
+class RegistrationView(BaseModel):
+    name: str
+    phone: str
+    email: str
+    age_range: str | None
+    gender: str | None
+    consultation_consent: bool
+    consented_at: datetime
+
+
+class AccountProfile(Profile):
+    registration: RegistrationView | None = None
+
+
 class MemberItem(Profile):
     status: Literal["active", "disabled"]
 
@@ -128,7 +142,7 @@ def read(response, operation, *args):
 def make_router() -> APIRouter:
     router = APIRouter(prefix="/portal/api")
 
-    @router.get("/me", response_model=Profile)
+    @router.get("/me", response_model=AccountProfile, response_model_exclude_none=True)
     def me(response: Response, member: Annotated[Principal, Depends(require_member)],
            params: Annotated[EmptyQuery, Query()]):
         return read(response, store.profile, member.member_id)

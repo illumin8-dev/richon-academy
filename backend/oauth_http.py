@@ -15,6 +15,9 @@ import auth_core as core
 import auth_http as auth
 import oauth_store as store
 import oauth_providers as providers
+import member_profile
+import member_profile_store
+import signup_views
 
 BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
@@ -58,7 +61,7 @@ def failed(return_to='/'):
 
 
 def page(title,body):
-    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 system-ui,sans-serif;margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.collection-notice{font-size:13px;margin:16px 0}.collection-notice summary{cursor:pointer}.collection-notice table{width:100%;border-collapse:collapse;table-layout:fixed}.collection-notice td,.collection-notice th{padding:8px 4px;text-align:left;border-bottom:1px solid #eee;overflow-wrap:anywhere}.collection-notice caption{margin-top:12px}input:not([type=checkbox]):not([type=hidden]),select{box-sizing:border-box;width:100%;padding:10px;font:inherit;min-width:0}fieldset{min-width:0;border:1px solid #e7d6c5;border-radius:8px}fieldset p{font-size:13px}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
     # Native form POSTs need a non-null same-origin Origin. Cross-site referrers
     # remain suppressed; callback/redirect/error responses keep no-referrer.
     return HTMLResponse(content,headers={**HEADERS,'Referrer-Policy':'same-origin','Content-Security-Policy':CSP})
@@ -127,6 +130,7 @@ def login_return(request, settings):
 
 def make_router(settings):
     router=APIRouter(prefix='/auth')
+    collect_profile = member_profile.enabled(settings.terms_version, settings.privacy_version)
 
     @router.get('/assets/kakao-login.png',include_in_schema=False)
     def kakao_button():
@@ -146,6 +150,9 @@ def make_router(settings):
         labels=' 또는 '.join(label for name,label in [('kakao','카카오'),('naver','네이버')] if name in settings.providers)
         body=f'<p>{labels} 계정으로 로그인합니다. 로그인 후 이전 페이지로 돌아갑니다.</p>'
         if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
+        if collect_profile:
+            body += signup_views.notice(settings)
+            body += f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="return_to" value="{target}"><label><input type="checkbox" name="over14" value="yes" required> [필수] 만 14세 이상입니다.</label>'
         for name,label in [('kakao','카카오'),('naver','네이버')]:
             if name in settings.providers:
                 # Keep official image bytes/ratios and readable symbol sizes.
@@ -153,15 +160,22 @@ def make_router(settings):
                 width, height = (896, 92) if name == 'kakao' else (1472, 192)
                 button = (f'<button class="provider-login {name}-login" type="submit" aria-label="{label}로 로그인">'
                           f'<img src="/auth/assets/{name}-login.png" alt="{label} 로그인" width="{width}" height="{height}" referrerpolicy="no-referrer"></button>')
-                body+=f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="provider" value="{name}"><input type="hidden" name="return_to" value="{target}">{button}</form><br>'
+                if collect_profile:
+                    body += button.replace('type="submit"', f'type="submit" name="provider" value="{name}"')
+                else:
+                    body+=f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="provider" value="{name}"><input type="hidden" name="return_to" value="{target}">{button}</form><br>'
+        if collect_profile:
+            body += '</form>'
         response=page('리치온 로그인',body)
         set_temporary(response,BROWSER,browser)
         return response
 
     @router.post('/start')
     async def start(request:Request):
-        data=await form(request,{'csrf','provider','return_to'})
+        data=await form(request,{'csrf','provider','return_to'} | ({'over14'} if collect_profile else set()))
         browser=check_post(request,data,settings)
+        if collect_profile and data.get('over14') != 'yes':
+            raise HTTPException(422, 'age_confirmation_required', headers=HEADERS)
         name=data.get('provider');target=data.get('return_to','/')
         if name not in settings.providers or target not in providers.RETURNS:
             raise HTTPException(422,'invalid_login_request',headers=HEADERS)
@@ -185,7 +199,8 @@ def make_router(settings):
             if q.get('error'): return failed(target)
             identity=providers.exchange(settings,provider,code,state,browser)
             member_id=store.member_for(identity)
-            if member_id is not None: return complete(member_id,request,target)
+            if member_id is not None and (not collect_profile or member_profile_store.completed(member_id, settings)):
+                return complete(member_id,request,target)
             ticket=store.stage_signup(settings,identity,browser,target)
             response=redirect('/auth/signup');set_temporary(response,TICKET,ticket)
             return response
@@ -195,8 +210,11 @@ def make_router(settings):
     def signup_page(request:Request):
         try:
             browser=cookie(request,BROWSER);ticket=cookie(request,TICKET)
-            store.pending(settings,ticket,browser)
+            identity, _ = store.pending(settings,ticket,browser)
         except Exception: return failed()
+        if collect_profile:
+            suggested = '' if identity.display_name == '회원' else identity.display_name
+            return page('회원가입 안내', signup_views.signup_form(settings, proof(browser,ticket), suggested))
         e=html.escape
         body=f'''<p>처음 방문하셨습니다. 아래 문서를 확인한 뒤 가입해 주세요.</p>
 <form method="post" action="/auth/signup"><input type="hidden" name="csrf" value="{proof(browser,ticket)}">
@@ -208,11 +226,23 @@ def make_router(settings):
 
     @router.post('/signup')
     async def signup(request:Request):
-        data=await form(request,{'csrf','terms','privacy','terms_version','privacy_version'})
+        data=await form(request,{'csrf','terms','privacy','terms_version','privacy_version'} | ({'name','phone','email','over14','consultation','age_range','gender'} if collect_profile else set()))
         browser=check_post(request,data,settings,signup=True)
         if (data.get('terms')!='yes' or data.get('privacy')!='yes' or data.get('terms_version')!=settings.terms_version
             or data.get('privacy_version')!=settings.privacy_version):
             raise HTTPException(422,'consent_required',headers=HEADERS)
+        if collect_profile:
+            try:
+                registration = member_profile.Registration.from_form(data)
+            except member_profile.InvalidProfile as error:
+                raise HTTPException(422, str(error), headers=HEADERS) from None
+            def save_profile():
+                try:
+                    member, target = member_profile_store.finish(settings, cookie(request,TICKET), browser, registration)
+                    return complete(member, request, target)
+                except Exception:
+                    return failed()
+            return await run_in_threadpool(save_profile)
         def finish():
             target='/'
             try:

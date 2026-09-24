@@ -16,6 +16,7 @@ import unicodedata
 from uuid import UUID, uuid4
 
 import db
+import member_profile
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_-]{43}\Z")
 SESSION_SECONDS = 12 * 60 * 60  # Development defaults; confirm UX before launch.
@@ -195,6 +196,12 @@ def resolve_session(token: str) -> Principal:
                    idle_expires_at=LEAST(expires_at, CURRENT_TIMESTAMP + %s * interval '1 second')
             WHERE token_hash=%s
         """, (IDLE_SECONDS, digest))
+        if member_profile.enabled():
+            cur.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s AND over14_confirmed AND terms_version=%s AND privacy_version=%s', (row[0], member_profile.VERSION, member_profile.VERSION))
+            registered = cur.fetchone()
+            if not registered:
+                raise AuthenticationRequired()
+            row = (row[0], registered[0], row[2], row[3])
         principal = Principal(*row)
     return principal
 
