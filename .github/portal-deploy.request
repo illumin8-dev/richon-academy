@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-edge-code",
-  "request_id": "pr24-code-rollout-20260924-cp051"
+  "operation": "inspect-edge",
+  "request_id": "pr24-code-postflight-20260924-cp052"
 }
