@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-edge",
-  "request_id": "bic-rule-saved-inspect-20260924-01"
+  "operation": "stage-edge-naver",
+  "request_id": "naver-stage-after-bic-20260924-02"
 }
