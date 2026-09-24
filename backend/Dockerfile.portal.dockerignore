@@ -4,6 +4,9 @@ backend/*
 !backend/requirements.txt
 !backend/db.py
 !backend/auth_core.py
+!backend/member_profile.py
+!backend/member_profile_store.py
+!backend/signup_views.py
 !backend/auth_http.py
 !backend/oauth_providers.py
 !backend/oauth_store.py

@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from uuid import UUID
 
 import db
+import member_profile
 
 
 class MissingMember(Exception):
@@ -54,7 +55,13 @@ def profile(member_id: UUID):
                  WHERE l.member_id=m.member_id) AS linked_order_count
             FROM richon.members m WHERE m.member_id=%s AND m.status='active'
         """, (member_id,))
-        return _row(cur)
+        result = _row(cur)
+        if member_profile.enabled():
+            cur.execute('SELECT name,phone,email,age_range,gender,consultation_consent,consented_at FROM richon.member_profiles WHERE member_id=%s AND terms_version=%s AND privacy_version=%s AND over14_confirmed', (member_id, member_profile.VERSION, member_profile.VERSION))
+            registration = _row(cur)
+            result['display_name'] = registration['name']
+            result['registration'] = registration
+        return result
 
 
 ORDER_FIELDS = "o.order_id, o.course_id, o.course_title, o.cohort, o.amount_krw, o.currency, o.status, o.created_at"
