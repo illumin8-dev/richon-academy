@@ -1,0 +1,29 @@
+name: Signup review source snapshot
+on:
+  push:
+    branches: [feat/signup-consent-policy]
+    paths: [.github/workflows/signup-review-source.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9ae550a9bc53fed5e0e785f3a9fb21b274730cc5
+          persist-credentials: false
+      - name: Package tracked review source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 9ae550a9bc53fed5e0e785f3a9fb21b274730cc5
+          git archive --format=tar HEAD > "$RUNNER_TEMP/richon-signup-source.tar"
+          sha256sum "$RUNNER_TEMP/richon-signup-source.tar"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: richon-signup-source
+          path: ${{ runner.temp }}/richon-signup-source.tar
+          retention-days: 1
+          if-no-files-found: error
