@@ -4,6 +4,9 @@
   const $ = (id) => document.getElementById(id);
   const admin = document.body.dataset.page === 'admin';
   const state = {tab: 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false};
+  const profileFields = ['phone', 'email', 'age', 'gender', 'consultation', 'consented'];
+  const ageLabels = {'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
+  const genderLabels = {female:'여성', male:'남성'};
   const labels = {kakao: '카카오', naver: '네이버', member: '일반 회원', admin: '관리자', active: '이용 중', disabled: '이용 정지'};
   const date = (v) => new Intl.DateTimeFormat('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Asia/Seoul'}).format(new Date(v));
   const money = (v) => new Intl.NumberFormat('ko-KR').format(v) + '원';
@@ -17,6 +20,8 @@
     // Do not retain previously rendered private rows after auth loss/logout.
     for (const id of ['list','table-body','providers']) if ($(id)) $(id).replaceChildren();
     for (const id of ['welcome-name','profile-name','joined','order-count','members-total','courses-total','pending-total']) text(id, '');
+    for (const key of profileFields) { text('profile-'+key, ''); if ($('profile-'+key+'-row')) $('profile-'+key+'-row').hidden = true; }
+    text('avatar', ''); text('profile-name-label', '표시 이름');
     text('gate-title', title); text('gate-text', message); $('retry-gate').hidden = !retry;
   }
   function authError(error) {
@@ -40,8 +45,26 @@
     return box;
   }
   function showProfile(profile) {
-    text('welcome-name', profile.display_name); text('profile-name', profile.display_name);
-    text('avatar', [...profile.display_name][0] || 'R'); text('joined', date(profile.created_at));
+    // The server returns registration only on the authenticated user's own API.
+    // Legacy accounts do not invent a real name from a nickname.
+    const info = profile.registration;
+    const registered = info && typeof info.name === 'string' && typeof info.phone === 'string' && typeof info.email === 'string';
+    const displayName = registered ? info.name : profile.display_name;
+    text('welcome-name', displayName); text('profile-name', displayName);
+    text('profile-name-label', registered ? '이름' : '표시 이름');
+    text('avatar', [...displayName][0] || 'R'); text('joined', date(profile.created_at));
+    for (const key of profileFields) { text('profile-'+key, ''); $('profile-'+key+'-row').hidden = !registered; }
+    if (registered) {
+      const consented = info.consultation_consent === true;
+      text('profile-phone', info.phone); text('profile-email', info.email);
+      // Optional data must stay invisible without affirmative consent, even if
+      // an unexpected upstream response contains a value.
+      text('profile-age', consented ? (Object.hasOwn(ageLabels, info.age_range) ? ageLabels[info.age_range] : '선택하지 않음') : '제공하지 않음');
+      text('profile-gender', consented ? (Object.hasOwn(genderLabels, info.gender) ? genderLabels[info.gender] : '선택하지 않음') : '제공하지 않음');
+      text('profile-consultation', consented ? '동의' : '동의하지 않음');
+      const acceptedAt = new Date(info.consented_at);
+      text('profile-consented', info.consented_at && Number.isFinite(acceptedAt.getTime()) ? date(acceptedAt) : '확인 필요');
+    }
     text('order-count', profile.linked_order_count); $('providers').replaceChildren(providerBadges(profile.providers));
     $('admin-link').hidden = profile.role !== 'admin';
   }
@@ -104,12 +127,14 @@
   }
   async function boot() {
     gate(admin?'관리자 권한을 확인하고 있습니다.':'로그인 상태를 확인하고 있습니다.','잠시만 기다려 주세요.');
+    const serial = state.request;
     try {
       const me=await api('/portal/api/me');
+      if (serial !== state.request) return;
       if(admin && me.role!=='admin'){gate('관리자만 이용할 수 있습니다.','관리자 권한이 있는 계정으로 로그인해 주세요.');return;}
       state.unlocked=true;$('gate').hidden=true;$('content').hidden=false;$('logout').hidden=false;
       if(admin)await Promise.all([summary(),list()]);else{showProfile(me);await list();}
-    }catch(error){if(!authError(error))gate('지금 정보를 불러올 수 없습니다.','연결 상태를 확인한 후 다시 시도해 주세요. 데이터가 없다는 의미는 아닙니다.',true);}
+    }catch(error){if(serial !== state.request)return;if(!authError(error))gate('지금 정보를 불러올 수 없습니다.','연결 상태를 확인한 후 다시 시도해 주세요. 데이터가 없다는 의미는 아닙니다.',true);}
   }
   $('retry-gate').addEventListener('click',boot);$('retry-list').addEventListener('click',list);
   $('refresh').addEventListener('click',()=>{list();if(admin)summary();});
