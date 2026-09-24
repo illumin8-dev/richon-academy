@@ -89,14 +89,18 @@ jobs:
           service_account: richon-portal-deploy@richon-academy.iam.gserviceaccount.com
       - name: Inspect or stage approved edge-gated service (never auto-promote)
         if: contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation)
-        run: python3 -B .github/portal/edge_ops.py
+        run: |
+          if [ "${{ needs.request.outputs.operation }}" = "inspect-edge" ]; then
+            python3 -B .github/portal/candidate_readback.py
+          else
+            python3 -B .github/portal/edge_ops.py
+          fi
       - name: Snapshot fixed service and pinned configuration
         if: ${{ !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation) }}
         run: python3 -B .github/portal/operate.py snapshot
       - name: Deploy zero-traffic candidate (or internal-login configuration)
         if: contains(fromJSON('["deploy","configure-internal-login"]'), needs.request.outputs.operation)
         run: python3 -B .github/portal/operate.py candidate
-      # Request a fresh token after build/deployment, not a possibly expired early token.
       - id: identity
         if: ${{ !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver"]'), needs.request.outputs.operation) }}
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093

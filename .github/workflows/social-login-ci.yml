@@ -19,7 +19,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Test the edge proxy without a Cloudflare account or live network
-        run: node --test edge/worker.test.mjs
+        run: node --test edge/*.test.mjs
       - name: Build portal-only image with the Dockerfile-specific allowlist
         run: docker build --pull --no-cache -f backend/Dockerfile.portal -t richon-portal:ci .
       - name: Check private code and migrations are absent from portal image
