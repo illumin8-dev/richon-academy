@@ -85,7 +85,7 @@ class EdgeBoundary:
         async def secure_send(message):
             if message['type'] == 'http.response.start':
                 headers = [(k,v) for k,v in message['headers'] if k.lower() not in {b'cache-control', b'referrer-policy'}]
-                form_page = (scope['method'] == 'GET' and scope['path'] in {'/auth/login', '/auth/signup'}
+                form_page = (scope['method'] == 'GET' and scope['path'] in {'/auth/login', '/auth/signup', '/portal/mypage'}
                              and message['status'] == 200
                              and any(k.lower() == b'content-type' and v.lower().split(b';')[0] == b'text/html'
                                      for k,v in headers))

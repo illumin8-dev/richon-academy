@@ -24,6 +24,14 @@ PAGE_HEADERS = {
     "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
 }
 
+# Native form POST needs a same-origin Origin. APIs/admin keep no-referrer.
+MEMBER_PAGE_HEADERS = {
+    **PAGE_HEADERS, "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": PAGE_HEADERS["Content-Security-Policy"].replace(
+        "style-src 'self';",
+        "style-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/;").replace("form-action 'self';", "form-action 'self' https://kauth.kakao.com https://nid.naver.com;"),
+}
+
 
 class EmptyQuery(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
@@ -189,13 +197,13 @@ def install_if_enabled(app: FastAPI) -> bool:
     async def private_portal_headers(request: Request, call_next):
         response = await call_next(request)
         if request.url.path.startswith("/portal/"):
-            response.headers.update(PAGE_HEADERS)
+            response.headers.update(MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" and response.status_code == 200 else PAGE_HEADERS)
         return response
 
     # Pages contain only the UI shell. Protected APIs decide every data access.
     @app.get("/portal/mypage", include_in_schema=False)
     def mypage():
-        return FileResponse(STATIC / "mypage.html", headers=PAGE_HEADERS)
+        return FileResponse(STATIC / "mypage.html", headers=MEMBER_PAGE_HEADERS)
 
     @app.get("/portal/admin", include_in_schema=False)
     def admin_page():
@@ -203,7 +211,7 @@ def install_if_enabled(app: FastAPI) -> bool:
 
     @app.get("/portal/assets/{asset}", include_in_schema=False)
     def asset(asset: str):
-        if asset not in {"portal.css", "portal.js"}:
+        if asset not in {"portal.css", "portal.js", "site.css", "site.js", "login.js", "account.css", "account.js"}:
             raise HTTPException(404, "not_found", headers=HEADERS)
         return FileResponse(STATIC / asset, headers=HEADERS)
     return True

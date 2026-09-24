@@ -60,7 +60,7 @@ export function returnReferer(value) {
   return null;
 }
 export function responseReferrerPolicy(path, method, status, type) {
-  return method === 'GET' && ['/auth/login', '/auth/signup'].includes(path)
+  return method === 'GET' && ['/auth/login', '/auth/signup', '/portal/mypage'].includes(path)
     && status === 200 && type?.toLowerCase().split(';')[0].trim() === 'text/html'
     ? 'same-origin' : 'no-referrer';
 }

@@ -102,9 +102,9 @@ def test_ui_shell_has_no_customer_data_and_restricts_resources(app, page):
     assert response.status_code == 200
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
     assert response.headers["cache-control"] == "no-store"
-    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["referrer-policy"] == ("same-origin" if page == "mypage" else "no-referrer")
     assert "noindex,nofollow" in response.text
-    assert '<script defer src="/portal/assets/portal.js">' in response.text
+    assert ('<script defer src="/portal/assets/account.js">' if page == 'mypage' else '<script defer src="/portal/assets/portal.js">') in response.text
     assert 'id="content" hidden' in response.text
     assert "01000000000" not in response.text
 

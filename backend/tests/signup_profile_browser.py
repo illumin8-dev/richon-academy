@@ -9,6 +9,7 @@ import sys
 sys.path[:0] = [str(Path(__file__).resolve().parents[1]), str(Path(__file__).resolve().parent)]
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from shared_ui_fixture import shared_asset
 from playwright.sync_api import sync_playwright
 import auth_core as core
 import oauth_http as h
@@ -28,6 +29,7 @@ def run_case(browser, width, consent=None, provider='kakao'):
         context.add_cookies([{'name':name,'value':value,'url':ORIGIN,'secure':True,'httpOnly':True,'sameSite':'Lax'}
                             for name,value in [(h.BROWSER,'B'*43),(h.TICKET,'T'*43)]])
     def intercept(route):
+        if shared_asset(route, ORIGIN): return
         request=route.request;url=urlsplit(request.url)
         assert url.scheme+'://'+url.netloc == ORIGIN, 'Unexpected network blocked'
         with TestClient(app,base_url=ORIGIN) as client:

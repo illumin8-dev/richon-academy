@@ -32,3 +32,11 @@ portal_static/*
 !portal_static/manual.js
 !.dockerignore
 !.gcloudignore
+
+!portal_static/site.css
+!portal_static/site.js
+!portal_static/login.js
+!portal_static/account.css
+!portal_static/account.js
+!portal_static/site-header.html
+!portal_static/site-footer.html
