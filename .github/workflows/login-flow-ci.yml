@@ -40,3 +40,6 @@ jobs:
       - name: Provider design at mobile and desktop sizes (synthetic only)
         working-directory: backend
         run: python tests/provider_design_browser.py
+      - name: Approved signup fields and optional consent (synthetic only)
+        working-directory: backend
+        run: python tests/signup_profile_browser.py
