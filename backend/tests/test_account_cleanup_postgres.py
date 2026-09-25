@@ -8,6 +8,10 @@ import pytest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'ops'))
 import cleanup_account_retention as cleanup
+from test_orders_postgres import postgres
+from test_auth_postgres import guarded_target, auth_postgres
+from test_oauth_postgres import oauth_db
+from test_member_profile_postgres import profile_db
 from test_account_postgres import account_db, registered
 
 pytestmark=pytest.mark.skipif(

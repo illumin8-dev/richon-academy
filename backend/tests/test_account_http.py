@@ -10,6 +10,7 @@ import account_http as h
 import account_store as store
 import auth_core as core
 import auth_http as auth
+import oauth_http as oauth
 from test_member_profile import cfg
 from test_oauth import ORIGIN
 
@@ -100,12 +101,11 @@ def test_withdraw_cancel_is_csrf_protected(client,member,monkeypatch):
 
 def test_link_confirmation_is_separate_from_provider_auth(client,member,monkeypatch):
     monkeypatch.setattr(store,'pending_link',Mock(return_value='kakao'))
-    client.cookies.set('__Host-richon-link','L'*43)
-    client.cookies.set('__Host-richon-oauth','B'*43)
-    response=client.get('/portal/api/me/logins/link/pending')
-    assert response.json()=={'provider':'kakao'}
+    cookie=f"{auth.COOKIE}={TOKEN}; {oauth.LINK}={'L'*43}; {oauth.BROWSER}={'B'*43}"
+    response=client.get('/portal/api/me/logins/link/pending',headers={'Cookie':cookie})
+    assert response.status_code==200 and response.json()=={'provider':'kakao'}
     confirm=Mock(return_value=['kakao','naver']);monkeypatch.setattr(store,'confirm_link',confirm)
-    response=client.post('/portal/api/me/logins/link/confirm',headers=headers())
+    response=client.post('/portal/api/me/logins/link/confirm',headers={**headers(),'Cookie':cookie})
     assert response.status_code==200 and response.json()=={'providers':['kakao','naver']}
     assert confirm.call_args.args[-1]==member.member_id
 

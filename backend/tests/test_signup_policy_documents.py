@@ -45,7 +45,7 @@ def test_privacy_matches_approved_notice_without_unapproved_claims():
     privacy = (DRAFTS / 'privacy.html').read_text()
     notice = (ROOT / 'signup_views.py').read_text()
     for phrase in ('이름', '휴대전화번호', '이메일', '선택 / 연령대·성별',
-                   '상담 내용 준비 및 상담 진행', '회원 서비스 안내 및 강의자료 발송',
+                   '생애주기와 주거 수요를 고려한 맞춤 상담 준비 및 상담 우선순위 설정', '회원 서비스 안내 및 강의자료 발송',
                    '선택정보 제공에 동의하지 않아도', '만 14세 이상', '동의 버전·시점'):
         assert phrase in privacy and phrase in notice
     for phrase in ('Google Cloud', 'Neon', 'Cloudflare', '공식 이메일', '시행일',

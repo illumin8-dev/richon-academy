@@ -11,9 +11,12 @@ import db
 import member_profile as profile
 import portal_readiness as ready
 
+from test_orders_postgres import postgres
+from test_auth_postgres import guarded_target, auth_postgres
+from test_oauth_postgres import oauth_db
+from test_member_profile_postgres import profile_db, save
 from test_account_postgres import account_db
 from test_member_profile import cfg
-from test_member_profile_postgres import save
 
 pytestmark=pytest.mark.skipif(
     os.getenv('RICHON_EMPTY_TEST_DB')!='YES' or not os.getenv('RICHON_TEST_DATABASE_URL'),

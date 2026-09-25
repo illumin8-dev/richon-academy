@@ -10,6 +10,9 @@ import auth_core as core
 import member_profile as profile
 import orders
 
+from test_orders_postgres import postgres
+from test_auth_postgres import guarded_target, auth_postgres
+from test_oauth_postgres import oauth_db
 from test_member_profile import cfg
 from test_member_profile_postgres import profile_db, save
 
