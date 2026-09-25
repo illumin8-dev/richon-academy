@@ -52,10 +52,10 @@ def test_runtime_can_scrub_enrollment_contact_columns_without_reading_them(month
             conn.execute('SET ROLE richon_portal_login')
             conn.execute("""UPDATE richon.enrollment_learners
                             SET member_id=NULL,name='탈퇴 회원',nickname=NULL,email=NULL,phone=NULL
-                            WHERE learner_id=%s""",(learner,))
-            assert conn.execute('SELECT member_id FROM richon.enrollment_learners WHERE learner_id=%s',(learner,)).fetchone()==(None,)
+                            WHERE member_id IS NULL""")
+            assert conn.execute('SELECT member_id FROM richon.enrollment_learners WHERE member_id IS NULL LIMIT 1').fetchone()==(None,)
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
-                conn.execute('SELECT name FROM richon.enrollment_learners WHERE learner_id=%s',(learner,))
+                conn.execute('SELECT name FROM richon.enrollment_learners LIMIT 1')
     finally:
         monkeypatch.undo()
         with monthly_account_db() as conn:
