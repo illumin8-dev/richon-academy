@@ -39,6 +39,7 @@ def make_app():
 def main():
     os.environ['RICHON_AUTH_ENABLED']='true'
     os.environ['RICHON_PORTAL_ENABLED']='true'
+    os.environ['RICHON_ACCOUNT_ENABLED']='true'
     principal=core.Principal(uuid4(),'테스트 회원','member',datetime.now(timezone.utc))
     profile={'member_id':principal.member_id,'display_name':'회원','role':'member','created_at':datetime.now(timezone.utc),'providers':['kakao','naver'],'linked_order_count':0}
     orders={'items':[],'limit':20,'offset':0,'has_more':False}
@@ -60,6 +61,12 @@ def main():
                 reqroute.fulfill(status=200,content_type='text/html',body='<h1>PROVIDER</h1>')
                 return
             assert url.scheme+'://'+url.netloc==ORIGIN
+            if url.path=='/portal/api/me/security':
+                reqroute.fulfill(status=200,content_type='application/json',body=json.dumps({'fresh_auth':True,'provider_unlink_failed':False}));return
+            if url.path in {'/portal/api/me/logins/link/pending','/portal/api/me/withdraw/status'}:
+                reqroute.fulfill(status=204,body='');return
+            if url.path=='/portal/api/me/profile' and req.method=='POST':
+                reqroute.fulfill(status=204,body='');return
             headers=dict(req.all_headers());headers['X-Richon-Edge-Key']=KEY
             with TestClient(app,base_url=ORIGIN) as client:
                 response=client.request(req.method,req.url,headers=headers,content=req.post_data_buffer,follow_redirects=False)
@@ -71,9 +78,30 @@ def main():
             page.goto(ORIGIN+'/portal/mypage')
             expect(page.get_by_role('heading',name='마이페이지')).to_be_visible()
             expect(page.locator('.sidebar')).to_have_count(0)
-            expect(page.locator('.account-withdrawal')).to_have_text('회원탈퇴 문의')
-            assert page.locator('.account-withdrawal').evaluate('e=>getComputedStyle(e).fontSize')=='12px'
+            expect(page.locator('#edit-profile')).to_be_visible()
+            expect(page.locator('#manage-logins')).to_be_visible()
+            expect(page.locator('#withdraw-account')).to_be_visible()
+            expect(page.locator('#withdraw-inquiry')).to_be_hidden()
+            assert page.locator('#withdraw-account').evaluate('e=>getComputedStyle(e).fontSize')=='12px'
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+        page.set_viewport_size({'width':1280,'height':900})
+        page.goto(ORIGIN+'/portal/mypage')
+        page.locator('#edit-profile').click()
+        expect(page.locator('#profile-dialog')).to_be_visible()
+        expect(page.locator('#edit-name')).to_have_value('합성 회원')
+        expect(page.locator('#edit-age')).to_have_value('30-39')
+        page.locator('[data-close-dialog]').first.click()
+        page.locator('#manage-logins').click()
+        expect(page.locator('#login-dialog')).to_be_visible()
+        expect(page.locator('#login-connections .account-login-row')).to_have_count(2)
+        expect(page.locator('#login-connections')).to_contain_text('카카오')
+        expect(page.locator('#login-connections')).to_contain_text('네이버')
+        page.keyboard.press('Escape')
+        page.locator('#withdraw-account').click()
+        expect(page.locator('#withdraw-dialog')).to_be_visible()
+        expect(page.locator('#withdraw-dialog')).to_contain_text('환불')
+        expect(page.locator('#withdraw-dialog')).to_contain_text('회원탈퇴')
+        page.keyboard.press('Escape')
         context.clear_cookies()
         page.goto(ORIGIN+'/portal/mypage')
         expect(page.locator('#gate-login')).to_be_visible()
@@ -88,7 +116,7 @@ def main():
         page.locator('#richon-login-dialog .kakao-login').click()
         expect(page.get_by_role('heading',name='PROVIDER')).to_be_visible()
         context.close();browser.close()
-    print('PASS: shared member chrome, responsive shell, quiet withdrawal link and same-page provider selector; synthetic only')
+    print('PASS: shared member chrome, responsive shell, account edit/link/withdraw dialogs, quiet withdrawal action and same-page provider selector; synthetic only')
 
 if __name__=='__main__':
     main()

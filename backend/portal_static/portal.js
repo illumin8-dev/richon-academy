@@ -7,7 +7,7 @@
   const profileFields = ['phone', 'email', 'age', 'gender', 'consultation', 'consented'];
   const ageLabels = {'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
   const genderLabels = {female:'여성', male:'남성'};
-  const labels = {kakao: '카카오', naver: '네이버', member: '일반 회원', admin: '관리자', active: '이용 중', disabled: '이용 정지'};
+  const labels = {kakao: '카카오', naver: '네이버', member: '일반 회원', admin: '관리자', active: '이용 중', disabled: '이용 정지', withdrawn: '탈퇴'};
   const date = (v) => new Intl.DateTimeFormat('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Asia/Seoul'}).format(new Date(v));
   const money = (v) => new Intl.NumberFormat('ko-KR').format(v) + '원';
   const text = (id, v) => { if ($(id)) $(id).textContent = String(v); };
@@ -81,7 +81,7 @@
   }
   const configs = {
     orders: {title:'신청·주문 내역', description:'연결되지 않은 비회원 주문도 함께 확인합니다.', search:'신청자 이름 / 주문번호 / 연락처 검색', placeholder:'이름 또는 정확한 주문번호·전화번호·이메일', filter:'회원 연결', key:'linked', options:[['','전체'],['true','연결됨'],['false','미연결']], heads:['신청자','강의 / 기수','주문 금액','상태','신청일']},
-    members: {title:'회원 목록', description:'회원과 연결된 로그인 종류를 확인합니다. 비회원 신청자는 주문 목록에서 확인하세요.', search:'회원 이름 / 회원번호 검색', placeholder:'표시 이름 또는 정확한 회원번호', filter:'회원 상태', key:'status', options:[['','전체'],['active','이용 중'],['disabled','이용 정지']], heads:['회원','로그인 계정','역할 / 상태','연결된 주문','가입일']},
+    members: {title:'회원 목록', description:'회원과 연결된 로그인 종류를 확인합니다. 비회원 신청자는 주문 목록에서 확인하세요.', search:'회원 이름 / 회원번호 검색', placeholder:'표시 이름 또는 정확한 회원번호', filter:'회원 상태', key:'status', options:[['','전체'],['active','이용 중'],['disabled','이용 정지'],['withdrawn','탈퇴']], heads:['회원','로그인 계정','역할 / 상태','연결된 주문','가입일']},
     courses: {title:'강의 목록', description:'서버에 등록된 강의와 가격입니다. 수강기간과 수강 확정은 아직 관리하지 않습니다.', search:'강의명 / 기수 검색', placeholder:'강의명, 기수 또는 정확한 강의 ID', filter:'신청 가능', key:'enabled', options:[['','전체'],['true','가능'],['false','중지']], heads:['강의 / 기수','수강료','신청 상태','등록일']}
   };
   function primary(main, sub) { const box=element('div'); box.append(element('div',main,'primary-text')); if (sub) box.append(element('div',sub,'secondary')); return box; }

@@ -50,3 +50,21 @@ test('both official provider assets are fixed GET-only gated no-store subrequest
   }
   assert.equal(allowed('/auth/assets/other.png','GET'),false);
 });
+
+
+test('account actions may redirect only to the two official authorization hosts',()=>{
+  for(const path of ['/portal/api/me/logins/link/start','/portal/api/me/reauth/start','/portal/api/me/logins/unlink/start','/portal/api/me/withdraw/provider/start']) {
+    assert.equal(safeLocation('https://kauth.kakao.com/oauth/authorize?state=x',path),'https://kauth.kakao.com/oauth/authorize?state=x');
+    assert.equal(safeLocation('https://nid.naver.com/oauth2.0/authorize?state=x',path),'https://nid.naver.com/oauth2.0/authorize?state=x');
+  }
+  for(const value of ['https://evil.invalid/oauth/authorize','https://kauth.kakao.com/other','https://nid.naver.com/other']) {
+    assert.throws(()=>safeLocation(value,'/portal/api/me/logins/link/start'));
+  }
+});
+
+test('link confirmation cookie remains host-only secure httponly and is forwarded only to portal',async()=>{
+  const cookie='__Host-richon-link='+'L'.repeat(43)+'; Path=/; Secure; HttpOnly; SameSite=Lax';
+  const result=await handle(new Request(ORIGIN+'/auth/kakao/callback'),env,async()=>new Response(null,{status:303,headers:{Location:'/portal/mypage','Set-Cookie':cookie}}));
+  assert.equal(result.status,303);
+  assert.match(result.headers.get('set-cookie')||'',/__Host-richon-link=/);
+});

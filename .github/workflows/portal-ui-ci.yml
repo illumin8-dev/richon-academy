@@ -2,9 +2,9 @@ name: Portal UI checks (synthetic data only)
 on:
   push:
     branches: ['feat/backend-*', 'fix/backend-*']
-    paths: ['backend/portal_static/**', 'backend/tests/portal_browser.py', '.github/workflows/portal-ui-ci.yml']
+    paths: ['backend/portal_static/**', 'frontend/shared/**', 'tools/build_site_shell.py', 'tools/test_shared_shell.py', 'backend/tests/portal_browser.py', 'backend/tests/account_browser.py', '.github/workflows/portal-ui-ci.yml']
   pull_request:
-    paths: ['backend/portal_static/**', 'backend/tests/portal_browser.py', '.github/workflows/portal-ui-ci.yml']
+    paths: ['backend/portal_static/**', 'frontend/shared/**', 'tools/build_site_shell.py', 'tools/test_shared_shell.py', 'backend/tests/portal_browser.py', 'backend/tests/account_browser.py', '.github/workflows/portal-ui-ci.yml']
 permissions:
   contents: read
 concurrency:
@@ -23,9 +23,14 @@ jobs:
           python-version: '3.13'
       - name: Install test-only browser tools
         run: |
-          python -m pip install 'playwright==1.57.0'
+          python -m pip install -r backend/requirements-dev.txt 'playwright==1.57.0'
           python -m playwright install --with-deps chromium
       - name: Test the UI without real credentials or customer data
         run: |
           node --check backend/portal_static/portal.js
+          node --check backend/portal_static/account.js
+          node --check backend/portal_static/login.js
+          python tools/build_site_shell.py --check
+          python -m unittest discover -s tools -p 'test_*.py' -v
           python backend/tests/portal_browser.py
+          python backend/tests/account_browser.py

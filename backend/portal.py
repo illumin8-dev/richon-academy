@@ -54,7 +54,7 @@ class SearchQuery(PageQuery):
 
 
 class MemberQuery(SearchQuery):
-    status: Literal["active", "disabled"] | None = None
+    status: Literal["active", "disabled", "withdrawn"] | None = None
 
 
 class CourseQuery(SearchQuery):
@@ -86,10 +86,11 @@ class RegistrationView(BaseModel):
 
 class AccountProfile(Profile):
     registration: RegistrationView | None = None
+    account_actions: bool = False
 
 
 class MemberItem(Profile):
-    status: Literal["active", "disabled"]
+    status: Literal["active", "disabled", "withdrawn"]
 
 
 class OrderItem(BaseModel):
@@ -153,7 +154,9 @@ def make_router() -> APIRouter:
     @router.get("/me", response_model=AccountProfile, response_model_exclude_none=True)
     def me(response: Response, member: Annotated[Principal, Depends(require_member)],
            params: Annotated[EmptyQuery, Query()]):
-        return read(response, store.profile, member.member_id)
+        result = read(response, store.profile, member.member_id)
+        result['account_actions'] = os.getenv('RICHON_ACCOUNT_ENABLED','false') == 'true'
+        return result
 
     @router.get("/me/orders", response_model=PageResult[OrderItem])
     def my_orders(response: Response, member: Annotated[Principal, Depends(require_member)],

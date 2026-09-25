@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import auth_http
 import oauth_http
+import account_http
 import portal
 import monthly_portal
 import manual_portal
@@ -110,6 +111,7 @@ def build_app():
             raise ValueError('portal_login_required')
         if not portal.install_if_enabled(app):
             raise ValueError('portal_pages_required')
+        account_http.install_if_enabled(app)
         monthly_portal.install_if_enabled(app)
         manual_portal.install_if_enabled(app)
     app.add_middleware(EdgeBoundary, enabled=enabled, secret=os.getenv('RICHON_EDGE_SECRET', ''))

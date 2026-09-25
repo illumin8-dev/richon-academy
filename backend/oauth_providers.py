@@ -24,6 +24,18 @@ RETURNS = PUBLIC_RETURNS | frozenset({'/portal/mypage','/portal/admin','/portal/
 class ProviderRejected(Exception):
     """Safe fixed error; never contains provider response bodies or credentials."""
 
+
+@dataclass(frozen=True, repr=False)
+class VerifiedProviderSession:
+    identity: VerifiedIdentity
+    access_token: str = field(repr=False)
+
+    def __post_init__(self):
+        if (not isinstance(self.access_token, str)
+                or not re.fullmatch(r'[A-Za-z0-9._~+/-]{1,8192}={0,2}', self.access_token)):
+            raise ProviderRejected()
+
+
 @dataclass(frozen=True)
 class Provider:
     name: str
@@ -88,12 +100,16 @@ def verifier(browser,state):
     digest=hmac.new(browser.encode(),('richon/pkce/v1/'+state).encode(),hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest).rstrip(b'=').decode()
 
-def authorization_url(settings,name,state,browser):
+def authorization_url(settings,name,state,browser,*,reauthenticate=False):
     provider=settings.providers[name]
     args={'response_type':'code','client_id':provider.client_id,'redirect_uri':settings.callback(name),'state':state}
     if name=='kakao':
         challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier(browser,state).encode()).digest()).rstrip(b'=').decode()
         args.update(code_challenge=challenge,code_challenge_method='S256')
+        if reauthenticate:
+            args['prompt']='login'
+    elif reauthenticate:
+        args['auth_type']='reauthenticate'
     return ENDPOINTS[name][0]+'?'+urlencode(args)
 
 def _json(client,method,url,**kwargs):
@@ -113,7 +129,7 @@ def _json(client,method,url,**kwargs):
 def _client():
     return httpx.Client(timeout=httpx.Timeout(8.0),follow_redirects=False,trust_env=False)
 
-def exchange(settings,name,code,state,browser):
+def exchange_session(settings,name,code,state,browser):
     provider=settings.providers[name]
     form={'grant_type':'authorization_code','client_id':provider.client_id,'client_secret':provider.secret,
           'redirect_uri':settings.callback(name),'code':code,'state':state}
@@ -149,5 +165,48 @@ def exchange(settings,name,code,state,browser):
         display=nickname if isinstance(nickname,str) else ''
         display=''.join(c for c in display if not unicodedata.category(c).startswith('C')).strip()[:80]
         if not display: display='회원' if member_profile.enabled(settings.terms_version, settings.privacy_version) else ('카카오 회원' if name=='kakao' else '네이버 회원')
-        try: return VerifiedIdentity(name,provider.identity_scope,str(subject),display)
-        except ValueError: raise ProviderRejected() from None
+        try:
+            identity=VerifiedIdentity(name,provider.identity_scope,str(subject),display)
+            return VerifiedProviderSession(identity,access)
+        except ValueError:
+            raise ProviderRejected() from None
+
+
+def exchange(settings,name,code,state,browser):
+    return exchange_session(settings,name,code,state,browser).identity
+
+
+def unlink_access(settings, session):
+    """Revoke the just-verified provider relationship without persisting tokens."""
+    if not isinstance(session, VerifiedProviderSession):
+        raise ProviderRejected()
+    identity=session.identity
+    if identity.provider not in settings.providers:
+        raise ProviderRejected()
+    provider=settings.providers[identity.provider]
+    if identity.app_id != provider.identity_scope:
+        raise ProviderRejected()
+    with _client() as client:
+        if identity.provider=='kakao':
+            result=_json(client,'POST','https://kapi.kakao.com/v1/user/unlink',
+                         headers={'Authorization':'Bearer '+session.access_token})
+            try:
+                returned=str(result.get('id'))
+            except Exception:
+                raise ProviderRejected() from None
+            if returned != identity.subject:
+                raise ProviderRejected()
+            return
+        try:
+            response=client.post('https://nid.naver.com/oauth2.0/revoke',
+                data={'client_id':provider.client_id,'client_secret':provider.secret,
+                      'token':session.access_token,'token_type_hint':'access_token'})
+            if response.status_code != 200:
+                raise ProviderRejected()
+            # Current NAVER contract returns no success body. Reject redirects.
+            if response.history or response.url.host != 'nid.naver.com':
+                raise ProviderRejected()
+        except ProviderRejected:
+            raise
+        except Exception:
+            raise ProviderRejected() from None
