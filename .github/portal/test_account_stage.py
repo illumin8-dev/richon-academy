@@ -52,12 +52,17 @@ class AccountStageTests(TestCase):
         def gc(*args, **kwargs):
             self.assertEqual(args[:3],('run','revisions','describe'))
             return revisions[args[3]]
-        observations = {
-            c.URL:'missing-key:500:non_json,wrong-key:500:non_json',
-            e.CANDIDATE:'missing-key:500:non_json,wrong-key:500:non_json',
-        }
-        with patch.object(c,'gc',side_effect=gc),              patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(r,'safe_origin_observation',side_effect=lambda url:observations[url]),              patch.object(a.op,'summary'):
-            a.validate_before(svc,policy)
+        for status in (500,503):
+            observations = {
+                c.URL:f'missing-key:{status}:non_json,wrong-key:{status}:non_json',
+                e.CANDIDATE:f'missing-key:{status}:non_json,wrong-key:{status}:non_json',
+            }
+            with self.subTest(status=status), \
+                 patch.object(c,'gc',side_effect=gc), \
+                 patch.object(e,'access_status',return_value='signin-gateway-confirmed'), \
+                 patch.object(r,'safe_origin_observation',side_effect=lambda url:observations[url]), \
+                 patch.object(a.op,'summary'):
+                a.validate_before(svc,policy)
 
     def test_unexpected_existing_origin_state_blocks_staging(self):
         svc, policy, revisions = fixture()
