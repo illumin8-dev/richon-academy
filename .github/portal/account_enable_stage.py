@@ -25,6 +25,7 @@ import candidate_readback as r
 import operate as op
 
 OPERATION='stage-account-enabled'
+READ_OPERATION='inspect-account-enabled'
 CHECK_TAG='portal-account-livecheck'
 CHECK_URL='https://' + CHECK_TAG + '---' + urlsplit(c.URL).netloc
 
@@ -43,6 +44,35 @@ def code_check_revision(svc):
            and re.fullmatch(c.SERVICE+r'-acct-[0-9]+-[0-9]+',rows[0].get('revisionName','')),
            'account_code_check_tag_required')
     return rows[0]['revisionName']
+
+
+def worker_candidate_revision(svc):
+    rows=[row for row in svc.get('status',{}).get('traffic',[])
+          if row.get('tag')==c.TAG]
+    c.need(len(rows)==1 and int(rows[0].get('percent',0))==0
+           and rows[0].get('url')==e.CANDIDATE
+           and re.fullmatch(c.SERVICE+r'-accton-[0-9]+-[0-9]+',rows[0].get('revisionName','')),
+           'account_enabled_worker_tag_required')
+    return rows[0]['revisionName']
+
+
+def validate_code_check_revision(svc,policy,revision_name):
+    revision=c.gc('run','revisions','describe',revision_name,'--region='+c.REGION)
+    meta=revision.get('metadata',{})
+    c.need(meta.get('name')==revision_name and str(meta.get('namespace'))==c.NUMBER
+           and meta.get('labels',{}).get('serving.knative.dev/service')==c.SERVICE,
+           'account_code_check_revision_identity_mismatch')
+    c.need(any(x.get('type')=='Ready' and x.get('status')=='True'
+               for x in revision.get('status',{}).get('conditions',[])),
+           'account_code_check_revision_not_ready')
+    view=deepcopy(svc)
+    view['spec']['template']['spec']=deepcopy(revision.get('spec',{}))
+    view['spec']['template']['metadata']['annotations']=deepcopy(meta.get('annotations',{}))
+    view['status']['latestCreatedRevisionName']=revision_name
+    view['status']['latestReadyRevisionName']=revision_name
+    info=c.inspect(view,policy,boundary='edge')
+    c.need(info['account_enabled'] is False,'account_code_check_must_remain_off')
+    return info['image']
 
 
 def expected_before_rows(code_revision):
@@ -180,9 +210,44 @@ def rollback_worker_tag(old_revision):
         raise c.Stop('account_enabled_rollback_failed') from None
 
 
+def inspect_current(sha):
+    request=c.read_request()
+    c.need(request['operation']==READ_OPERATION,'explicit_account_enable_readback_required')
+    svc,policy=e.get_service()
+    info=c.inspect(svc,policy,boundary='edge')
+    c.need(info['account_enabled'] is True,'account_enabled_readback_flag_missing')
+    code_revision=code_check_revision(svc)
+    worker_revision=worker_candidate_revision(svc)
+    c.need(svc['status']['latestCreatedRevisionName']==worker_revision
+           and svc['status']['latestReadyRevisionName']==worker_revision,
+           'account_enabled_readback_latest_mismatch')
+    c.need(tagged_rows(svc)==expected_switched_rows(code_revision,worker_revision),
+           'account_enabled_readback_tags_mismatch')
+    c.need(c.traffic(svc)==[(r.SERVING,100)],'account_enabled_readback_default_traffic_changed')
+    code_image=validate_code_check_revision(svc,policy,code_revision)
+    c.need(info['image']==code_image,'account_enabled_runtime_image_changed')
+    verify_revision(worker_revision,svc,policy)
+    probe_gate(e.CANDIDATE)
+    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    fresh,fresh_policy=e.get_service()
+    c.need(fresh['spec']==svc['spec']
+           and c.policy_key(fresh_policy)==c.policy_key(policy)
+           and tagged_rows(fresh)==tagged_rows(svc),
+           'account_enabled_changed_during_readback')
+    op.summary('ACCOUNT-ENABLED READBACK PASSED: '+worker_revision)
+    op.summary('SOURCE CONTROL: '+sha+' / runtime image: '+info['image'].split('@',1)[1])
+    op.summary('RICHON_ACCOUNT_ENABLED=true / policy=member-info-v1 / portal-candidate only.')
+    op.summary('DEFAULT TRAFFIC UNCHANGED: '+r.SERVING+' = 100%.')
+    op.summary('CLOUDFLARE ACCESS: signin gateway confirmed / READ-ONLY.')
+    op.summary('BROWSER_PROVIDER_TEST=READY')
+    return 0
+
+
 def run():
     sha=c.source(live=True)
     request=c.read_request()
+    if request['operation']==READ_OPERATION:
+        return inspect_current(sha)
     c.need(request['operation']==OPERATION,'explicit_account_enable_stage_required')
 
     before,policy=e.get_service()
