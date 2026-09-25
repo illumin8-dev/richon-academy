@@ -9,7 +9,6 @@ import pytest
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'ops'))
 import cleanup_account_retention as cleanup
 from test_account_postgres import account_db, registered
-from test_orders_postgres import guarded_target
 
 pytestmark=pytest.mark.skipif(
     os.getenv('RICHON_EMPTY_TEST_DB')!='YES' or not os.getenv('RICHON_TEST_DATABASE_URL'),

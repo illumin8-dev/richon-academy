@@ -41,7 +41,16 @@ def main():
     os.environ['RICHON_PORTAL_ENABLED']='true'
     os.environ['RICHON_ACCOUNT_ENABLED']='true'
     principal=core.Principal(uuid4(),'테스트 회원','member',datetime.now(timezone.utc))
-    profile={'member_id':principal.member_id,'display_name':'회원','role':'member','created_at':datetime.now(timezone.utc),'providers':['kakao','naver'],'linked_order_count':0}
+    profile={
+        'member_id':principal.member_id,'display_name':'회원','role':'member',
+        'created_at':datetime.now(timezone.utc),'providers':['kakao','naver'],
+        'linked_order_count':0,
+        'registration':{
+            'name':'합성 회원','phone':'01012345678','email':'synthetic@example.invalid',
+            'age_range':'30-39','gender':'female','consultation_consent':True,
+            'consented_at':datetime.now(timezone.utc),
+        },
+    }
     orders={'items':[],'limit':20,'offset':0,'has_more':False}
     app=make_app()
     with patch.object(core,'resolve_session',return_value=principal), patch.object(portal_store,'profile',return_value=profile), patch.object(portal_store,'own_orders',return_value=orders), patch.object(oauth_store,'begin',return_value='S'*43), sync_playwright() as p:
