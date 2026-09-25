@@ -1,4 +1,4 @@
 {
-  "operation": "stage-account-enabled",
-  "request_id": "account-enabled-candidate-20260925-a"
+  "operation": "inspect-account-enabled",
+  "request_id": "account-enabled-readback-20260925-a"
 }
