@@ -122,8 +122,10 @@ def main():
         expect(page.locator('#richon-login-dialog')).to_be_hidden()
         expect(page.locator('#gate-login')).to_be_focused()
         page.locator('#gate-login').click()
-        page.locator('#richon-login-dialog .kakao-login').click()
-        expect(page.get_by_role('heading',name='PROVIDER')).to_be_visible()
+        with page.expect_request(lambda request: urlsplit(request.url).path=='/auth/start' and request.method=='POST') as submitted:
+            page.locator('#richon-login-dialog .kakao-login').click()
+        request=submitted.value
+        assert 'provider=kakao' in (request.post_data or '')
         context.close();browser.close()
     print('PASS: shared member chrome, responsive shell, account edit/link/withdraw dialogs, quiet withdrawal action and same-page provider selector; synthetic only')
 
