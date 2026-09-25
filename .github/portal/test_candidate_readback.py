@@ -133,3 +133,26 @@ class CandidateReadback(TestCase):
         with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
             with self.assertRaisesRegex(c.Stop,'candidate_origin_app_gate_not_confirmed'):
                 r.inspect_existing(svc,policy)
+
+
+    def test_safe_origin_observation_allows_only_fixed_detail_values(self):
+        class Headers(dict):
+            pass
+        responses = [
+            (503, Headers({'Content-Type':'application/json'}), b'{"detail":"portal_not_enabled"}'),
+            (403, Headers({'Content-Type':'application/json'}), b'{"detail":"secret-value-that-must-not-leak"}'),
+        ]
+        with patch.object(e,'request',side_effect=responses):
+            value=r.safe_origin_observation(c.URL)
+        self.assertEqual(value,'missing-key:503:portal_not_enabled,wrong-key:403:other_json')
+        self.assertNotIn('secret-value-that-must-not-leak',value)
+
+    def test_safe_origin_observation_never_emits_non_json_body(self):
+        with patch.object(e,'request',side_effect=[
+            (500, {'Content-Type':'text/plain'}, b'raw sensitive body'),
+            (502, {'Content-Type':'text/html'}, b'<html>private</html>'),
+        ]):
+            value=r.safe_origin_observation(c.URL)
+        self.assertEqual(value,'missing-key:500:non_json,wrong-key:502:non_json')
+        self.assertNotIn('sensitive',value)
+        self.assertNotIn('private',value)
