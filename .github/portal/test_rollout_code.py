@@ -124,7 +124,7 @@ class CodeRollout(TestCase):
         text=(Path(__file__).parents[1]/'workflows/portal-deploy.yml').read_text()
         self.assertIn('python3 -B .github/portal/rollout_code.py',text)
         self.assertIn('["deploy","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code"]',text)
-        self.assertIn('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code"]',text)
+        self.assertIn('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled"]',text)
         self.assertNotIn('secrets versions access',text)
 
     def test_full_mocked_run_two_narrow_writes_and_preserves_settings(self):
