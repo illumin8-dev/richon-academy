@@ -58,6 +58,21 @@ def merged_grants(base, extra):
     return result
 
 
+def account_grants_prepared(cur):
+    """Recognize only the reviewed DB010 runtime grant profile marker.
+
+    This does not enable account routes. It only lets a new revision start
+    between owner-run privilege preparation and a later feature-gate change.
+    Exact privilege checks below still reject missing or broader grants.
+    """
+    cur.execute("SELECT to_regclass('richon.retained_order_records') IS NOT NULL")
+    if cur.fetchone() != (True,):
+        return False
+    cur.execute("""SELECT has_column_privilege(
+        %s,'richon.retained_order_records','order_id','INSERT')""",(ROLE,))
+    return cur.fetchone() == (True,)
+
+
 def check_role(cur):
     # Explicit target checks also work for a non-superuser schema owner, without SET ROLE.
     cur.execute("SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s", (ROLE,))
@@ -74,12 +89,13 @@ def check_role(cur):
     profile_active = member_profile.enabled()
     if account and not profile_active:
         raise ValueError('account_requires_member_profile_policy')
-    tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account else ())
+    account_grants = account or account_grants_prepared(cur)
+    tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
     updates = UPDATE
     deletes = DELETE
     write_only = set(ACCOUNT_WRITE_ONLY)
-    if account:
+    if account_grants:
         inserts = merged_grants(inserts, ACCOUNT_INSERT)
         updates = merged_grants(UPDATE, ACCOUNT_UPDATE)
         deletes = tuple(dict.fromkeys((*DELETE, *ACCOUNT_DELETE)))

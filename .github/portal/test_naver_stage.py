@@ -120,8 +120,8 @@ class NaverStageTests(TestCase):
 
     def test_workflow_builds_before_auth_and_new_mode_never_enters_legacy_promote(self):
         text = (Path(__file__).resolve().parents[1] / 'workflows/portal-deploy.yml').read_text()
-        self.assertIn('["deploy","stage-edge","stage-edge-naver","rollout-edge-code"]', text)
-        self.assertIn('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code"]', text)
+        self.assertIn('["deploy","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code"]', text)
+        self.assertIn('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code"]', text)
         self.assertIn('NAVER_CLIENT_ID=synthetic', text)
         self.assertLess(text.index('Build portal image'), text.index('- id: auth'))
         self.assertNotIn('secrets: inherit', text)

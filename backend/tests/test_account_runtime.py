@@ -132,3 +132,31 @@ def test_account_runtime_still_cannot_broaden_privileges(restricted_account,sql)
     import psycopg
     with pytest.raises(psycopg.errors.InsufficientPrivilege):
         with restricted_account(None) as conn:conn.execute(sql)
+
+
+def test_prepared_account_grants_allow_startup_while_feature_and_profile_policy_are_off(
+        account_db, restricted_account, monkeypatch):
+    monkeypatch.setenv('RICHON_ACCOUNT_ENABLED','false')
+    monkeypatch.setenv('RICHON_TERMS_VERSION','internal-test-v1')
+    monkeypatch.setenv('RICHON_PRIVACY_VERSION','internal-test-v1')
+    assert ready.account_enabled() is False
+    assert profile.enabled() is False
+    with restricted_account(None) as conn:
+        conn.read_only=True
+        with conn.cursor() as cur:
+            assert ready.account_grants_prepared(cur) is True
+            ready.check_cursor(cur)
+
+
+def test_prepared_account_grants_still_fail_closed_when_exact_grant_is_missing(
+        account_db, restricted_account, monkeypatch):
+    monkeypatch.setenv('RICHON_ACCOUNT_ENABLED','false')
+    monkeypatch.setenv('RICHON_TERMS_VERSION','internal-test-v1')
+    monkeypatch.setenv('RICHON_PRIVACY_VERSION','internal-test-v1')
+    with account_db() as conn:
+        conn.execute('REVOKE DELETE ON richon.auth_identities FROM richon_portal_login')
+    with pytest.raises(ValueError, match='portal_table_grant_mismatch'):
+        with restricted_account(None) as conn:
+            conn.read_only=True
+            with conn.cursor() as cur:
+                ready.check_cursor(cur)

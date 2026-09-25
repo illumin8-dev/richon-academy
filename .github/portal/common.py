@@ -141,7 +141,7 @@ def read_request(value=None):
         need(REQUEST.stat().st_size <= 2048, 'request_too_large')
         value = json.loads(REQUEST.read_text())
     need(isinstance(value, dict) and set(value) == {'operation', 'request_id'}, 'invalid_request')
-    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code'), 'unsupported_operation')
+    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code'), 'unsupported_operation')
     need(isinstance(value['request_id'], str) and re.fullmatch('[A-Za-z0-9_.-]{1,80}', value['request_id']), 'invalid_request_id')
     return value
 
