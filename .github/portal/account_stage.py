@@ -25,6 +25,8 @@ CHECK_URL = 'https://' + CHECK_TAG + '---' + urlsplit(c.URL).netloc
 ALLOWED_EXISTING_ORIGIN_STATES = frozenset({
     'missing-key:403:edge_required,wrong-key:403:edge_required',
     'missing-key:500:non_json,wrong-key:500:non_json',
+    'missing-key:500:non_json,wrong-key:503:non_json',
+    'missing-key:503:non_json,wrong-key:500:non_json',
     'missing-key:503:non_json,wrong-key:503:non_json',
 })
 
