@@ -88,7 +88,7 @@ jobs:
           workload_identity_provider: projects/756298505437/locations/global/workloadIdentityPools/richon-github-portal/providers/github-portal
           service_account: richon-portal-deploy@richon-academy.iam.gserviceaccount.com
       - name: Inspect, stage or explicitly roll out the edge-gated service
-        if: contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code"]'), needs.request.outputs.operation)
+        if: contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled"]'), needs.request.outputs.operation)
         run: |
           if [ "${{ needs.request.outputs.operation }}" = "inspect-edge" ]; then
             python3 -B .github/portal/candidate_readback.py
@@ -96,6 +96,8 @@ jobs:
             python3 -B .github/portal/rollout_code.py
           elif [ "${{ needs.request.outputs.operation }}" = "stage-account-code" ]; then
             python3 -B .github/portal/account_stage.py
+          elif [ "${{ needs.request.outputs.operation }}" = "stage-account-enabled" ]; then
+            python3 -B .github/portal/account_enable_stage.py
           else
             python3 -B .github/portal/edge_ops.py
           fi

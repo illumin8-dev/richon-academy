@@ -69,6 +69,9 @@ INTERNAL = {**{k: 'true' for k in FLAGS},
             'RICHON_PRIVACY_VERSION': 'internal-test-v1',
             'RICHON_TERMS_URL': 'https://richonacademy.com/terms.html',
             'RICHON_PRIVACY_URL': 'https://richonacademy.com/privacy.html'}
+ACCOUNT = {'RICHON_ACCOUNT_ENABLED': 'true',
+           'RICHON_TERMS_VERSION': 'member-info-v1',
+           'RICHON_PRIVACY_VERSION': 'member-info-v1'}
 PLAIN = {'RICHON_BOOTSTRAP_VERIFY': 'true', 'KAKAO_APP_ID': '1585992',
          'RICHON_OAUTH_ORIGIN': 'https://richonacademy.com',
          'RICHON_AUTH_ALLOWED_ORIGINS': 'https://richonacademy.com',
@@ -141,7 +144,7 @@ def read_request(value=None):
         need(REQUEST.stat().st_size <= 2048, 'request_too_large')
         value = json.loads(REQUEST.read_text())
     need(isinstance(value, dict) and set(value) == {'operation', 'request_id'}, 'invalid_request')
-    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code'), 'unsupported_operation')
+    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code', 'stage-account-enabled'), 'unsupported_operation')
     need(isinstance(value['request_id'], str) and re.fullmatch('[A-Za-z0-9_.-]{1,80}', value['request_id']), 'invalid_request_id')
     return value
 
@@ -209,7 +212,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     env = environment(c)
     naver_references(env, boundary=boundary)
     need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(INTERNAL) |
-         (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
+         set(ACCOUNT) | (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
     for name, secret in SECRET_NAMES.items():
         item = env.get(name, {})
         ref = item.get('valueFrom', {}).get('secretKeyRef', {})
@@ -218,8 +221,22 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     need(all(env.get(k, {}).get('value') == v for k, v in PLAIN.items()), 'unexpected_portal_setting')
     modes = {env.get(k, {}).get('value') for k in FLAGS}
     need(modes in ({'false'}, {'true'}), 'partial_login_config')
-    for key in set(INTERNAL) - set(FLAGS):
-        need((key not in env and modes == {'false'}) or env.get(key, {}).get('value') == INTERNAL[key], 'unreviewed_consent_config')
+    account_present = 'RICHON_ACCOUNT_ENABLED' in env
+    account_enabled = env.get('RICHON_ACCOUNT_ENABLED', {}).get('value') == 'true'
+    need(not account_present or account_enabled, 'unreviewed_account_setting')
+    if modes == {'false'}:
+        need(not account_present, 'account_requires_login_enabled')
+        for key in set(INTERNAL) - set(FLAGS):
+            need(key not in env, 'unreviewed_consent_config')
+    elif account_enabled:
+        need(env.get('RICHON_TERMS_VERSION', {}).get('value') == ACCOUNT['RICHON_TERMS_VERSION']
+             and env.get('RICHON_PRIVACY_VERSION', {}).get('value') == ACCOUNT['RICHON_PRIVACY_VERSION']
+             and env.get('RICHON_TERMS_URL', {}).get('value') == INTERNAL['RICHON_TERMS_URL']
+             and env.get('RICHON_PRIVACY_URL', {}).get('value') == INTERNAL['RICHON_PRIVACY_URL'],
+             'unreviewed_account_policy_config')
+    else:
+        for key in set(INTERNAL) - set(FLAGS):
+            need(env.get(key, {}).get('value') == INTERNAL[key], 'unreviewed_consent_config')
     status = svc.get('status', {})
     need(status.get('url') == URL, 'wrong_service_url')
     for field in ('latestCreatedRevisionName', 'latestReadyRevisionName'):
@@ -229,7 +246,8 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
         need(status.get('latestCreatedRevisionName') == status.get('latestReadyRevisionName'), 'unready_revision_pending')
     if boundary == 'edge':
         need(modes == {'true'}, 'edge_login_must_remain_enabled')
-    return {'enabled': modes == {'true'}, 'revision': status['latestReadyRevisionName'], 'image': c['image']}
+    return {'enabled': modes == {'true'}, 'account_enabled': account_enabled,
+            'revision': status['latestReadyRevisionName'], 'image': c['image']}
 
 
 def get_service(*, require_ready=True):

@@ -117,10 +117,32 @@ class GuardTests(unittest.TestCase):
         c.inspect(svc, {}, require_ready=False)
 
     def test_request_allowlist_and_no_arbitrary_args(self):
-        for operation in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'stage-account-code'):
+        for operation in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'stage-account-code', 'stage-account-enabled'):
             self.assertEqual(c.read_request({'operation': operation, 'request_id': 'test'})['operation'], operation)
         for value in ({'operation': 'publish', 'request_id': 'x'}, {'operation': 'deploy', 'request_id': 'x', 'args': '--allow-unauthenticated'}, {'operation': 'deploy', 'request_id': 'x\nSECRET'}):
             with self.assertRaises(c.Stop): c.read_request(value)
+
+    def test_account_enabled_config_requires_exact_member_info_pair(self):
+        svc = service(True)
+        env = c.environment(svc['spec']['template']['spec']['containers'][0])
+        env.update({
+            'RICHON_ACCOUNT_ENABLED': {'name':'RICHON_ACCOUNT_ENABLED','value':'true'},
+            'RICHON_TERMS_VERSION': {'name':'RICHON_TERMS_VERSION','value':'member-info-v1'},
+            'RICHON_PRIVACY_VERSION': {'name':'RICHON_PRIVACY_VERSION','value':'member-info-v1'},
+        })
+        svc['spec']['template']['spec']['containers'][0]['env'] = list(env.values())
+        self.assertTrue(c.inspect(svc, {})['account_enabled'])
+        for key,value in (
+            ('RICHON_ACCOUNT_ENABLED','false'),
+            ('RICHON_TERMS_VERSION','internal-test-v1'),
+            ('RICHON_PRIVACY_VERSION','internal-test-v1'),
+        ):
+            bad=deepcopy(svc)
+            bad_env=c.environment(bad['spec']['template']['spec']['containers'][0])
+            bad_env[key]['value']=value
+            bad['spec']['template']['spec']['containers'][0]['env']=list(bad_env.values())
+            with self.subTest(key=key), self.assertRaises(c.Stop):
+                c.inspect(bad, {})
 
     def test_internal_update_preserves_existing_secret_references(self):
         svc = service(); changed = c.intended(svc, 'configure-internal-login')
