@@ -51,3 +51,16 @@ def test_retained_records_stay_write_only_in_readiness_contract():
     assert ready.ACCOUNT_WRITE_ONLY==('retained_order_records',)
     assert 'retained_order_records' in ready.ACCOUNT_INSERT
     assert 'retained_order_records' not in ready.ACCOUNT_READ
+
+
+def test_database_failures_are_reported_as_fixed_safe_stage_codes():
+    source=PATH.read_text()
+    for code in (
+        'owner_preflight_connection_failed',
+        'runtime_preflight_connection_failed',
+        'db010_transaction_failed',
+        'runtime_readback_failed',
+        'owner_final_readback_failed',
+    ):
+        assert code in source
+    assert 'str(exc)' not in source or 'isinstance(exc,Stop)' in source
