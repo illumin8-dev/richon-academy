@@ -1,0 +1,53 @@
+"""Safety contract for the owner-run DB010 production preparation helper."""
+import importlib.util
+from pathlib import Path
+import pytest
+
+ROOT=Path(__file__).resolve().parents[2]
+PATH=ROOT/'ops/prepare_account_lifecycle.py'
+spec=importlib.util.spec_from_file_location('prepare_account_lifecycle',PATH)
+module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+
+def dsn(user='neondb_owner',host='ep-gentle-night-b3h5xlji.c-4.ap-southeast-1.aws.neon.tech'):
+    return f'postgresql://{user}:synthetic-secret@{host}/neondb?sslmode=require&channel_binding=require'
+
+
+def test_fixed_targets_and_explicit_confirmation():
+    assert module.PROJECT=='richon-academy'
+    assert module.PROJECT_NUMBER=='756298505437'
+    assert module.REGION=='asia-southeast1'
+    assert module.OWNER_SERVICE=='richon-backend-test'
+    assert module.PORTAL_SERVICE=='richon-portal'
+    assert module.CONFIRM=='APPLY_DB010'
+    assert module.MINIMUM_SOURCE=='38013be54f5584a857c7485d709f00baf632b597'
+
+
+def test_dsn_validation_is_fixed_to_known_neon_database_and_roles():
+    assert module.validate_dsn(dsn(),'neondb_owner').path=='/neondb'
+    assert module.validate_dsn(dsn('richon_portal_login'),'richon_portal_login').path=='/neondb'
+    for value,role in [
+        (dsn(host='evil.invalid'),'neondb_owner'),
+        (dsn('wrong_role'),'neondb_owner'),
+        ('postgresql://neondb_owner:x@ep-gentle-night-b3h5xlji.c-4.ap-southeast-1.aws.neon.tech/other?sslmode=require','neondb_owner'),
+        ('postgresql://neondb_owner:x@ep-gentle-night-b3h5xlji.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&x=1','neondb_owner'),
+    ]:
+        with pytest.raises(module.Stop):
+            module.validate_dsn(value,role)
+
+
+def test_helper_cannot_deploy_or_enable_account_feature():
+    source=PATH.read_text()
+    assert 'run","deploy' not in source
+    assert '--set-env-vars' not in source
+    assert 'RICHON_ACCOUNT_ENABLED":"true' not in source
+    assert 'account_feature_already_enabled' in source
+    assert 'NO_DEPLOY=YES' in source
+
+
+def test_retained_records_stay_write_only_in_readiness_contract():
+    import portal_readiness as ready
+    assert ready.ACCOUNT_WRITE_ONLY==('retained_order_records',)
+    assert 'retained_order_records' in ready.ACCOUNT_INSERT
+    assert 'retained_order_records' not in ready.ACCOUNT_READ
