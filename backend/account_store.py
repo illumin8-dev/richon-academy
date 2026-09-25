@@ -102,13 +102,9 @@ def withdrawal_ready(cur, member_id):
         raise core.MemberUnavailable()
     if row[0]=='admin':
         raise AdminWithdrawalNotAllowed()
-    # Migration 004 introduces independent learner contact fields. Until that
-    # feature has its own erasure procedure, fail closed rather than leave PII.
-    cur.execute("SELECT to_regclass('richon.enrollment_learners') IS NOT NULL")
-    if cur.fetchone()==(True,):
-        cur.execute('SELECT 1 FROM richon.enrollment_learners WHERE member_id=%s LIMIT 1',(member_id,))
-        if cur.fetchone():
-            raise LifecycleNotReady()
+    # Course/enrollment history is not an authentication dependency. If the
+    # optional enrollment schema exists, finalize_withdrawal() detaches the
+    # member and scrubs its contact fields while preserving course history.
     cur.execute('SELECT count(*) FROM richon.auth_identities WHERE member_id=%s',(member_id,))
     if cur.fetchone()[0] < 1:
         raise LifecycleNotReady()
@@ -390,6 +386,11 @@ def finalize_withdrawal(member_id):
         cur.execute('SELECT count(*) FROM richon.auth_identities WHERE member_id=%s',(member_id,))
         if cur.fetchone()[0] != 0:
             raise LifecycleNotReady()
+        cur.execute("SELECT to_regclass('richon.enrollment_learners') IS NOT NULL")
+        if cur.fetchone()==(True,):
+            cur.execute('''UPDATE richon.enrollment_learners
+                           SET member_id=NULL,name=%s,nickname=NULL,email=NULL,phone=NULL
+                           WHERE member_id=%s''',('탈퇴 회원',member_id))
         cur.execute('''SELECT o.order_id,o.course_id,o.course_title,o.cohort,o.amount_krw,
                               o.currency,o.status,o.customer_name,o.customer_phone,
                               o.customer_email,o.created_at

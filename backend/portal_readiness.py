@@ -22,6 +22,11 @@ DELETE = ('oauth_attempts', 'oauth_signups')
 ACCOUNT_READ = ('oauth_account_attempts','oauth_link_confirmations','account_withdrawals',
                 'provider_unlink_failures')
 ACCOUNT_WRITE_ONLY = ('retained_order_records',)
+ACCOUNT_OPTIONAL_WRITE_ONLY = ('enrollment_learners',)
+ACCOUNT_SELECT_COLUMNS = {'enrollment_learners': ('member_id',)}
+ACCOUNT_OPTIONAL_UPDATE = {
+    'enrollment_learners': ('member_id','name','nickname','email','phone'),
+}
 ACCOUNT_INSERT = {
     'oauth_account_attempts': ('state_hash','browser_hash','member_id','provider','app_id','action','expires_at'),
     'oauth_link_confirmations': ('ticket_hash','browser_hash','member_id','provider','app_id','subject','expires_at'),
@@ -73,14 +78,20 @@ def check_role(cur):
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
     updates = UPDATE
     deletes = DELETE
+    write_only = set(ACCOUNT_WRITE_ONLY)
     if account:
         inserts = merged_grants(inserts, ACCOUNT_INSERT)
         updates = merged_grants(UPDATE, ACCOUNT_UPDATE)
         deletes = tuple(dict.fromkeys((*DELETE, *ACCOUNT_DELETE)))
+        cur.execute("SELECT to_regclass('richon.enrollment_learners') IS NOT NULL")
+        if cur.fetchone()==(True,):
+            tables = tables + ACCOUNT_OPTIONAL_WRITE_ONLY
+            write_only.update(ACCOUNT_OPTIONAL_WRITE_ONLY)
+            updates = merged_grants(updates, ACCOUNT_OPTIONAL_UPDATE)
     for table in tables:
         relation = 'richon.' + table
         cur.execute("SELECT has_table_privilege(%s,%s,'SELECT')", (ROLE,relation))
-        expected_select = table not in ACCOUNT_WRITE_ONLY
+        expected_select = table not in write_only
         if cur.fetchone() != (expected_select,):
             raise ValueError('portal_read_grant_mismatch')
         for operation in ('DELETE', 'TRUNCATE', 'TRIGGER', 'REFERENCES'):
@@ -89,6 +100,11 @@ def check_role(cur):
                 raise ValueError('portal_table_grant_mismatch')
         cur.execute("SELECT attname FROM pg_attribute WHERE attrelid=%s::regclass AND attnum>0 AND NOT attisdropped", (relation,))
         columns = [r[0] for r in cur.fetchall()]
+        for column in columns:
+            cur.execute('SELECT has_column_privilege(%s,%s,%s,%s)', (ROLE,relation,column,'SELECT'))
+            expected_column_select = expected_select or column in ACCOUNT_SELECT_COLUMNS.get(table, ())
+            if cur.fetchone()[0] != expected_column_select:
+                raise ValueError('portal_column_select_grant_mismatch')
         for operation, grants in (('INSERT', inserts), ('UPDATE', updates)):
             for column in columns:
                 cur.execute('SELECT has_column_privilege(%s,%s,%s,%s)', (ROLE,relation,column,operation))
