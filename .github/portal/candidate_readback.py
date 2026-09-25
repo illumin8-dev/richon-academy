@@ -2,6 +2,7 @@
 No new revision, traffic mutation, IAM operation, provider request or secret read.
 """
 from copy import deepcopy
+import json
 import re
 import sys
 import common as c
@@ -11,6 +12,36 @@ import operate as op
 CANDIDATE = 'richon-portal-gh-35980631252-1'
 SERVING = 'richon-portal-gh-35810692921-1'
 SOURCE = '61183057f5392e7af177e10e0c42ccf955b8cafb'
+
+
+SAFE_DETAILS = frozenset({
+    'edge_required', 'portal_not_enabled', 'not_found',
+    'authentication_required', 'auth_store_unavailable',
+})
+
+
+def safe_origin_observation(url):
+    """Return only fixed status/detail categories for the two gate probes."""
+    rows = []
+    for wrong in (False, True):
+        label = 'wrong-key' if wrong else 'missing-key'
+        try:
+            status, headers, body = e.request(url + '/auth/login', wrong_key=wrong)
+        except c.Stop:
+            rows.append(label + ':transport_error')
+            continue
+        detail = 'non_json'
+        content_type = headers.get('Content-Type', '').split(';')[0]
+        if len(body) <= 8192 and content_type == 'application/json':
+            try:
+                data = json.loads(body)
+            except (ValueError, UnicodeError):
+                detail = 'invalid_json'
+            else:
+                value = data.get('detail') if isinstance(data, dict) and set(data) == {'detail'} else None
+                detail = value if value in SAFE_DETAILS else 'other_json'
+        rows.append(label + ':' + str(status) + ':' + detail)
+    return ','.join(rows)
 
 
 def validate_service(svc, policy):
@@ -90,6 +121,7 @@ def inspect_existing(svc, policy):
         e.probe_origin(c.URL)
     except c.Stop as exc:
         if str(exc) == 'origin_app_gate_not_confirmed':
+            op.summary('SERVING ORIGIN OBSERVATION: ' + safe_origin_observation(c.URL))
             raise c.Stop('serving_origin_app_gate_not_confirmed') from None
         raise
     op.summary('SERVING ORIGIN APP GATE: PASS')
@@ -97,6 +129,7 @@ def inspect_existing(svc, policy):
         e.probe_origin(e.CANDIDATE)
     except c.Stop as exc:
         if str(exc) == 'origin_app_gate_not_confirmed':
+            op.summary('CANDIDATE ORIGIN OBSERVATION: ' + safe_origin_observation(e.CANDIDATE))
             raise c.Stop('candidate_origin_app_gate_not_confirmed') from None
         raise
     op.summary('CANDIDATE ORIGIN APP GATE: PASS')
