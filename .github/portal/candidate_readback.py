@@ -86,8 +86,20 @@ def inspect_existing(svc, policy):
     c.need(re.fullmatch(r'sha256:[a-f0-9]{64}', digest)
            and info['image'] == c.IMAGE + '@' + digest, 'candidate_source_image_mismatch')
     c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
-    e.probe_origin(c.URL)
-    e.probe_origin(e.CANDIDATE)
+    try:
+        e.probe_origin(c.URL)
+    except c.Stop as exc:
+        if str(exc) == 'origin_app_gate_not_confirmed':
+            raise c.Stop('serving_origin_app_gate_not_confirmed') from None
+        raise
+    op.summary('SERVING ORIGIN APP GATE: PASS')
+    try:
+        e.probe_origin(e.CANDIDATE)
+    except c.Stop as exc:
+        if str(exc) == 'origin_app_gate_not_confirmed':
+            raise c.Stop('candidate_origin_app_gate_not_confirmed') from None
+        raise
+    op.summary('CANDIDATE ORIGIN APP GATE: PASS')
     fresh, fresh_policy = e.get_service()
     e.unchanged(svc, policy, fresh, fresh_policy)
     validate_service(fresh, fresh_policy)

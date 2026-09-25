@@ -110,3 +110,26 @@ class CandidateReadback(TestCase):
              patch.object(e, 'get_service', return_value=(svc,public_policy())), patch.object(r,'inspect_existing') as read, patch.object(e,'main') as legacy:
             r.main()
         read.assert_not_called(); legacy.assert_called_once()
+
+
+    def test_serving_origin_failure_is_classified_without_raw_response(self):
+        svc, policy, revisions = fixture()
+        def gc(*args, **kw):
+            return revisions[args[3]] if args[:3] == ('run','revisions','describe') else {'image_summary':{'digest':'sha256:'+'b'*64}}
+        def probe(url):
+            if url == c.URL:
+                raise c.Stop('origin_app_gate_not_confirmed')
+        with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
+            with self.assertRaisesRegex(c.Stop,'serving_origin_app_gate_not_confirmed'):
+                r.inspect_existing(svc,policy)
+
+    def test_candidate_origin_failure_is_classified_without_raw_response(self):
+        svc, policy, revisions = fixture()
+        def gc(*args, **kw):
+            return revisions[args[3]] if args[:3] == ('run','revisions','describe') else {'image_summary':{'digest':'sha256:'+'b'*64}}
+        def probe(url):
+            if url == e.CANDIDATE:
+                raise c.Stop('origin_app_gate_not_confirmed')
+        with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
+            with self.assertRaisesRegex(c.Stop,'candidate_origin_app_gate_not_confirmed'):
+                r.inspect_existing(svc,policy)
