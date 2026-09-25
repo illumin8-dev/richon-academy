@@ -1,4 +1,4 @@
 {
-  "operation": "stage-account-code",
-  "request_id": "account-db010-compat-stage-20260925-c"
+  "operation": "stage-account-enabled",
+  "request_id": "account-enabled-candidate-20260925-a"
 }
