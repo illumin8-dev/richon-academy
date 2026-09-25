@@ -6,11 +6,13 @@ rows. It does NOT deploy Cloud Run and does NOT enable RICHON_ACCOUNT_ENABLED.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import socket
 import subprocess
 import sys
 from urllib.parse import parse_qsl, unquote, urlsplit
@@ -122,6 +124,56 @@ def validate_dsn(value, role):
     return u
 
 
+def connection_failure_code(prefix, exc):
+    """Map a private connection error to one fixed non-secret diagnostic code."""
+    text=str(exc).lower()
+    sqlstate=getattr(exc,"sqlstate",None)
+    if sqlstate=="28P01" or any(x in text for x in (
+            "password authentication failed","authentication failed","invalid password")):
+        suffix="authentication_failed"
+    elif any(x in text for x in (
+            "certificate verify failed","certificate verification failed",
+            "root certificate","ssl error","tls")):
+        suffix="tls_verification_failed"
+    elif any(x in text for x in (
+            "could not translate host","name or service not known",
+            "temporary failure in name resolution","nodename nor servname")):
+        suffix="dns_failed"
+    elif any(x in text for x in ("timed out","timeout expired","connection timeout")):
+        suffix="connection_timeout"
+    elif "connection refused" in text:
+        suffix="connection_refused"
+    elif "channel binding" in text:
+        suffix="channel_binding_failed"
+    elif any(x in text for x in ("endpoint", "compute")) and any(
+            x in text for x in ("disabled","suspended","unavailable","not found")):
+        suffix="neon_endpoint_unavailable"
+    else:
+        suffix="connection_failed_unknown"
+    return prefix+"_"+suffix
+
+
+def diagnose_connection(url, expected_role, prefix, *, dependencies=False):
+    """Read-only network/TLS/auth/query check. Never returns or prints the DSN."""
+    u=validate_dsn(url,expected_role)
+    try:
+        socket.getaddrinfo(u.hostname,u.port or 5432,type=socket.SOCK_STREAM)
+    except OSError:
+        raise Stop(prefix+"_dns_failed") from None
+    try:
+        with db._connect(url) as conn:
+            conn.read_only=True
+            need(conn.execute("SELECT current_database(),current_user").fetchone()
+                 == (DATABASE,expected_role), prefix+"_wrong_database_identity")
+            if dependencies:
+                dependency_readback(conn.cursor())
+    except Stop:
+        raise
+    except Exception as exc:
+        raise Stop(connection_failure_code(prefix,exc)) from None
+    return True
+
+
 def dependency_readback(cur):
     for version in account_migrate.DEPENDENCIES:
         cur.execute("SELECT checksum FROM richon.schema_migrations WHERE version=%s",(version,))
@@ -170,26 +222,8 @@ def apply(owner_url, runtime_url):
     checksum=hashlib.sha256(path.read_bytes()).hexdigest()
 
     # Confirm both credentials and targets BEFORE any write transaction.
-    try:
-        with db._connect(owner_url) as conn:
-            conn.read_only=True
-            need(conn.execute("SELECT current_database(),current_user").fetchone()
-                 == (DATABASE,OWNER_ROLE), "wrong_owner_connection")
-            dependency_readback(conn.cursor())
-    except Stop:
-        raise
-    except Exception:
-        raise Stop("owner_preflight_connection_failed") from None
-
-    try:
-        with db._connect(runtime_url) as conn:
-            conn.read_only=True
-            need(conn.execute("SELECT current_database(),current_user").fetchone()
-                 == (DATABASE,ready.ROLE), "wrong_runtime_connection")
-    except Stop:
-        raise
-    except Exception:
-        raise Stop("runtime_preflight_connection_failed") from None
+    diagnose_connection(owner_url,OWNER_ROLE,"owner",dependencies=True)
+    diagnose_connection(runtime_url,ready.ROLE,"runtime")
 
     changed=False
     enrollment=False
@@ -257,6 +291,10 @@ def apply(owner_url, runtime_url):
     return changed,enrollment,manual
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--diagnose",action="store_true",
+                        help="Read-only owner/runtime DB connectivity diagnosis. Never writes DB010.")
+    args=parser.parse_args()
     stage="source"
     try:
         validate_source()
@@ -273,6 +311,21 @@ def main():
         print("SOURCE=OK")
         print("SCOPE=DB010 + exact richon_portal_login account grants + readback")
         print("NO_DEPLOY=YES / NO_PROVIDER_CALLS=YES / NO_CUSTOMER_ROW_PRINTS=YES")
+
+        if args.diagnose:
+            stage="secret-access"
+            owner_url=access(OWNER_SECRET,owner_version)
+            runtime_url=access(RUNTIME_SECRET,runtime_version)
+            validate_dsn(owner_url,OWNER_ROLE)
+            validate_dsn(runtime_url,ready.ROLE)
+            stage="diagnose-owner"
+            diagnose_connection(owner_url,OWNER_ROLE,"owner",dependencies=True)
+            print("OWNER_DB_CONNECT=PASS")
+            stage="diagnose-runtime"
+            diagnose_connection(runtime_url,ready.ROLE,"runtime")
+            print("RUNTIME_DB_CONNECT=PASS")
+            print("DIAGNOSE_ONLY=PASS / NO_DATABASE_CHANGES=YES")
+            return 0
 
         if input("Type "+CONFIRM+" to continue: ").strip() != CONFIRM:
             print("CANCELLED: no database changes made.")

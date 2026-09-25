@@ -64,3 +64,31 @@ def test_database_failures_are_reported_as_fixed_safe_stage_codes():
     ):
         assert code in source
     assert 'str(exc)' not in source or 'isinstance(exc,Stop)' in source
+
+
+class FakeConnectionError(Exception):
+    sqlstate=None
+
+@pytest.mark.parametrize("message,expected",[
+    ("password authentication failed for user", "owner_authentication_failed"),
+    ("certificate verify failed", "owner_tls_verification_failed"),
+    ("could not translate host name", "owner_dns_failed"),
+    ("connection timed out", "owner_connection_timeout"),
+    ("connection refused", "owner_connection_refused"),
+    ("channel binding required", "owner_channel_binding_failed"),
+    ("compute endpoint unavailable", "owner_neon_endpoint_unavailable"),
+    ("something else", "owner_connection_failed_unknown"),
+])
+def test_connection_failure_code_is_fixed_and_non_secret(message,expected):
+    error=FakeConnectionError(message)
+    assert module.connection_failure_code("owner",error)==expected
+    assert "synthetic-secret" not in module.connection_failure_code("owner",error)
+
+def test_diagnose_mode_is_read_only_by_construction():
+    source=PATH.read_text()
+    assert '"--diagnose"' in source
+    assert 'DIAGNOSE_ONLY=PASS / NO_DATABASE_CHANGES=YES' in source
+    diagnose_section=source[source.index('if args.diagnose:'):source.index('if input("Type "+CONFIRM')]
+    assert 'apply(' not in diagnose_section
+    assert 'GRANT ' not in diagnose_section
+    assert 'INSERT INTO' not in diagnose_section
