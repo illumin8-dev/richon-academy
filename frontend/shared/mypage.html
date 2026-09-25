@@ -16,7 +16,7 @@
 <div id="list" aria-live="polite"></div><p id="list-status" class="account-status" role="status"></p><button id="retry-list" class="site-btn site-btn-line" type="button" hidden>다시 불러오기</button>
 <div id="pager" class="account-pagination" hidden><span id="page-info"></span><div><button id="prev" type="button">이전</button><button id="next" type="button">다음</button></div></div>
 </section>
-<section class="account-panel" id="my-profile"><div class="account-section-head"><h2>내 정보</h2></div>
+<section class="account-panel" id="my-profile"><div class="account-section-head"><h2>내 정보</h2><button id="edit-profile" class="account-text-button" type="button" hidden>내 정보 수정</button></div>
 <dl class="account-values">
 <div id="profile-name-row" hidden><dt>이름</dt><dd id="profile-name"></dd></div>
 <div id="profile-phone-row" hidden><dt>휴대전화</dt><dd id="profile-phone"></dd></div>
@@ -26,10 +26,61 @@
 <div><dt>가입일</dt><dd id="joined"></dd></div>
 <div><dt>연결된 로그인</dt><dd id="providers" class="account-providers"></dd></div>
 </dl>
-<div class="account-actions"><a id="admin-link" class="site-account-link" href="/portal/admin" hidden>관리자</a><a class="account-withdrawal" href="tel:0322368944">회원탈퇴 문의</a></div>
+<div class="account-actions"><button id="manage-logins" class="account-secondary" type="button" hidden>로그인 연결 관리</button><a id="admin-link" class="site-account-link" href="/portal/admin" hidden>관리자</a><a id="withdraw-inquiry" class="account-withdrawal" href="tel:0322368944">회원탈퇴 문의</a><button id="withdraw-account" class="account-withdrawal" type="button" hidden>회원탈퇴</button></div>
 </section>
 </div>
 <p id="action-status" class="account-status" role="status"></p>
 </main>
+
+<dialog id="profile-dialog" class="account-dialog" aria-labelledby="profile-dialog-title">
+<button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
+<h2 id="profile-dialog-title">내 정보 수정</h2>
+<div class="account-form">
+<label>이름<input id="edit-name" maxlength="80" autocomplete="name"></label>
+<label>휴대전화<input id="edit-phone" inputmode="tel" autocomplete="tel"></label>
+<label>이메일<input id="edit-email" type="email" maxlength="254" autocomplete="email"></label>
+<label>연령대 [선택]<select id="edit-age"><option value="">선택하지 않음</option><option value="14-19">14~19세</option><option value="20-29">20~29세</option><option value="30-39">30~39세</option><option value="40-49">40~49세</option><option value="50-59">50~59세</option><option value="60-69">60~69세</option><option value="70+">70세 이상</option></select></label>
+<label>성별 [선택]<select id="edit-gender"><option value="">선택하지 않음</option><option value="female">여성</option><option value="male">남성</option></select></label>
+<label class="account-check"><input id="edit-consultation" type="checkbox"> 상담 분석을 위한 선택정보 제공에 동의합니다.</label>
+<p class="account-dialog-note">연령대와 성별은 유료 수강생 상담에서 생애주기와 주거 수요를 파악하는 데 사용합니다.</p>
+<p id="profile-edit-status" class="account-status" role="status"></p>
+<div class="account-dialog-actions"><button class="site-btn site-btn-line" type="button" data-close-dialog>취소</button><button id="save-profile" class="site-btn site-btn-o" type="button">저장</button></div>
+</div>
+</dialog>
+
+<dialog id="login-dialog" class="account-dialog" aria-labelledby="login-dialog-title">
+<button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
+<h2 id="login-dialog-title">로그인 연결 관리</h2>
+<div id="login-connections" class="account-login-list"></div>
+<p id="login-action-status" class="account-status" role="status"></p>
+</dialog>
+
+<dialog id="link-confirm-dialog" class="account-dialog" aria-labelledby="link-confirm-title">
+<button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
+<h2 id="link-confirm-title">로그인 연결 확인</h2>
+<p><strong id="link-confirm-provider"></strong> 계정을 현재 리치온 회원에 연결할까요?</p>
+<p class="account-dialog-note">연결 후 어느 로그인 수단을 사용해도 같은 회원정보와 강의 내역으로 들어옵니다.</p>
+<p id="link-confirm-status" class="account-status" role="status"></p>
+<div class="account-dialog-actions"><button id="cancel-link" class="site-btn site-btn-line" type="button">취소</button><button id="confirm-link" class="site-btn site-btn-o" type="button">연결</button></div>
+</dialog>
+
+<dialog id="reauth-dialog" class="account-dialog" aria-labelledby="reauth-title">
+<button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
+<h2 id="reauth-title">본인 확인</h2>
+<p id="reauth-note" class="account-dialog-note">계정 연결을 변경하기 전에 연결된 로그인으로 한 번 더 확인합니다.</p>
+<div id="reauth-providers" class="account-login-list"></div>
+<div class="account-dialog-actions"><button id="cancel-withdraw-flow" class="account-danger-quiet" type="button" hidden>탈퇴 절차 중단</button></div>
+</dialog>
+
+<dialog id="withdraw-dialog" class="account-dialog" aria-labelledby="withdraw-title">
+<button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
+<h2 id="withdraw-title">회원탈퇴</h2>
+<p>회원정보와 연결된 로그인 정보는 삭제됩니다.</p>
+<p class="account-dialog-note">법령상 보관이 필요한 거래기록은 정해진 기간 동안 별도 보관될 수 있습니다. 회원탈퇴 자체가 환불이나 정산 권리의 포기를 의미하지 않습니다.</p>
+<label class="account-confirm-label">확인을 위해 <strong>회원탈퇴</strong>를 입력해 주세요.<input id="withdraw-confirm" autocomplete="off"></label>
+<p id="withdraw-status" class="account-status" role="status"></p>
+<div class="account-dialog-actions"><button class="site-btn site-btn-line" type="button" data-close-dialog>취소</button><button id="confirm-withdraw" class="account-danger-quiet" type="button">회원탈퇴</button></div>
+</dialog>
+
 {{SITE_FOOTER}}
 </body></html>

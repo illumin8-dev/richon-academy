@@ -11,6 +11,8 @@ backend/*
 !backend/oauth_providers.py
 !backend/oauth_store.py
 !backend/oauth_http.py
+!backend/account_store.py
+!backend/account_http.py
 !backend/portal.py
 !backend/portal_store.py
 !backend/monthly_portal.py

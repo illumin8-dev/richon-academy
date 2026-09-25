@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSON
 from starlette.concurrency import run_in_threadpool
 import auth_core as core
 import auth_http as auth
+import account_store as accounts
 import oauth_store as store
 import oauth_providers as providers
 import member_profile
@@ -21,6 +22,7 @@ import signup_views
 
 BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
+LINK='__Host-richon-link'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
 CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://kauth.kakao.com https://nid.naver.com"
 logger=logging.getLogger('richon.oauth')
@@ -138,6 +140,7 @@ def login_return(request, settings):
 def make_router(settings):
     router=APIRouter(prefix='/auth')
     collect_profile = member_profile.enabled(settings.terms_version, settings.privacy_version)
+    account_enabled = os.getenv('RICHON_ACCOUNT_ENABLED','false') == 'true'
 
     @router.get('/assets/kakao-login.png',include_in_schema=False)
     def kakao_button():
@@ -206,6 +209,7 @@ def make_router(settings):
     @router.get('/{provider}/callback')
     def callback(provider:str,request:Request):
         target='/'
+        account_attempt=None
         try:
             pairs=list(request.query_params.multi_items());q=dict(pairs)
             if (len(pairs)!=len(q) or len(str(request.url.query))>8192 or not set(q)<= {'state','code','error','error_description'}
@@ -214,6 +218,45 @@ def make_router(settings):
             core.token_digest(state)
             code=q.get('code')
             if not q.get('error') and (not isinstance(code,str) or not 1<=len(code)<=2048 or any(ord(char)<33 or ord(char)>126 for char in code)): raise store.InvalidFlow()
+            if account_enabled:
+                account_attempt=accounts.consume_action_attempt(settings,provider,state,browser)
+            if account_attempt is not None:
+                if q.get('error'):
+                    response=redirect('/portal/mypage')
+                    response.delete_cookie(BROWSER,path='/',secure=True,httponly=True,samesite='lax')
+                    return response
+                verified=providers.exchange_session(settings,provider,code,state,browser)
+                identity=verified.identity
+                action,member_id,ticket=accounts.finish_verified_action(
+                    settings,account_attempt,identity,browser)
+                if action=='reauth':
+                    return complete(member_id,request,'/portal/mypage')
+                if action=='link':
+                    response=redirect('/portal/mypage')
+                    set_temporary(response,LINK,ticket)
+                    return response
+                try:
+                    providers.unlink_access(settings,verified)
+                except providers.ProviderRejected:
+                    try: accounts.record_unlink_failure(member_id,provider)
+                    except Exception: logger.warning('provider_unlink_failure_record_unavailable')
+                    response=redirect('/portal/mypage')
+                    response.delete_cookie(BROWSER,path='/',secure=True,httponly=True,samesite='lax')
+                    return response
+                if action=='unlink':
+                    accounts.complete_unlink(settings,member_id,identity)
+                    return complete(member_id,request,'/portal/mypage')
+                remaining=accounts.complete_withdraw_provider(settings,member_id,identity)
+                if remaining:
+                    response=redirect('/portal/mypage')
+                    response.delete_cookie(BROWSER,path='/',secure=True,httponly=True,samesite='lax')
+                    return response
+                accounts.finalize_withdrawal(member_id)
+                response=redirect('/')
+                auth.clear_session_cookie(response)
+                for name in (BROWSER,TICKET,LINK):
+                    response.delete_cookie(name,path='/',secure=True,httponly=True,samesite='lax')
+                return response
             target=store.consume_attempt(settings,provider,state,browser)
             if q.get('error'): return failed(target)
             identity=providers.exchange(settings,provider,code,state,browser)
@@ -223,7 +266,12 @@ def make_router(settings):
             ticket=store.stage_signup(settings,identity,browser,target)
             response=redirect('/auth/signup');set_temporary(response,TICKET,ticket)
             return response
-        except Exception: return failed(target)
+        except Exception:
+            if account_attempt is not None:
+                response=redirect('/portal/mypage')
+                response.delete_cookie(BROWSER,path='/',secure=True,httponly=True,samesite='lax')
+                return response
+            return failed(target)
 
     @router.get('/signup',response_class=HTMLResponse)
     def signup_page(request:Request):
