@@ -83,8 +83,40 @@ class AccountEnabledStageTests(TestCase):
             a.verify_config(before,policy,switched,policy,new_revision,code_revision,switched=True)
         self.assertEqual(c.traffic(switched),[(r.SERVING,100)])
 
+
+    def test_readback_is_read_only_and_confirms_worker_candidate(self):
+        before,policy,current,code_revision,new_revision,image,_=enabled_fixture()
+        switched=deepcopy(current)
+        switched['status']['traffic']=[
+            row for row in switched['status']['traffic'] if row.get('tag')!=a.CHECK_TAG
+        ]
+        for row in switched['status']['traffic']:
+            if row.get('tag')==c.TAG:
+                row['revisionName']=new_revision
+        with patch.object(c,'read_request',return_value={'operation':a.READ_OPERATION,'request_id':'test'}), \
+             patch.object(e,'get_service',side_effect=[(switched,policy),(switched,policy)]), \
+             patch.object(a,'validate_code_check_revision',return_value=image), \
+             patch.object(a,'verify_revision') as verify, \
+             patch.object(a,'probe_gate') as probe, \
+             patch.object(e,'access_status',return_value='signin-gateway-confirmed'), \
+             patch.object(a.op,'summary'):
+            self.assertEqual(a.inspect_current('a'*40),0)
+        verify.assert_called_once_with(new_revision,switched,policy)
+        probe.assert_called_once_with(e.CANDIDATE)
+
+    def test_readback_section_contains_no_cloud_write(self):
+        source=(c.ROOT/'.github/portal/account_enable_stage.py').read_text()
+        section=source[source.index('def inspect_current'):source.index('def run():')]
+        self.assertNotIn("services','update",section)
+        self.assertNotIn('update-traffic',section)
+        self.assertNotIn('unlink_access',section)
+        workflow=(c.ROOT/'.github/workflows/portal-deploy.yml').read_text()
+        self.assertIn('"inspect-account-enabled"',workflow)
+        self.assertGreaterEqual(workflow.count('"inspect-account-enabled"'),4)
+
     def test_operation_is_explicit_and_never_promotes_default_traffic(self):
         self.assertEqual(c.read_request({'operation':a.OPERATION,'request_id':'test'})['operation'],a.OPERATION)
+        self.assertEqual(c.read_request({'operation':a.READ_OPERATION,'request_id':'test'})['operation'],a.READ_OPERATION)
         workflow=(c.ROOT/'.github/workflows/portal-deploy.yml').read_text()
         self.assertIn('"stage-account-enabled"',workflow)
         self.assertIn('python3 -B .github/portal/account_enable_stage.py',workflow)
