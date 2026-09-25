@@ -170,67 +170,91 @@ def apply(owner_url, runtime_url):
     checksum=hashlib.sha256(path.read_bytes()).hexdigest()
 
     # Confirm both credentials and targets BEFORE any write transaction.
-    with db._connect(owner_url) as conn:
-        conn.read_only=True
-        need(conn.execute("SELECT current_database(),current_user").fetchone()
-             == (DATABASE,OWNER_ROLE), "wrong_owner_connection")
-        dependency_readback(conn.cursor())
+    try:
+        with db._connect(owner_url) as conn:
+            conn.read_only=True
+            need(conn.execute("SELECT current_database(),current_user").fetchone()
+                 == (DATABASE,OWNER_ROLE), "wrong_owner_connection")
+            dependency_readback(conn.cursor())
+    except Stop:
+        raise
+    except Exception:
+        raise Stop("owner_preflight_connection_failed") from None
 
-    with db._connect(runtime_url) as conn:
-        conn.read_only=True
-        need(conn.execute("SELECT current_database(),current_user").fetchone()
-             == (DATABASE,ready.ROLE), "wrong_runtime_connection")
+    try:
+        with db._connect(runtime_url) as conn:
+            conn.read_only=True
+            need(conn.execute("SELECT current_database(),current_user").fetchone()
+                 == (DATABASE,ready.ROLE), "wrong_runtime_connection")
+    except Stop:
+        raise
+    except Exception:
+        raise Stop("runtime_preflight_connection_failed") from None
 
     changed=False
     enrollment=False
 
     # Migration + all grants + owner-side exact privilege checks are atomic.
-    with db._connect(owner_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SET LOCAL statement_timeout='30s'")
-            cur.execute("SET LOCAL lock_timeout='10s'")
-            cur.execute("SELECT pg_advisory_xact_lock(726426,1)")
-            dependency_readback(cur)
-            cur.execute("SELECT checksum FROM richon.schema_migrations WHERE version=%s",
-                        (migration,))
-            old=cur.fetchone()
-            if old is None:
-                cur.execute(path.read_text())
-                cur.execute("INSERT INTO richon.schema_migrations(version,checksum) VALUES(%s,%s)",
-                            (migration,checksum))
-                changed=True
-            else:
-                need(old == (checksum,), "db010_checksum_mismatch")
+    try:
+        with db._connect(owner_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SET LOCAL statement_timeout='30s'")
+                cur.execute("SET LOCAL lock_timeout='10s'")
+                cur.execute("SELECT pg_advisory_xact_lock(726426,1)")
+                dependency_readback(cur)
+                cur.execute("SELECT checksum FROM richon.schema_migrations WHERE version=%s",
+                            (migration,))
+                old=cur.fetchone()
+                if old is None:
+                    cur.execute(path.read_text())
+                    cur.execute("INSERT INTO richon.schema_migrations(version,checksum) VALUES(%s,%s)",
+                                (migration,checksum))
+                    changed=True
+                else:
+                    need(old == (checksum,), "db010_checksum_mismatch")
 
-            enrollment=grant_account(cur)
-            ready.check_role(cur)
+                enrollment=grant_account(cur)
+                ready.check_role(cur)
+    except Stop:
+        raise
+    except Exception:
+        raise Stop("db010_transaction_failed") from None
 
     # Independent readback using the actual restricted runtime credential.
-    with db._connect(runtime_url) as conn:
-        conn.read_only=True
-        with conn.cursor() as cur:
-            cur.execute("SET LOCAL statement_timeout='10s'")
-            ready.check_cursor(cur)
+    try:
+        with db._connect(runtime_url) as conn:
+            conn.read_only=True
+            with conn.cursor() as cur:
+                cur.execute("SET LOCAL statement_timeout='10s'")
+                ready.check_cursor(cur)
+    except Stop:
+        raise
+    except Exception:
+        raise Stop("runtime_readback_failed") from None
 
-    with db._connect(owner_url) as conn:
-        conn.read_only=True
-        with conn.cursor() as cur:
-            cur.execute("SELECT checksum FROM richon.schema_migrations WHERE version=%s",
-                        (migration,))
-            need(cur.fetchone() == (checksum,), "db010_readback_failed")
-            cur.execute("""SELECT
-                to_regclass('richon.oauth_account_attempts') IS NOT NULL,
-                to_regclass('richon.oauth_link_confirmations') IS NOT NULL,
-                to_regclass('richon.account_withdrawals') IS NOT NULL,
-                to_regclass('richon.provider_unlink_failures') IS NOT NULL,
-                to_regclass('richon.retained_order_records') IS NOT NULL""")
-            need(cur.fetchone() == (True,True,True,True,True),
-                 "db010_tables_missing")
-            cur.execute("SELECT to_regclass('richon.manual_learners') IS NOT NULL")
-            manual=cur.fetchone() == (True,)
+    try:
+        with db._connect(owner_url) as conn:
+            conn.read_only=True
+            with conn.cursor() as cur:
+                cur.execute("SELECT checksum FROM richon.schema_migrations WHERE version=%s",
+                            (migration,))
+                need(cur.fetchone() == (checksum,), "db010_readback_failed")
+                cur.execute("""SELECT
+                    to_regclass('richon.oauth_account_attempts') IS NOT NULL,
+                    to_regclass('richon.oauth_link_confirmations') IS NOT NULL,
+                    to_regclass('richon.account_withdrawals') IS NOT NULL,
+                    to_regclass('richon.provider_unlink_failures') IS NOT NULL,
+                    to_regclass('richon.retained_order_records') IS NOT NULL""")
+                need(cur.fetchone() == (True,True,True,True,True),
+                     "db010_tables_missing")
+                cur.execute("SELECT to_regclass('richon.manual_learners') IS NOT NULL")
+                manual=cur.fetchone() == (True,)
+    except Stop:
+        raise
+    except Exception:
+        raise Stop("owner_final_readback_failed") from None
 
     return changed,enrollment,manual
-
 
 def main():
     stage="source"
