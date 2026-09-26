@@ -61,6 +61,7 @@ def test_privacy_matches_current_signup_notice_and_approved_future_choices():
     assert '만 19세 이상' not in privacy
     assert '생년월일은 수집하지 않습니다' in privacy
     assert '회원 관리와 상담에 필요한 정보를 수집합니다.' in notice
+    assert privacy.index('선택 / 연령대·성별') < privacy.index('필수 / 만 14세 이상 자기확인')
 
 
 def test_terms_changes_are_bounded_to_approved_membership_amendments():
