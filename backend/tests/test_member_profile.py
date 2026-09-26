@@ -46,8 +46,15 @@ def test_optional_values_discarded_without_consent_and_no_repr_leak():
     form={**data(),'age_range':'malicious','gender':'malicious'}
     result=m.Registration.from_form(form)
     assert result.age_range is None and result.gender is None
-    assert result.consultation_consent is False
+    assert result.consultation_consent is False and result.marketing_consent is False
     assert form['name'] not in repr(result) and form['email'] not in repr(result)
+
+
+def test_marketing_consent_is_explicit_and_never_required():
+    assert m.Registration.from_form(data()).marketing_consent is False
+    assert m.Registration.from_form({**data(),'marketing':'yes'}).marketing_consent is True
+    with pytest.raises(m.InvalidProfile):
+        m.Registration.from_form({**data(),'marketing':'no'})
 
 
 def test_consented_choices_and_partial_optional_values():
@@ -83,15 +90,20 @@ def test_age_checkbox_required_before_oauth_attempt(monkeypatch,provider):
 
 
 def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
+    monkeypatch.setenv('RICHON_MARKETING_CONSENT_ENABLED','true')
     monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('naver','test-naver','subject','회원'),'/')))
     c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
     r=c.get('/auth/signup')
     assert r.status_code==200 and 'name="name"' in r.text and 'name="phone"' in r.text and 'name="email"' in r.text
     assert ' checked' not in r.text and '[선택] 상담정보' in r.text and '기본 회원 서비스를 이용' in r.text
+    assert 'data-consent-all' in r.text and 'name="marketing"' in r.text
+    assert '광고성 정보 수신 동의 (문자·이메일)' in r.text
+    assert r.text.index('선택 / 연령대·성별') < r.text.index('필수 / 만 14세 이상 자기확인')
     assert 'value="회원"' not in r.text and 'name="password"' not in r.text
 
 
 def test_signup_validates_before_save_and_does_not_echo_fields(monkeypatch):
+    monkeypatch.setenv('RICHON_MARKETING_CONSENT_ENABLED','true')
     c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
     finish=Mock(return_value=(uuid4(),'/apply.html'));monkeypatch.setattr(ms,'finish',finish)
     monkeypatch.setattr(h,'complete',lambda mid,request,target:h.redirect(target))
@@ -101,6 +113,9 @@ def test_signup_validates_before_save_and_does_not_echo_fields(monkeypatch):
     r=c.post('/auth/signup',data={**base,'age_range':'30-39','gender':'female'},headers={'Origin':ORIGIN},follow_redirects=False)
     assert r.status_code==303 and r.headers['location']=='/apply.html'
     saved=finish.call_args.args[-1];assert saved.age_range is None and saved.gender is None
+    assert saved.marketing_consent is False
+    r=c.post('/auth/signup',data={**base,'marketing':'no'},headers={'Origin':ORIGIN})
+    assert r.status_code==422
 
 
 @pytest.mark.parametrize('completed',[False,True])

@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import os
 import re
 import unicodedata
+import marketing_consent as marketing
 
 VERSION = 'member-info-v1'
 AGE_RANGES = ('14-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70+')
@@ -73,9 +74,11 @@ class Registration:
     gender: str | None = field(default=None, repr=False)
     consultation_consent: bool = False
     over14_confirmed: bool = True
+    marketing_consent: bool = False
 
     def __post_init__(self):
-        if self.over14_confirmed is not True or type(self.consultation_consent) is not bool:
+        if (self.over14_confirmed is not True or type(self.consultation_consent) is not bool
+                or type(self.marketing_consent) is not bool):
             raise InvalidProfile('consent_required')
         object.__setattr__(self, 'name', clean_name(self.name))
         object.__setattr__(self, 'phone', clean_phone(self.phone))
@@ -92,8 +95,10 @@ class Registration:
         if (data.get('terms') != 'yes' or data.get('privacy') != 'yes'
                 or data.get('over14') != 'yes' or data.get('terms_version') != VERSION
                 or data.get('privacy_version') != VERSION
-                or data.get('consultation', '') not in ('', 'yes')):
+                or data.get('consultation', '') not in ('', 'yes')
+                or data.get('marketing', '') not in ('', 'yes')):
             raise InvalidProfile('consent_required')
         return cls(data.get('name'), data.get('phone'), data.get('email'),
                    data.get('age_range') or None, data.get('gender') or None,
-                   data.get('consultation') == 'yes', True)
+                   data.get('consultation') == 'yes', True,
+                   data.get('marketing') == 'yes')

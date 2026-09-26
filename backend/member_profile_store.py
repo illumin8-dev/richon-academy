@@ -4,6 +4,7 @@ import json
 from uuid import uuid4
 import auth_core as core
 import member_profile as profile
+import marketing_consent as marketing
 from oauth_providers import RETURNS
 from oauth_store import InvalidFlow
 
@@ -71,4 +72,11 @@ def finish(settings, ticket, browser, registration):
                 (member_id, registration.name, registration.phone, registration.email,
                  registration.age_range, registration.gender, registration.consultation_consent,
                  True, settings.terms_version, settings.privacy_version))
+        if marketing.enabled():
+            granted=registration.marketing_consent
+            cur.execute('''INSERT INTO richon.member_marketing_consents
+                (member_id,email_enabled,sms_enabled,consent_version,last_consented_at)
+                VALUES(%s,%s,%s,%s,CASE WHEN %s THEN CURRENT_TIMESTAMP END)
+                ON CONFLICT (member_id) DO NOTHING''',
+                (member_id,granted,granted,marketing.VERSION,granted))
     return member_id, row[4]

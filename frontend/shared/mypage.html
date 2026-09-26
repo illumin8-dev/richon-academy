@@ -23,6 +23,7 @@
 <div id="profile-email-row" hidden><dt>이메일</dt><dd id="profile-email"></dd></div>
 <div id="profile-age-row" hidden><dt>연령대</dt><dd id="profile-age"></dd></div>
 <div id="profile-gender-row" hidden><dt>성별</dt><dd id="profile-gender"></dd></div>
+<div id="profile-marketing-row" hidden><dt>광고성 정보 수신</dt><dd><span id="profile-marketing"></span> <button id="manage-marketing" class="account-text-button" type="button" hidden>변경</button></dd></div>
 <div><dt>가입일</dt><dd id="joined"></dd></div>
 <div><dt>연결된 로그인</dt><dd id="providers" class="account-providers"></dd></div>
 </dl>
@@ -46,6 +47,15 @@
 <p id="profile-edit-status" class="account-status" role="status"></p>
 <div class="account-dialog-actions"><button class="site-btn site-btn-line" type="button" data-close-dialog>취소</button><button id="save-profile" class="site-btn site-btn-o" type="button">저장</button></div>
 </div>
+</dialog>
+
+<dialog id="marketing-dialog" class="account-dialog" aria-labelledby="marketing-dialog-title">
+<button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
+<h2 id="marketing-dialog-title">광고성 정보 수신</h2>
+<label class="account-check"><input id="marketing-consent" type="checkbox"> 문자·이메일로 강의, 특강, 이벤트 및 혜택 안내를 받습니다.</label>
+<p class="account-dialog-note">선택 동의이며 동의하지 않아도 회원가입과 기본 서비스를 이용할 수 있습니다. 동의 후에도 언제든 철회할 수 있습니다.</p>
+<p id="marketing-status" class="account-status" role="status"></p>
+<div class="account-dialog-actions"><button class="site-btn site-btn-line" type="button" data-close-dialog>취소</button><button id="save-marketing" class="site-btn site-btn-o" type="button">저장</button></div>
 </dialog>
 
 <dialog id="login-dialog" class="account-dialog" aria-labelledby="login-dialog-title">

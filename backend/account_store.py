@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 import auth_core as core
 import member_profile as profile
+import marketing_consent as marketing
 
 FRESH_SECONDS = 10 * 60
 ACTIONS = frozenset({'link','reauth','unlink','withdraw'})
@@ -78,6 +79,33 @@ def update_profile(member_id, registration):
              registration.gender,registration.consultation_consent,member_id))
         cur.execute('UPDATE richon.members SET display_name=%s WHERE member_id=%s',
                     (registration.name,member_id))
+
+
+def set_marketing_consent(member_id, consent):
+    if not marketing.enabled() or type(consent) is not bool:
+        raise AccountActionRejected()
+    with core._transaction() as cur:
+        cur.execute('SELECT status FROM richon.members WHERE member_id=%s FOR UPDATE',(member_id,))
+        row=cur.fetchone()
+        if not row or row[0]!='active':
+            raise core.MemberUnavailable()
+        cur.execute('''INSERT INTO richon.member_marketing_consents
+            (member_id,email_enabled,sms_enabled,consent_version,last_consented_at)
+            VALUES(%s,%s,%s,%s,CASE WHEN %s THEN CURRENT_TIMESTAMP END)
+            ON CONFLICT (member_id) DO UPDATE SET
+              email_enabled=EXCLUDED.email_enabled,
+              sms_enabled=EXCLUDED.sms_enabled,
+              consent_version=EXCLUDED.consent_version,
+              last_consented_at=CASE
+                WHEN EXCLUDED.email_enabled AND NOT richon.member_marketing_consents.email_enabled
+                THEN CURRENT_TIMESTAMP
+                ELSE richon.member_marketing_consents.last_consented_at END,
+              last_withdrawn_at=CASE
+                WHEN NOT EXCLUDED.email_enabled AND richon.member_marketing_consents.email_enabled
+                THEN CURRENT_TIMESTAMP
+                ELSE richon.member_marketing_consents.last_withdrawn_at END,
+              updated_at=CURRENT_TIMESTAMP''',
+            (member_id,consent,consent,marketing.VERSION,consent))
 
 
 def recent_session(token, member_id, seconds=FRESH_SECONDS):
@@ -418,6 +446,9 @@ def finalize_withdrawal(member_id):
         cur.execute('DELETE FROM richon.oauth_link_confirmations WHERE member_id=%s',(member_id,))
         cur.execute('DELETE FROM richon.provider_unlink_failures WHERE member_id=%s',(member_id,))
         cur.execute('DELETE FROM richon.member_sessions WHERE member_id=%s',(member_id,))
+        cur.execute("SELECT to_regclass('richon.member_marketing_consents') IS NOT NULL")
+        if cur.fetchone()==(True,):
+            cur.execute('DELETE FROM richon.member_marketing_consents WHERE member_id=%s',(member_id,))
         cur.execute('DELETE FROM richon.member_profiles WHERE member_id=%s',(member_id,))
         cur.execute('DELETE FROM richon.account_withdrawals WHERE member_id=%s',(member_id,))
         cur.execute('''UPDATE richon.members

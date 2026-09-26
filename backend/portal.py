@@ -87,6 +87,9 @@ class RegistrationView(BaseModel):
 class AccountProfile(Profile):
     registration: RegistrationView | None = None
     account_actions: bool = False
+    marketing_consent: bool | None = None
+    marketing_channels: list[Literal["email","sms"]] | None = None
+    marketing_updated_at: datetime | None = None
 
 
 class MemberItem(Profile):
@@ -214,7 +217,7 @@ def install_if_enabled(app: FastAPI) -> bool:
 
     @app.get("/portal/assets/{asset}", include_in_schema=False)
     def asset(asset: str):
-        if asset not in {"portal.css", "portal.js", "site.css", "site.js", "login.js", "account.css", "account.js"}:
+        if asset not in {"portal.css", "portal.js", "site.css", "site.js", "login.js", "signup.js", "account.css", "account.js"}:
             raise HTTPException(404, "not_found", headers=HEADERS)
         return FileResponse(STATIC / asset, headers=HEADERS)
     return True

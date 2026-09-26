@@ -18,6 +18,7 @@ import oauth_store as store
 import oauth_providers as providers
 import member_profile
 import member_profile_store
+import marketing_consent as marketing
 import signup_views
 
 BROWSER='__Host-richon-oauth'
@@ -67,7 +68,7 @@ def page(title,body):
     static = Path(__file__).parent / 'portal_static'
     header = (static / 'site-header.html').read_text()
     footer = (static / 'site-footer.html').read_text()
-    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/portal/assets/site.css"><script src="/portal/assets/site.js"></script>'
+    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/portal/assets/site.css"><script src="/portal/assets/site.js"></script><script defer src="/portal/assets/signup.js"></script>'
     content = content.replace('</head>', assets + '</head>', 1)
     content = content.replace('<body><main><p>RICHON ACADEMY</p>', '<body class="richon-page auth-page">' + header + '<main>', 1)
     content = content.replace('</main></body>', '</main>' + footer + '</body>', 1)
@@ -83,7 +84,7 @@ async def form(request,allowed):
     async for chunk in request.stream():
         raw.extend(chunk)
         if len(raw)>4096: raise HTTPException(413,'invalid_form',headers=HEADERS)
-    try: pairs=parse_qsl(raw.decode('utf-8'),keep_blank_values=True,strict_parsing=True,max_num_fields=12)
+    try: pairs=parse_qsl(raw.decode('utf-8'),keep_blank_values=True,strict_parsing=True,max_num_fields=16)
     except (ValueError,UnicodeError): raise HTTPException(422,'invalid_form',headers=HEADERS) from None
     if len(dict(pairs))!=len(pairs) or any(k not in allowed for k,v in pairs):
         raise HTTPException(422,'invalid_form',headers=HEADERS)
@@ -293,7 +294,7 @@ def make_router(settings):
 
     @router.post('/signup')
     async def signup(request:Request):
-        data=await form(request,{'csrf','terms','privacy','terms_version','privacy_version'} | ({'name','phone','email','over14','consultation','age_range','gender'} if collect_profile else set()))
+        data=await form(request,{'csrf','terms','privacy','terms_version','privacy_version'} | ({'name','phone','email','over14','consultation','age_range','gender'} | ({'marketing'} if marketing.enabled() else set()) if collect_profile else set()))
         browser=check_post(request,data,settings,signup=True)
         if (data.get('terms')!='yes' or data.get('privacy')!='yes' or data.get('terms_version')!=settings.terms_version
             or data.get('privacy_version')!=settings.privacy_version):

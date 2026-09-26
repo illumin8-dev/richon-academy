@@ -54,7 +54,7 @@ class SharedShellTests(unittest.TestCase):
             self.assertEqual(blob((ROOT / name).read_bytes()), expected, name)
 
     def test_private_shared_assets_are_exact_copies(self):
-        for name in ('site.css', 'site.js', 'login.js', 'account.css', 'account.js'):
+        for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'account.css', 'account.js'):
             self.assertEqual((build.SOURCE / name).read_bytes(), (build.STATIC / name).read_bytes())
         css = (build.SOURCE / 'account.css').read_text()
         self.assertIn('.account-withdrawal{font-size:12px', css)

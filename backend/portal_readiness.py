@@ -4,6 +4,7 @@ import re
 import sys
 import db
 import member_profile
+import marketing_consent as marketing
 
 ROLE = 'richon_portal_login'
 READ = ('members', 'auth_identities', 'member_sessions', 'oauth_attempts',
@@ -45,10 +46,24 @@ ACCOUNT_UPDATE = {
 ACCOUNT_DELETE = ('auth_identities','member_sessions','member_profiles','member_order_links',
                   'oauth_account_attempts','oauth_link_confirmations','account_withdrawals',
                   'provider_unlink_failures')
+MARKETING_READ = ('member_marketing_consents',)
+MARKETING_INSERT = {
+    'member_marketing_consents': ('member_id','email_enabled','sms_enabled',
+                                  'consent_version','last_consented_at'),
+}
+MARKETING_UPDATE = {
+    'member_marketing_consents': ('email_enabled','sms_enabled','consent_version',
+                                  'last_consented_at','last_withdrawn_at','updated_at'),
+}
+MARKETING_DELETE = ('member_marketing_consents',)
 
 
 def account_enabled():
     return os.getenv('RICHON_ACCOUNT_ENABLED','false') == 'true'
+
+
+def marketing_enabled():
+    return marketing.enabled()
 
 
 def merged_grants(base, extra):
@@ -73,6 +88,15 @@ def account_grants_prepared(cur):
     return cur.fetchone() == (True,)
 
 
+def marketing_grants_prepared(cur):
+    cur.execute("SELECT to_regclass('richon.member_marketing_consents') IS NOT NULL")
+    if cur.fetchone() != (True,):
+        return False
+    cur.execute("""SELECT has_column_privilege(
+        %s,'richon.member_marketing_consents','member_id','INSERT')""",(ROLE,))
+    return cur.fetchone() == (True,)
+
+
 def check_role(cur):
     # Explicit target checks also work for a non-superuser schema owner, without SET ROLE.
     cur.execute("SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s", (ROLE,))
@@ -87,10 +111,14 @@ def check_role(cur):
         raise ValueError('portal_schema_privilege_mismatch')
     account = account_enabled()
     profile_active = member_profile.enabled()
+    marketing_active = marketing_enabled()
     if account and not profile_active:
         raise ValueError('account_requires_member_profile_policy')
+    if marketing_active and not profile_active:
+        raise ValueError('marketing_requires_member_profile_policy')
     account_grants = account or account_grants_prepared(cur)
-    tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ())
+    marketing_grants = marketing_active or marketing_grants_prepared(cur)
+    tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
     updates = UPDATE
     deletes = DELETE
@@ -104,6 +132,10 @@ def check_role(cur):
             tables = tables + ACCOUNT_OPTIONAL_WRITE_ONLY
             write_only.update(ACCOUNT_OPTIONAL_WRITE_ONLY)
             updates = merged_grants(updates, ACCOUNT_OPTIONAL_UPDATE)
+    if marketing_grants:
+        inserts = merged_grants(inserts, MARKETING_INSERT)
+        updates = merged_grants(updates, MARKETING_UPDATE)
+        deletes = tuple(dict.fromkeys((*deletes, *MARKETING_DELETE)))
     for table in tables:
         relation = 'richon.' + table
         cur.execute("SELECT has_table_privilege(%s,%s,'SELECT')", (ROLE,relation))

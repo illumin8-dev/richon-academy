@@ -144,6 +144,30 @@ class GuardTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(c.Stop):
                 c.inspect(bad, {})
 
+    def test_marketing_flag_requires_exact_account_enabled_policy(self):
+        svc = service(True)
+        env = c.environment(svc['spec']['template']['spec']['containers'][0])
+        env.update({
+            'RICHON_ACCOUNT_ENABLED': {'name':'RICHON_ACCOUNT_ENABLED','value':'true'},
+            'RICHON_MARKETING_CONSENT_ENABLED': {'name':'RICHON_MARKETING_CONSENT_ENABLED','value':'true'},
+            'RICHON_TERMS_VERSION': {'name':'RICHON_TERMS_VERSION','value':'member-info-v1'},
+            'RICHON_PRIVACY_VERSION': {'name':'RICHON_PRIVACY_VERSION','value':'member-info-v1'},
+        })
+        svc['spec']['template']['spec']['containers'][0]['env']=list(env.values())
+        info=c.inspect(svc,{})
+        self.assertTrue(info['account_enabled'] and info['marketing_enabled'])
+        for key,value in (
+            ('RICHON_MARKETING_CONSENT_ENABLED','false'),
+            ('RICHON_ACCOUNT_ENABLED','false'),
+            ('RICHON_TERMS_VERSION','internal-test-v1'),
+        ):
+            bad=deepcopy(svc)
+            bad_env=c.environment(bad['spec']['template']['spec']['containers'][0])
+            bad_env[key]['value']=value
+            bad['spec']['template']['spec']['containers'][0]['env']=list(bad_env.values())
+            with self.subTest(key=key), self.assertRaises(c.Stop):
+                c.inspect(bad,{})
+
     def test_internal_update_preserves_existing_secret_references(self):
         svc = service(); changed = c.intended(svc, 'configure-internal-login')
         self.assertFalse(c.inspect(svc, {})['enabled'])

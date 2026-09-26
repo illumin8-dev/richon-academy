@@ -8,7 +8,7 @@
   const ages={'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
   const genders={female:'여성',male:'남성'};
   const allowed=new Set(['/portal/api/me','/portal/api/me/orders','/portal/api/me/security','/portal/api/me/profile',
-    '/portal/api/me/logins/link/pending','/portal/api/me/logins/link/confirm','/portal/api/me/logins/link/cancel',
+    '/portal/api/me/marketing','/portal/api/me/logins/link/pending','/portal/api/me/logins/link/confirm','/portal/api/me/logins/link/cancel',
     '/portal/api/me/withdraw/prepare','/portal/api/me/withdraw/status','/portal/api/me/withdraw/cancel',
     '/auth/csrf','/auth/logout']);
   const startPaths=new Set(['/portal/api/me/logins/link/start','/portal/api/me/reauth/start',
@@ -54,7 +54,7 @@
     $('content').hidden=true;$('gate').hidden=false;$('logout').hidden=true;$('site-account-me').hidden=true;$('admin-link').hidden=true;
     $('list').replaceChildren();$('providers').replaceChildren();text('joined','');text('action-status','');text('list-status','');
     for(const field of fields){text('profile-'+field,'');$('profile-'+field+'-row').hidden=true;}
-    $('edit-profile').hidden=true;$('manage-logins').hidden=true;$('withdraw-account').hidden=true;$('withdraw-inquiry').hidden=false;
+    $('edit-profile').hidden=true;$('manage-logins').hidden=true;$('manage-marketing').hidden=true;$('profile-marketing-row').hidden=true;$('withdraw-account').hidden=true;$('withdraw-inquiry').hidden=false;
     text('gate-title',title);text('gate-text',message);$('retry-gate').hidden=!retry;$('gate-login').hidden=!login;
   }
 
@@ -81,6 +81,12 @@
     $('providers').replaceChildren(...visibleProviders.map(x=>element('span',names[x],'account-provider')));
     $('admin-link').hidden=me.role!=='admin';$('site-account-me').hidden=false;$('site-account-me').setAttribute('aria-current','page');
     const enabled=me.account_actions===true;
+    const marketing=typeof me.marketing_consent==='boolean';
+    if(marketing){
+      text('profile-marketing',me.marketing_consent?'동의 (문자/이메일)':'미동의');
+      $('profile-marketing-row').hidden=false;
+      $('manage-marketing').hidden=!enabled;
+    }
     $('edit-profile').hidden=!enabled||!registered;
     $('manage-logins').hidden=!enabled;
     $('withdraw-account').hidden=!enabled;
@@ -152,6 +158,24 @@
       if(authError(error))closeDialog('profile-dialog');
       else text('profile-edit-status',error.status===422?'입력한 정보를 다시 확인해 주세요.':'저장하지 못했습니다. 다시 시도해 주세요.');
     }finally{$('save-profile').disabled=false;}
+  });
+
+  $('manage-marketing').addEventListener('click',()=>{
+    if(typeof state.me?.marketing_consent!=='boolean')return;
+    $('marketing-consent').checked=state.me.marketing_consent===true;
+    text('marketing-status','');
+    openDialog('marketing-dialog','marketing-consent');
+  });
+
+  $('save-marketing').addEventListener('click',async()=>{
+    $('save-marketing').disabled=true;text('marketing-status','');
+    try{
+      await csrfAction('/portal/api/me/marketing','POST',{consent:$('marketing-consent').checked});
+      closeDialog('marketing-dialog');await boot();
+    }catch(error){
+      if(authError(error))closeDialog('marketing-dialog');
+      else text('marketing-status','저장하지 못했습니다. 다시 시도해 주세요.');
+    }finally{$('save-marketing').disabled=false;}
   });
 
   function renderLoginConnections(){
