@@ -20,7 +20,7 @@ from test_member_profile import cfg
 ORIGIN = 'https://localhost'
 
 
-def run_case(browser, width, consent=None, provider='kakao'):
+def run_case(browser, width, consent=None, marketing=False, provider='kakao', use_all=False):
     app=FastAPI();app.include_router(h.make_router(replace(cfg(), origin=ORIGIN)))
     context=browser.new_context(viewport={'width':width,'height':900},service_workers='block')
     captured=[]
@@ -60,16 +60,29 @@ def run_case(browser, width, consent=None, provider='kakao'):
             page.locator('[name=email]').fill('synthetic@example.invalid')
             page.locator('[name=age_range]').select_option('30-39')
             page.locator('[name=gender]').select_option('female')
-            for key in ('over14','terms','privacy'):
-                page.locator(f'[name={key}]').check()
-            if consent:
-                page.locator('[name=consultation]').check()
+            if use_all:
+                page.locator('[data-consent-all]').check()
+                assert page.locator('[data-consent-item]:checked').count()==page.locator('[data-consent-item]').count()
+                if not marketing:
+                    page.locator('[name=marketing]').uncheck()
+                    assert page.locator('[data-consent-all]').evaluate('(el)=>el.indeterminate===true')
+                if not consent:
+                    page.locator('[name=consultation]').uncheck()
+            else:
+                for key in ('over14','terms','privacy'):
+                    page.locator(f'[name={key}]').check()
+                if consent:
+                    page.locator('[name=consultation]').check()
+                if marketing:
+                    page.locator('[name=marketing]').check()
             page.locator('.collection-notice').evaluate('(el) => el.open=true')
+            assert page.locator('.collection-notice').inner_text().index('연령대·성별') < page.locator('.collection-notice').inner_text().index('만 14세 이상')
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
             page.get_by_role('button',name='동의하고 가입 완료').click()
             page.get_by_role('heading',name='TEST COMPLETE').wait_for()
             record=saved.call_args.args[-1]
             assert record.consultation_consent is consent
+            assert record.marketing_consent is marketing
             assert record.age_range == ('30-39' if consent else None)
             assert record.gender == ('female' if consent else None)
         else:
@@ -93,10 +106,13 @@ def main():
                 run_case(browser,390,provider=provider)
             for width in (320,390,1280):
                 for consent in (False,True):
-                    run_case(browser,width,consent)
+                    for marketing in (False,True):
+                        run_case(browser,width,consent,marketing)
+            run_case(browser,390,True,False,use_all=True)
+            run_case(browser,390,True,True,use_all=True)
         finally:
             browser.close()
-    print('PASS: 8 synthetic Chromium cases / age-before-provider, required fields, optional consent, same-origin POST, mobile width.')
+    print('PASS: synthetic Chromium / consent order, whole-consent toggle, marketing opt-in/out, same-origin POST, mobile width.')
 
 
 if __name__=='__main__':

@@ -30,6 +30,7 @@ jobs:
           node --check backend/portal_static/portal.js
           node --check backend/portal_static/account.js
           node --check backend/portal_static/login.js
+          node --check backend/portal_static/signup.js
           python tools/build_site_shell.py --check
           python -m unittest discover -s tools -p 'test_*.py' -v
           python backend/tests/portal_browser.py

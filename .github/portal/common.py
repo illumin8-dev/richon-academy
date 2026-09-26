@@ -72,6 +72,7 @@ INTERNAL = {**{k: 'true' for k in FLAGS},
 ACCOUNT = {'RICHON_ACCOUNT_ENABLED': 'true',
            'RICHON_TERMS_VERSION': 'member-info-v1',
            'RICHON_PRIVACY_VERSION': 'member-info-v1'}
+MARKETING = {'RICHON_MARKETING_CONSENT_ENABLED': 'true'}
 PLAIN = {'RICHON_BOOTSTRAP_VERIFY': 'true', 'KAKAO_APP_ID': '1585992',
          'RICHON_OAUTH_ORIGIN': 'https://richonacademy.com',
          'RICHON_AUTH_ALLOWED_ORIGINS': 'https://richonacademy.com',
@@ -212,7 +213,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     env = environment(c)
     naver_references(env, boundary=boundary)
     need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(INTERNAL) |
-         set(ACCOUNT) | (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
+         set(ACCOUNT) | set(MARKETING) | (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
     for name, secret in SECRET_NAMES.items():
         item = env.get(name, {})
         ref = item.get('valueFrom', {}).get('secretKeyRef', {})
@@ -223,7 +224,11 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     need(modes in ({'false'}, {'true'}), 'partial_login_config')
     account_present = 'RICHON_ACCOUNT_ENABLED' in env
     account_enabled = env.get('RICHON_ACCOUNT_ENABLED', {}).get('value') == 'true'
+    marketing_present = 'RICHON_MARKETING_CONSENT_ENABLED' in env
+    marketing_enabled = env.get('RICHON_MARKETING_CONSENT_ENABLED', {}).get('value') == 'true'
     need(not account_present or account_enabled, 'unreviewed_account_setting')
+    need(not marketing_present or marketing_enabled, 'unreviewed_marketing_setting')
+    need(not marketing_enabled or account_enabled, 'marketing_requires_account_enabled')
     if modes == {'false'}:
         need(not account_present, 'account_requires_login_enabled')
         for key in set(INTERNAL) - set(FLAGS):
@@ -247,6 +252,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     if boundary == 'edge':
         need(modes == {'true'}, 'edge_login_must_remain_enabled')
     return {'enabled': modes == {'true'}, 'account_enabled': account_enabled,
+            'marketing_enabled': marketing_enabled,
             'revision': status['latestReadyRevisionName'], 'image': c['image']}
 
 

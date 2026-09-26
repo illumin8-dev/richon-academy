@@ -18,6 +18,7 @@ import account_store as store
 import auth_core as core
 import auth_http as auth
 import member_profile
+import marketing_consent as marketing
 import oauth_http
 import oauth_providers as providers
 
@@ -38,7 +39,12 @@ class ProfileUpdate(BaseModel):
     def registration(self):
         return member_profile.Registration(
             self.name,self.phone,self.email,self.age_range,self.gender,
-            self.consultation_consent,True)
+            self.consultation_consent,True,False)
+
+
+class MarketingUpdate(BaseModel):
+    model_config=ConfigDict(extra='forbid',strict=True,hide_input_in_errors=True)
+    consent:bool
 
 
 class WithdrawBody(BaseModel):
@@ -129,6 +135,21 @@ def make_router(cfg):
         except Exception as error:
             raise map_error(error)
         return Response(status_code=204,headers=HEADERS)
+
+    @router.post('/marketing')
+    def update_marketing(request:Request,body:Annotated[MarketingUpdate,Body()],
+                         member:Annotated[core.Principal,Depends(auth.require_member)]):
+        if not marketing.enabled():
+            raise denied(404,'not_found')
+        csrf_request(request,cfg)
+        try:
+            store.set_marketing_consent(member.member_id,body.consent)
+        except Exception as error:
+            raise map_error(error)
+        return JSONResponse({
+            'consent':body.consent,
+            'channels':list(marketing.CHANNELS) if body.consent else [],
+        },headers=HEADERS)
 
     async def start(request,member,action,*,fresh):
         data=await oauth_http.form(request,{'csrf','provider'})

@@ -7,6 +7,7 @@ from uuid import UUID
 
 import db
 import member_profile
+import marketing_consent as marketing
 
 
 class MissingMember(Exception):
@@ -61,6 +62,20 @@ def profile(member_id: UUID):
             registration = _row(cur)
             result['display_name'] = registration['name']
             result['registration'] = registration
+        if marketing.enabled():
+            cur.execute('''SELECT email_enabled,sms_enabled,updated_at
+                           FROM richon.member_marketing_consents WHERE member_id=%s''',
+                        (member_id,))
+            preference=cur.fetchone()
+            if preference:
+                email_enabled,sms_enabled,updated_at=preference
+                result['marketing_consent']=bool(email_enabled and sms_enabled)
+                result['marketing_channels']=[
+                    channel for channel,enabled in (('email',email_enabled),('sms',sms_enabled)) if enabled]
+                result['marketing_updated_at']=updated_at
+            else:
+                result['marketing_consent']=False
+                result['marketing_channels']=[]
         return result
 
 

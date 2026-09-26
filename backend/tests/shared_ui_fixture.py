@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 
 STATIC=Path(__file__).resolve().parents[1]/'portal_static'
 FONT_CSS='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css'
-NAMES={'site.css','site.js','login.js','account.css','account.js'}
+NAMES={'site.css','site.js','login.js','signup.js','account.css','account.js'}
 
 
 def shared_asset(route, origin):

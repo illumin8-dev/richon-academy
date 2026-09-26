@@ -5,6 +5,7 @@ backend/*
 !backend/db.py
 !backend/auth_core.py
 !backend/member_profile.py
+!backend/marketing_consent.py
 !backend/member_profile_store.py
 !backend/signup_views.py
 !backend/auth_http.py
@@ -40,6 +41,7 @@ backend/portal_static/*
 !backend/portal_static/site.css
 !backend/portal_static/site.js
 !backend/portal_static/login.js
+!backend/portal_static/signup.js
 !backend/portal_static/account.css
 !backend/portal_static/account.js
 !backend/portal_static/site-header.html

@@ -45,6 +45,24 @@ def test_profile_update_uses_validated_values_and_csrf(client,member,monkeypatch
     assert saved.age_range=='30-39' and saved.gender=='female'
 
 
+def test_marketing_consent_is_separate_optional_csrf_action(client,member,monkeypatch):
+    update=Mock();monkeypatch.setattr(store,'set_marketing_consent',update)
+    monkeypatch.setenv('RICHON_MARKETING_CONSENT_ENABLED','true')
+    assert client.post('/portal/api/me/marketing',json={'consent':True}).status_code==403
+    response=client.post('/portal/api/me/marketing',json={'consent':True},headers=headers())
+    assert response.status_code==200
+    assert response.json()=={'consent':True,'channels':['email','sms']}
+    update.assert_called_once_with(member.member_id,True)
+
+
+def test_marketing_consent_route_is_hidden_until_feature_enabled(client,member,monkeypatch):
+    update=Mock();monkeypatch.setattr(store,'set_marketing_consent',update)
+    monkeypatch.delenv('RICHON_MARKETING_CONSENT_ENABLED',raising=False)
+    response=client.post('/portal/api/me/marketing',json={'consent':False},headers=headers())
+    assert response.status_code==404
+    update.assert_not_called()
+
+
 def test_security_reports_freshness_and_safe_provider_failure_only(client,member,monkeypatch):
     monkeypatch.setattr(store,'recent_session',Mock(return_value=True))
     monkeypatch.setattr(store,'unlink_failure_pending',Mock(return_value=True))

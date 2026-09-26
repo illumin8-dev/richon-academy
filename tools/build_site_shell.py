@@ -20,7 +20,7 @@ def outputs():
     header = (SOURCE / 'header.html').read_text()
     footer = (SOURCE / 'footer.html').read_text()
     result = {}
-    for name in ('site.css', 'site.js', 'login.js', 'account.css', 'account.js'):
+    for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'account.css', 'account.js'):
         result[STATIC / name] = (SOURCE / name).read_bytes()
     result[STATIC / 'site-header.html'] = header.encode()
     result[STATIC / 'site-footer.html'] = footer.encode()
