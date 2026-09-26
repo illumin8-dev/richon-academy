@@ -44,7 +44,8 @@ def run_case(browser, width, consent=None, marketing=False, provider='kakao', us
     context.route('**/*',intercept)
     identity=core.VerifiedIdentity('naver','test-naver','synthetic-uid','회원')
     saved=Mock(return_value=(uuid4(),'/portal/mypage'))
-    with patch.object(store,'pending',return_value=(identity,'/portal/mypage')), \
+    with patch.dict(os.environ, {'RICHON_MARKETING_CONSENT_ENABLED':'true'}), \
+         patch.object(store,'pending',return_value=(identity,'/portal/mypage')), \
          patch.object(store,'begin',return_value='S'*43), \
          patch.object(profiles,'finish',saved), \
          patch.object(h,'complete',side_effect=lambda mid,req,target:h.redirect(target)):
