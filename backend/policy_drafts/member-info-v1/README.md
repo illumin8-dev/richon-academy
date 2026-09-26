@@ -86,6 +86,7 @@
 - [ ] 광고성 정보 선택동의 UI·DB·철회 구현 및 테스트.
 - [ ] Google Cloud 실제 결제계정 계약 주체 최종 대조.
 - [ ] Cloudflare 실제 요금제 / Access·로그 / Data Localization 설정 최종 대조.
+- [ ] Google Cloud / Neon / Cloudflare의 실제 로그·백업 보유기간 최종 대조.
 - [ ] 법정 보존 거래기록 만료 cleanup을 운영 스케줄에 연결.
 - [ ] 백업 복구 후 탈퇴정보 재파기 절차 확정.
 - [ ] 소유자 실계정 신규가입→본인정보→계정연결/해제→탈퇴→재가입 종단간 테스트.
