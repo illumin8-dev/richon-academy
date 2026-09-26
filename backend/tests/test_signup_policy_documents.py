@@ -37,19 +37,26 @@ def test_documents_stay_drafts_and_local_links_resolve():
             assert (DRAFTS / ref).is_file()
         text = ''.join(doc.text)
         assert '시행 전' in text and '032-236-8944' in text
-        assert '[확정 후 기재]' in text
+        assert 'richonchoi@gmail.com' in text
+        assert '2026년 10월 1일' in text
+        assert '[확정 후 기재]' not in text
         assert '010-0000-0000' not in text and 'richon@richon.co.kr' not in text
 
 
-def test_privacy_matches_approved_notice_without_unapproved_claims():
+def test_privacy_matches_current_signup_notice_and_approved_future_choices():
     privacy = (DRAFTS / 'privacy.html').read_text()
     notice = (ROOT / 'signup_views.py').read_text()
+    # These are already implemented in the current signup flow and must stay aligned.
     for phrase in ('이름', '휴대전화번호', '이메일', '선택 / 연령대·성별',
-                   '생애주기와 주거 수요를 고려한 맞춤 상담 준비 및 상담 우선순위 설정', '회원 서비스 안내 및 강의자료 발송',
-                   '선택정보 제공에 동의하지 않아도', '만 14세 이상', '동의 버전·시점'):
+                   '생애주기와 주거 수요를 고려한 맞춤 상담 준비 및 상담 우선순위 설정',
+                   '회원 서비스 안내 및 강의자료 발송', '선택정보 제공',
+                   '만 14세 이상', '동의 버전·시점'):
         assert phrase in privacy and phrase in notice
-    for phrase in ('Google Cloud', 'Neon', 'Cloudflare', '공식 이메일', '시행일',
-                   '본인인증', '세션', '간편로그인', '직접 수집·저장하지 않습니다', '광고성 정보 수신 동의로 취급하지 않습니다'):
+    # These are approved policy facts or future choices recorded in the draft.
+    for phrase in ('Google Cloud', 'Neon', 'Cloudflare', 'richonchoi@gmail.com',
+                   '2026년 10월 1일', '본인인증', '세션', '간편로그인',
+                   '직접 수집·저장하지 않습니다', '광고성 정보 수신 동의',
+                   '전체 동의', '개별적으로 해제', '만 14세 이상 회원'):
         assert phrase in privacy
     assert '만 19세 이상' not in privacy
     assert '생년월일은 수집하지 않습니다' in privacy
@@ -62,15 +69,22 @@ def test_terms_changes_are_bounded_to_approved_membership_amendments():
     assert '주식회사 리치온아카데미' not in text
     assert '서비스 전용 비밀번호를 별도로 설정하게 하거나 수집하지 않습니다' in text
     assert '자기확인' in text and '자동 통합하지 않습니다' in text
-    assert '선택정보 제공을 거부하여도' in text
+    assert '만 14세 이상 회원의 연령대와 성별' in text
+    assert '광고성 정보 수신은 선택사항' in text
+    assert '전체 동의' in text and '개별적으로 해제' in text
     assert '결제 인증정보' in text and '임의로 변경하지 않습니다' in text
 
 
-def test_release_checklist_keeps_unresolved_facts_and_no_runtime_draft_copy():
+def test_release_checklist_tracks_resolved_and_remaining_publication_gates():
     checklist = (DRAFTS / 'README.md').read_text()
-    for phrase in ('공식 이메일', '로그·백업 보유기간', '운영 DB009', '메인 로그인 버튼 계속 비노출',
-                   '전체 약관 대체본이 아니다', 'STEP6', '일반 공개 별도 승인'):
+    for phrase in ('richonchoi@gmail.com', '로그·백업 보유기간', '운영 DB009',
+                   '메인 로그인 버튼은 별도 공개 승인 전 비노출',
+                   '전체 약관 대체본이 아니다', '광고성 정보 수신동의 구현 경계',
+                   '일반 로그인 공개는 각각 별도 승인'):
         assert phrase in checklist
+    assert '공식 개인정보 연락 이메일 확정' in checklist
+    assert '시행 예정일 2026-10-01 확정' in checklist
     docker = (ROOT / 'Dockerfile.portal').read_text()
     assert 'COPY backend/policy_drafts' not in docker
-    assert not any(line.strip() == '!backend/policy_drafts/' for line in (ROOT / 'Dockerfile.portal.dockerignore').read_text().splitlines())
+    assert not any(line.strip() == '!backend/policy_drafts/' for line in
+                   (ROOT / 'Dockerfile.portal.dockerignore').read_text().splitlines())
