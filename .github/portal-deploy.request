@@ -1,4 +1,4 @@
 {
-  "operation": "stage-marketing-enabled",
-  "request_id": "marketing-enabled-candidate-20260927-a"
+  "operation": "inspect-marketing-enabled",
+  "request_id": "marketing-enabled-readback-20260927-a"
 }
