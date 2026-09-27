@@ -109,7 +109,7 @@ def test_shared_assets_are_available_without_customer_queries(monkeypatch,name):
     assert TestClient(app).get('/portal/assets/site-header.html').status_code==404
 
 
-@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js'])
+@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','handoff.js'])
 def test_auth_shared_assets_are_same_source(name):
     r=client().get('/auth/assets/'+name)
     assert r.status_code==200 and r.headers['cache-control']=='no-store'
@@ -118,7 +118,7 @@ def test_auth_shared_assets_are_same_source(name):
 
 
 def test_account_scripts_store_no_identity_or_session_state():
-    for filename in ('account.js','login.js','signup.js','site.js'):
+    for filename in ('account.js','login.js','signup.js','handoff.js','site.js'):
         source=(ROOT/'frontend/shared'/filename).read_text()
         for forbidden in ('localStorage','sessionStorage','document.cookie','innerHTML','eval('):
             assert forbidden not in source
