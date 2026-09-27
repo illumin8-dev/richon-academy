@@ -71,7 +71,10 @@ def test_native_modal_confirmation_retains_existing_auth_contract(monkeypatch,co
         assert c.post('/auth/start',data=body,headers={'Origin':ORIGIN}).status_code==422
         begin.assert_not_called();body['over14']='yes'
     r=c.post('/auth/start',data=body,headers={'Origin':ORIGIN},follow_redirects=False)
-    assert r.status_code==303 and r.headers['location'].startswith('https://nid.naver.com/')
+    assert r.status_code==200
+    assert 'data-richon-provider-handoff' in r.text
+    assert 'https://nid.naver.com/oauth2.0/authorize?' in r.text
+    assert "form-action 'none'" in r.headers['content-security-policy']
     assert r.headers['referrer-policy']=='no-referrer';begin.assert_called_once()
 
 
@@ -109,7 +112,7 @@ def test_shared_assets_are_available_without_customer_queries(monkeypatch,name):
     assert TestClient(app).get('/portal/assets/site-header.html').status_code==404
 
 
-@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js'])
+@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','handoff.js'])
 def test_auth_shared_assets_are_same_source(name):
     r=client().get('/auth/assets/'+name)
     assert r.status_code==200 and r.headers['cache-control']=='no-store'
@@ -118,7 +121,7 @@ def test_auth_shared_assets_are_same_source(name):
 
 
 def test_account_scripts_store_no_identity_or_session_state():
-    for filename in ('account.js','login.js','signup.js','site.js'):
+    for filename in ('account.js','login.js','signup.js','handoff.js','site.js'):
         source=(ROOT/'frontend/shared'/filename).read_text()
         for forbidden in ('localStorage','sessionStorage','document.cookie','innerHTML','eval('):
             assert forbidden not in source

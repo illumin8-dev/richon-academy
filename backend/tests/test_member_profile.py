@@ -86,7 +86,8 @@ def test_age_checkbox_required_before_oauth_attempt(monkeypatch,provider):
         q=form if value is None else {**form,'over14':value}
         assert c.post('/auth/start',data=q,headers={'Origin':ORIGIN},follow_redirects=False).status_code==422
     begin.assert_not_called()
-    assert c.post('/auth/start',data={**form,'over14':'yes'},headers={'Origin':ORIGIN},follow_redirects=False).status_code==303
+    response=c.post('/auth/start',data={**form,'over14':'yes'},headers={'Origin':ORIGIN},follow_redirects=False)
+    assert response.status_code==200 and 'data-richon-provider-handoff' in response.text
     assert begin.call_count==1
 
 

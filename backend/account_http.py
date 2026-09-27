@@ -155,8 +155,8 @@ def make_router(cfg):
         try:
             browser=oauth_http.cookie(request,oauth_http.BROWSER,required=False) or secrets.token_urlsafe(32)
             state=store.begin_action(cfg,member.member_id,provider,action,browser)
-            response=RedirectResponse(providers.authorization_url(cfg,provider,state,browser,reauthenticate=True),
-                                      status_code=303,headers=HEADERS)
+            response=oauth_http.provider_handoff(
+                providers.authorization_url(cfg,provider,state,browser,reauthenticate=True))
             oauth_http.set_temporary(response,oauth_http.BROWSER,browser)
             return response
         except HTTPException:

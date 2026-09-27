@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from html import unescape
 from urllib.parse import urlsplit,parse_qs
 from uuid import uuid4
 import os,re
@@ -58,8 +59,9 @@ def client():
 def start(c,name,target='/'):
     r=c.get('/auth/login',params={'return_to':target});csrf=re.search(r'name="csrf" value="([^"]+)"',r.text)[1]
     r=c.post('/auth/start',data={'csrf':csrf,'provider':name,'return_to':target},headers={'Origin':ORIGIN},follow_redirects=False)
-    assert r.status_code==303
-    return parse_qs(urlsplit(r.headers['location']).query)['state'][0]
+    assert r.status_code==200
+    href=re.search(r'data-richon-provider-handoff href="([^"]+)"',r.text)[1]
+    return parse_qs(urlsplit(unescape(href)).query)['state'][0]
 
 
 @pytest.mark.parametrize('name',['kakao','naver'])
