@@ -71,7 +71,10 @@ def test_native_modal_confirmation_retains_existing_auth_contract(monkeypatch,co
         assert c.post('/auth/start',data=body,headers={'Origin':ORIGIN}).status_code==422
         begin.assert_not_called();body['over14']='yes'
     r=c.post('/auth/start',data=body,headers={'Origin':ORIGIN},follow_redirects=False)
-    assert r.status_code==303 and r.headers['location'].startswith('https://nid.naver.com/')
+    assert r.status_code==200
+    assert 'data-richon-provider-handoff' in r.text
+    assert 'https://nid.naver.com/oauth2.0/authorize?' in r.text
+    assert "form-action 'none'" in r.headers['content-security-policy']
     assert r.headers['referrer-policy']=='no-referrer';begin.assert_called_once()
 
 
