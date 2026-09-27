@@ -89,6 +89,27 @@ def test_login_page_no_secrets_and_csrf_boundary(monkeypatch):
     fn.assert_not_called()
 
 
+
+def test_provider_handoff_is_exact_host_navigation_document():
+    target=p.authorization_url(settings(),'kakao','S'*43,'B'*43)
+    response=h.provider_handoff(target)
+    body=response.body.decode()
+    assert response.status_code==200
+    assert 'data-richon-provider-handoff' in body
+    assert 'https://kauth.kakao.com/oauth/authorize?' in body
+    assert '/auth/assets/handoff.js' in body
+    assert "form-action 'none'" in response.headers['content-security-policy']
+    assert response.headers['referrer-policy']=='no-referrer'
+    for bad in (
+        'https://evil.invalid/oauth/authorize',
+        'https://kauth.kakao.com/other',
+        'https://user@kauth.kakao.com/oauth/authorize',
+        'https://kauth.kakao.com:443/oauth/authorize',
+        'https://kauth.kakao.com/oauth/authorize#fragment',
+    ):
+        with pytest.raises(p.ProviderRejected):
+            h.provider_handoff(bad)
+
 def test_callback_invalid_state_never_exchanges(monkeypatch):
     exchange=Mock();monkeypatch.setattr(p,'exchange',exchange)
     c=TestClient(app(),base_url=ORIGIN);c.get('/auth/login')
