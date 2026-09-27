@@ -6,12 +6,16 @@ const TEST_CANDIDATE_HOST = 'portal-candidate---richon-portal-amjmgyepbq-as.a.ru
 const PUBLIC_RETURNS = new Set(['/', '/index.html', '/apply.html']);
 const PORTAL_RETURNS = new Set(['/portal/mypage', '/portal/admin', '/portal/enrollments', '/portal/manual']);
 const COMPLETIONS = new Set(['/auth/kakao/callback', '/auth/naver/callback', '/auth/signup']);
-const COOKIES = new Set(['__Host-richon-session', '__Host-richon-oauth', '__Host-richon-signup']);
+const ACCOUNT_STARTS = new Set(['/portal/api/me/logins/link/start', '/portal/api/me/reauth/start',
+  '/portal/api/me/logins/unlink/start', '/portal/api/me/withdraw/provider/start']);
+const COOKIES = new Set(['__Host-richon-session', '__Host-richon-oauth', '__Host-richon-signup', '__Host-richon-link']);
 const AUTH = new Map([
   ['/auth/login', ['GET']], ['/auth/start', ['POST']], ['/auth/signup', ['GET', 'POST']],
   ['/auth/kakao/callback', ['GET']], ['/auth/naver/callback', ['GET']],
   ['/auth/assets/kakao-login.png', ['GET']],
   ['/auth/assets/naver-login.png', ['GET']],
+  ['/auth/assets/site.css', ['GET']], ['/auth/assets/site.js', ['GET']],
+  ['/auth/assets/login.js', ['GET']], ['/auth/assets/signup.js', ['GET']],
   ['/auth/me', ['GET']], ['/auth/csrf', ['GET']], ['/auth/logout', ['POST']], ['/auth/logout-all', ['POST']],
 ]);
 export function allowed(path, method) {
@@ -27,7 +31,7 @@ export function safeLocation(value, path) {
   if (url.origin === ORIGIN && allowed(url.pathname, 'GET')) return url.href;
   if (url.origin === ORIGIN && COMPLETIONS.has(path) && PUBLIC_RETURNS.has(url.pathname) && !url.search
     && [url.pathname, ORIGIN + url.pathname].includes(value)) return url.href;
-  if (path === '/auth/start' && ((url.origin === 'https://kauth.kakao.com' && url.pathname === '/oauth/authorize')
+  if ((path === '/auth/start' || ACCOUNT_STARTS.has(path)) && ((url.origin === 'https://kauth.kakao.com' && url.pathname === '/oauth/authorize')
     || (url.origin === 'https://nid.naver.com' && url.pathname === '/oauth2.0/authorize'))) return url.href;
   throw new Error('unsafe_redirect');
 }
@@ -60,7 +64,7 @@ export function returnReferer(value) {
   return null;
 }
 export function responseReferrerPolicy(path, method, status, type) {
-  return method === 'GET' && ['/auth/login', '/auth/signup'].includes(path)
+  return method === 'GET' && ['/auth/login', '/auth/signup', '/portal/mypage'].includes(path)
     && status === 200 && type?.toLowerCase().split(';')[0].trim() === 'text/html'
     ? 'same-origin' : 'no-referrer';
 }
