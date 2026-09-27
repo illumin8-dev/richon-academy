@@ -15,8 +15,10 @@ INSERT = {
     'member_sessions': ('token_hash', 'member_id', 'auth_version', 'role_at_issue', 'expires_at', 'idle_expires_at'),
     'oauth_attempts': ('state_hash', 'browser_hash', 'provider', 'app_id', 'return_to', 'expires_at'),
     'oauth_signups': ('ticket_hash', 'browser_hash', 'provider', 'app_id', 'subject', 'display_name',
-                      'provider_name', 'provider_phone', 'provider_email',
                       'return_to', 'terms_version', 'privacy_version', 'expires_at'),
+}
+PROVIDER_PROFILE_INSERT = {
+    'oauth_signups': ('provider_name','provider_phone','provider_email'),
 }
 UPDATE = {'members': ('auth_version',),
           'member_sessions': ('last_seen_at', 'idle_expires_at', 'revoked_at'),
@@ -122,6 +124,8 @@ def check_role(cur):
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
     tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
+    if profile_active:
+        inserts = merged_grants(inserts, PROVIDER_PROFILE_INSERT)
     updates = UPDATE
     deletes = DELETE
     write_only = set(ACCOUNT_WRITE_ONLY)
