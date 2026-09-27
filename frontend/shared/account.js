@@ -141,14 +141,14 @@
     $('edit-consultation').checked=data.consultation_consent===true;
     $('edit-age').value=Object.hasOwn(ages,data.age_range)?data.age_range:'';
     $('edit-gender').value=Object.hasOwn(genders,data.gender)?data.gender:'';
-    text('profile-edit-status','');setOptionalEnabled();openDialog('profile-dialog','edit-name');
+    text('profile-edit-status','');setOptionalEnabled();openDialog('profile-dialog','edit-phone');
   });
 
   $('save-profile').addEventListener('click',async()=>{
     const consent=$('edit-consultation').checked;$('save-profile').disabled=true;text('profile-edit-status','');
     try{
       await csrfAction('/portal/api/me/profile','POST',{
-        name:$('edit-name').value,phone:$('edit-phone').value,email:$('edit-email').value,
+        phone:$('edit-phone').value,email:$('edit-email').value,
         age_range:consent?($('edit-age').value||null):null,
         gender:consent?($('edit-gender').value||null):null,
         consultation_consent:consent
