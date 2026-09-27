@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 import json
 import os
+import re
 import sys
 sys.path[:0]=[str(Path(__file__).resolve().parents[1]),str(Path(__file__).resolve().parent)]
 
@@ -136,6 +137,8 @@ def main():
         request=submitted.value
         assert 'provider=kakao' in (request.post_data or '')
         assert 'over14=yes' in (request.post_data or '')
+        page.wait_for_url(re.compile(r'^https://kauth\\.kakao\\.com/oauth/authorize\\?'), timeout=5000)
+        expect(page.get_by_role('heading',name='PROVIDER')).to_be_visible()
         context.close();browser.close()
     print('PASS: shared member chrome, responsive shell, account edit/link/withdraw dialogs, quiet withdrawal action and same-page provider selector; synthetic only')
 
