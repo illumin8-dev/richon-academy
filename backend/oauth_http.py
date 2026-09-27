@@ -25,7 +25,8 @@ BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
 LINK='__Host-richon-link'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
-CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://kauth.kakao.com https://nid.naver.com"
+CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+HANDOFF_CSP="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
 logger=logging.getLogger('richon.oauth')
 
 
@@ -61,6 +62,37 @@ def failed(return_to='/'):
     if return_to in providers.RETURNS and return_to != '/':
         target += '&' + urlencode({'return_to': return_to})
     return redirect(target)
+
+
+def provider_handoff(target):
+    """End the same-origin form POST before navigating to an OAuth provider.
+
+    Chromium may apply CSP form-action to redirects after a form submission.
+    Returning a same-origin 200 document and navigating from self-hosted JS keeps
+    the form boundary and the provider navigation as two distinct browser steps.
+    """
+    try:
+        value=urlsplit(target)
+        port=value.port
+    except (TypeError,ValueError):
+        raise providers.ProviderRejected() from None
+    allowed=(
+        value.scheme=='https' and value.username is None and value.password is None
+        and port is None and not value.fragment and len(target)<=8192
+        and ((value.hostname=='kauth.kakao.com' and value.path=='/oauth/authorize')
+             or (value.hostname=='nid.naver.com' and value.path=='/oauth2.0/authorize'))
+    )
+    if not allowed:
+        raise providers.ProviderRejected()
+    safe=html.escape(target,quote=True)
+    body=('<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+          '<meta name="viewport" content="width=device-width,initial-scale=1">'
+          '<meta name="robots" content="noindex,nofollow">'
+          '<title>로그인 연결 중</title></head><body>'
+          '<main><p>로그인 페이지로 이동합니다.</p>'
+          f'<a data-richon-provider-handoff href="{safe}" rel="noreferrer">계속</a></main>'
+          '<script defer src="/auth/assets/handoff.js"></script></body></html>')
+    return HTMLResponse(body,headers={**HEADERS,'Content-Security-Policy':HANDOFF_CSP})
 
 
 def page(title,body):
@@ -155,7 +187,7 @@ def make_router(settings):
 
     @router.get('/assets/{asset}',include_in_schema=False)
     def shared_auth_asset(asset:str):
-        if asset not in {'site.css','site.js','login.js','signup.js'}:
+        if asset not in {'site.css','site.js','login.js','signup.js','handoff.js'}:
             raise HTTPException(404,'not_found',headers=HEADERS)
         return FileResponse(Path(__file__).parent / 'portal_static' / asset, headers=HEADERS)
 
@@ -210,7 +242,7 @@ def make_router(settings):
             raise HTTPException(422,'invalid_login_request',headers=HEADERS)
         try:
             state=await run_in_threadpool(store.begin,settings,name,browser,target)
-            return redirect(providers.authorization_url(settings,name,state,browser))
+            return provider_handoff(providers.authorization_url(settings,name,state,browser))
         except Exception: return failed(target)
 
     @router.get('/{provider}/callback')
