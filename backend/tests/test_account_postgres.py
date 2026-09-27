@@ -60,17 +60,18 @@ def test_migration_reentry_and_schema(account_db):
                        'richon.provider_unlink_failures','richon.retained_order_records')
 
 
-def test_profile_update_changes_profile_not_identity(account_db):
+def test_profile_update_changes_contact_fields_not_name_or_identity(account_db):
     identity,mid=registered()
     with account_db() as conn:
-        before=conn.execute('SELECT provider,app_id,subject FROM richon.auth_identities WHERE member_id=%s',(mid,)).fetchall()
-    update=profile.Registration('바뀐 이름','010-9876-5432','changed@example.invalid','40-49','female',True,True)
-    store.update_profile(mid,update)
+        before_identity=conn.execute('SELECT provider,app_id,subject FROM richon.auth_identities WHERE member_id=%s',(mid,)).fetchall()
+        before_name=conn.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()[0]
+        before_display=conn.execute('SELECT display_name FROM richon.members WHERE member_id=%s',(mid,)).fetchone()[0]
+    store.update_profile(mid,'010-9876-5432','changed@example.invalid','40-49','female',True)
     with account_db() as conn:
         assert conn.execute('SELECT name,phone,email,age_range,gender,consultation_consent FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(
-            '바뀐 이름','01098765432','changed@example.invalid','40-49','female',True)
-        assert conn.execute('SELECT display_name FROM richon.members WHERE member_id=%s',(mid,)).fetchone()==('바뀐 이름',)
-        assert conn.execute('SELECT provider,app_id,subject FROM richon.auth_identities WHERE member_id=%s',(mid,)).fetchall()==before
+            before_name,'01098765432','changed@example.invalid','40-49','female',True)
+        assert conn.execute('SELECT display_name FROM richon.members WHERE member_id=%s',(mid,)).fetchone()==(before_display,)
+        assert conn.execute('SELECT provider,app_id,subject FROM richon.auth_identities WHERE member_id=%s',(mid,)).fetchall()==before_identity
 
 
 def test_link_requires_confirmation_then_same_member_has_both(account_db):
