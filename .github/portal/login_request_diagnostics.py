@@ -1,0 +1,119 @@
+"""Read-only login request diagnosis for the protected portal candidate.
+
+Prints only fixed route categories, status codes, counts and timestamps.
+Never prints request bodies, query strings, cookies, CSRF, OAuth code/state,
+provider tokens, customer data, secrets or application exception payloads.
+"""
+from collections import Counter
+import json
+import re
+from urllib.parse import urlsplit
+
+import common as c
+import edge_ops as e
+
+OPERATION='inspect-login-requests'
+EXPECTED_IMAGE_DIGEST='sha256:ac0b4ec090f1e85b5579019f3d0b78ebf14168244a2d119db24a40f2ed363dd6'
+ALLOWED_PATHS={'/auth/login','/auth/start'}
+
+
+def candidate_revision(svc):
+    rows=[row for row in svc.get('status',{}).get('traffic',[])
+          if row.get('tag')==c.TAG]
+    c.need(len(rows)==1 and int(rows[0].get('percent',0))==0,
+           'candidate_tag_missing')
+    name=rows[0].get('revisionName','')
+    c.need(re.fullmatch(c.SERVICE+r'-[a-z0-9-]+',name),
+           'candidate_revision_invalid')
+    return name
+
+
+def read_logs(revision):
+    filt=(
+        'resource.type="cloud_run_revision" AND '
+        f'resource.labels.service_name="{c.SERVICE}" AND '
+        f'resource.labels.revision_name="{revision}" AND '
+        'httpRequest.requestMethod=("*") AND '
+        '(httpRequest.requestUrl:"/auth/login" OR httpRequest.requestUrl:"/auth/start")'
+    )
+    raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
+                   '--freshness=45m','--limit=200','--order=asc','--format=json'],
+                  timeout=120)
+    try:
+        rows=json.loads(raw) if raw.strip() else []
+    except (ValueError,UnicodeError):
+        raise c.Stop('invalid_log_response') from None
+    c.need(isinstance(rows,list),'invalid_log_response')
+    result=[]
+    for row in rows:
+        req=row.get('httpRequest') or {}
+        method=req.get('requestMethod')
+        status=req.get('status')
+        url=req.get('requestUrl','')
+        try:
+            path=urlsplit(url).path
+        except ValueError:
+            continue
+        if path not in ALLOWED_PATHS or method not in {'GET','POST'}:
+            continue
+        if not isinstance(status,int):
+            continue
+        stamp=row.get('timestamp','')
+        if not isinstance(stamp,str) or len(stamp)>40:
+            stamp=''
+        result.append((stamp,path,method,status))
+    return result
+
+
+def warning_count(revision):
+    filt=(
+        'resource.type="cloud_run_revision" AND '
+        f'resource.labels.service_name="{c.SERVICE}" AND '
+        f'resource.labels.revision_name="{revision}" AND '
+        'textPayload="oauth_flow_not_completed"'
+    )
+    raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
+                   '--freshness=45m','--limit=100','--format=json'],timeout=120)
+    try:
+        rows=json.loads(raw) if raw.strip() else []
+    except (ValueError,UnicodeError):
+        raise c.Stop('invalid_warning_log_response') from None
+    c.need(isinstance(rows,list),'invalid_warning_log_response')
+    return len(rows)
+
+
+def run():
+    c.source(live=True)
+    req=c.read_request()
+    c.need(req['operation']==OPERATION,'explicit_login_diagnostics_required')
+    svc,policy=e.get_service()
+    revision=candidate_revision(svc)
+    info=c.inspect(svc,policy,boundary='edge')
+    c.need(info['image'].endswith('@'+EXPECTED_IMAGE_DIGEST),
+           'unexpected_candidate_image')
+    rows=read_logs(revision)
+    counts=Counter((path,method,status) for _,path,method,status in rows)
+
+    print('LOGIN_REQUEST_DIAGNOSTICS=READ_ONLY')
+    print('CANDIDATE_REVISION='+revision)
+    print('WINDOW=45m')
+    print('REQUEST_COUNT='+str(len(rows)))
+    for (path,method,status),count in sorted(counts.items()):
+        label='LOGIN_PAGE' if path=='/auth/login' else 'AUTH_START'
+        print(f'{label} {method} status={status} count={count}')
+    starts=[row for row in rows if row[1]=='/auth/start']
+    print('AUTH_START_TOTAL='+str(len(starts)))
+    for index,(stamp,_,method,status) in enumerate(starts[-20:],1):
+        print(f'AUTH_START_EVENT_{index} timestamp={stamp} method={method} status={status}')
+    print('OAUTH_FLOW_NOT_COMPLETED_WARNINGS='+str(warning_count(revision)))
+    print('NO_BODIES_OR_QUERY_STRINGS_PRINTED=YES')
+    return 0
+
+
+if __name__=='__main__':
+    try:
+        raise SystemExit(run())
+    except (Exception,KeyboardInterrupt) as exc:
+        code=str(exc) if isinstance(exc,c.Stop) else 'unexpected_login_diagnostics_failure'
+        print('STOP: login-request-diagnostics / '+code+'. No raw logs or credentials printed.')
+        raise SystemExit(1) from None
