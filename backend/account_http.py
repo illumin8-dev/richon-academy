@@ -29,17 +29,11 @@ logger=logging.getLogger('richon.account')
 
 class ProfileUpdate(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True,hide_input_in_errors=True)
-    name:str
     phone:str
     email:str
     age_range:str|None=None
     gender:str|None=None
     consultation_consent:bool=False
-
-    def registration(self):
-        return member_profile.Registration(
-            self.name,self.phone,self.email,self.age_range,self.gender,
-            self.consultation_consent,True,False)
 
 
 class MarketingUpdate(BaseModel):
@@ -131,7 +125,8 @@ def make_router(cfg):
                        member:Annotated[core.Principal,Depends(auth.require_member)]):
         csrf_request(request,cfg)
         try:
-            store.update_profile(member.member_id,body.registration())
+            store.update_profile(member.member_id,body.phone,body.email,
+                                 body.age_range,body.gender,body.consultation_consent)
         except Exception as error:
             raise map_error(error)
         return Response(status_code=204,headers=HEADERS)
