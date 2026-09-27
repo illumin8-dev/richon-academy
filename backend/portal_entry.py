@@ -29,6 +29,8 @@ def allowed(path, method):
         '/auth/login': {'GET'}, '/auth/start': {'POST'},
         '/auth/assets/kakao-login.png': {'GET'},
         '/auth/assets/naver-login.png': {'GET'},
+        '/auth/assets/site.css': {'GET'}, '/auth/assets/site.js': {'GET'},
+        '/auth/assets/login.js': {'GET'}, '/auth/assets/signup.js': {'GET'},
         '/auth/signup': {'GET', 'POST'},
         '/auth/kakao/callback': {'GET'}, '/auth/naver/callback': {'GET'},
         '/auth/me': {'GET'}, '/auth/csrf': {'GET'},
