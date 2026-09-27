@@ -32,14 +32,21 @@ def run_case(browser, width, consent=None, marketing=False, provider='kakao', us
     def intercept(route):
         if shared_asset(route, ORIGIN): return
         request=route.request;url=urlsplit(request.url)
+        if request.method=='GET' and url.netloc in {'kauth.kakao.com','nid.naver.com'}:
+            route.fulfill(status=200,content_type='text/html',body='<h1>TEST COMPLETE</h1>')
+            return
         assert url.scheme+'://'+url.netloc == ORIGIN, 'Unexpected network blocked'
         with TestClient(app,base_url=ORIGIN) as client:
             response=client.request(request.method,request.url,headers=request.all_headers(),
                 content=request.post_data_buffer,follow_redirects=False)
         if request.method=='POST':
             captured.append((url.path,response.status_code,request.all_headers().get('origin')))
-            assert response.status_code==303
-            route.fulfill(status=200,content_type='text/html',body='<h1>TEST COMPLETE</h1>')
+            if signup:
+                assert response.status_code==303
+                route.fulfill(status=200,content_type='text/html',body='<h1>TEST COMPLETE</h1>')
+            else:
+                assert response.status_code==200
+                route.fulfill(status=response.status_code,headers=dict(response.headers),body=response.content)
         else:
             route.fulfill(status=response.status_code,headers=dict(response.headers),body=response.content)
     context.route('**/*',intercept)
@@ -95,7 +102,7 @@ def run_case(browser, width, consent=None, marketing=False, provider='kakao', us
             button.click();assert not captured
             page.locator('[name=over14]').check();button.click()
             page.get_by_role('heading',name='TEST COMPLETE').wait_for()
-        assert len(captured)==1 and captured[0][1:]==(303,ORIGIN)
+        assert len(captured)==1 and captured[0][1:]==((303 if signup else 200),ORIGIN)
     context.close()
 
 
