@@ -92,6 +92,7 @@ def test_age_checkbox_required_before_oauth_attempt(monkeypatch,provider):
 def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
     monkeypatch.setenv('RICHON_MARKETING_CONSENT_ENABLED','true')
     monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('naver','test-naver','subject','회원'),'/')))
+    monkeypatch.setattr(s,'signup_profile',Mock(return_value=p.ProviderProfile()))
     c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
     r=c.get('/auth/signup')
     assert r.status_code==200 and 'name="name"' in r.text and 'name="phone"' in r.text and 'name="email"' in r.text
@@ -122,7 +123,10 @@ def test_signup_validates_before_save_and_does_not_echo_fields(monkeypatch):
 def test_existing_member_needs_profile_not_a_new_identity(monkeypatch,completed):
     mid=uuid4();c=client();c.get('/auth/login')
     monkeypatch.setattr(s,'consume_attempt',Mock(return_value='/'))
-    monkeypatch.setattr(p,'exchange',Mock(return_value=core.VerifiedIdentity('naver','test-naver','id','실제 이름')))
+    verified=p.VerifiedProviderSession(
+        core.VerifiedIdentity('naver','test-naver','id','실제 이름'),'synthetic',
+        p.ProviderProfile(name='실제 이름'))
+    monkeypatch.setattr(p,'exchange_session',Mock(return_value=verified))
     monkeypatch.setattr(s,'member_for',Mock(return_value=mid))
     monkeypatch.setattr(ms,'completed',Mock(return_value=completed))
     stage=Mock(return_value='T'*43);monkeypatch.setattr(s,'stage_signup',stage)
@@ -133,14 +137,57 @@ def test_existing_member_needs_profile_not_a_new_identity(monkeypatch,completed)
 
 
 @pytest.mark.parametrize('provider',['kakao','naver'])
-def test_v1_does_not_use_nickname_or_return_contact_payload(monkeypatch,provider):
+def test_v1_collects_valid_provider_signup_profile_without_using_nickname(monkeypatch,provider):
     def respond(r):
-        if str(r.url)==p.ENDPOINTS[provider][1]:return httpx.Response(200,json={'access_token':'synthetic','token_type':'bearer'})
-        if 'access_token_info' in str(r.url):return httpx.Response(200,json={'id':42,'app_id':1585992,'expires_in':100})
+        if str(r.url)==p.ENDPOINTS[provider][1]:
+            return httpx.Response(200,json={'access_token':'synthetic','token_type':'bearer'})
+        if 'access_token_info' in str(r.url):
+            return httpx.Response(200,json={'id':42,'app_id':1585992,'expires_in':100})
         if provider=='kakao':
-            assert 'kakao_account.name' in str(r.url)
-            return httpx.Response(200,json={'id':42,'kakao_account':{'profile':{'nickname':'NEVER_AS_NAME'}}})
-        return httpx.Response(200,json={'resultcode':'00','response':{'id':'uid','nickname':'NEVER_AS_NAME','email':'ignored@example.invalid'}})
+            query=parse_qs(r.url.query.decode())
+            keys=query['property_keys'][0]
+            assert 'kakao_account.name' in keys and 'kakao_account.email' in keys and 'kakao_account.phone_number' in keys
+            return httpx.Response(200,json={'id':42,'kakao_account':{
+                'name':'제공자 이름','email':'provider@example.invalid','phone_number':'+82 10-2222-3333',
+                'profile':{'nickname':'NEVER_AS_NAME'}}})
+        return httpx.Response(200,json={'resultcode':'00','response':{
+            'id':'uid','name':'제공자 이름','mobile':'010-2222-3333',
+            'email':'provider@example.invalid','nickname':'NEVER_AS_NAME'}})
     monkeypatch.setattr(p,'_client',lambda:httpx.Client(transport=httpx.MockTransport(respond)))
-    result=p.exchange(cfg(),provider,'code','S'*43,'B'*43)
-    assert result.display_name=='회원' and 'ignored' not in repr(result)
+    session=p.exchange_session(cfg(),provider,'code','S'*43,'B'*43)
+    assert session.identity.display_name=='제공자 이름'
+    assert session.profile==p.ProviderProfile('제공자 이름','01022223333','provider@example.invalid')
+    assert 'NEVER_AS_NAME' not in repr(session.identity)
+
+
+@pytest.mark.parametrize('provider',['kakao','naver'])
+def test_v1_missing_or_invalid_provider_profile_fields_fall_back_to_signup_input(monkeypatch,provider):
+    def respond(r):
+        if str(r.url)==p.ENDPOINTS[provider][1]:
+            return httpx.Response(200,json={'access_token':'synthetic','token_type':'bearer'})
+        if 'access_token_info' in str(r.url):
+            return httpx.Response(200,json={'id':42,'app_id':1585992,'expires_in':100})
+        if provider=='kakao':
+            return httpx.Response(200,json={'id':42,'kakao_account':{
+                'name':'제공자 이름','email':'not-an-email','phone_number':'not-a-phone'}})
+        return httpx.Response(200,json={'resultcode':'00','response':{
+            'id':'uid','name':'제공자 이름','mobile':'not-a-phone','email':'not-an-email'}})
+    monkeypatch.setattr(p,'_client',lambda:httpx.Client(transport=httpx.MockTransport(respond)))
+    session=p.exchange_session(cfg(),provider,'code','S'*43,'B'*43)
+    assert session.profile.name=='제공자 이름'
+    assert session.profile.phone is None and session.profile.email is None
+
+
+def test_signup_form_locks_only_provider_supplied_fields(monkeypatch):
+    monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('naver','test-naver','subject','제공자 이름'),'/')))
+    monkeypatch.setattr(s,'signup_profile',Mock(return_value=p.ProviderProfile(
+        name='제공자 이름',phone='01022223333',email=None)))
+    c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
+    r=c.get('/auth/signup')
+    assert r.status_code==200
+    assert 'name="name"' in r.text and 'value="제공자 이름"' in r.text
+    assert r.text.count('data-provider-locked="true"')==2
+    assert 'value="01022223333"' in r.text
+    email=re.search(r'<input[^>]*name="email"[^>]*>',r.text)[0]
+    assert 'readonly' not in email
+
