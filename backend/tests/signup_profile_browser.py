@@ -14,6 +14,7 @@ from playwright.sync_api import sync_playwright
 import auth_core as core
 import oauth_http as h
 import oauth_store as store
+import oauth_providers as providers
 import member_profile_store as profiles
 from test_member_profile import cfg
 
@@ -46,6 +47,7 @@ def run_case(browser, width, consent=None, marketing=False, provider='kakao', us
     saved=Mock(return_value=(uuid4(),'/portal/mypage'))
     with patch.dict(os.environ, {'RICHON_MARKETING_CONSENT_ENABLED':'true'}), \
          patch.object(store,'pending',return_value=(identity,'/portal/mypage')), \
+         patch.object(store,'signup_profile',return_value=providers.ProviderProfile()), \
          patch.object(store,'begin',return_value='S'*43), \
          patch.object(profiles,'finish',saved), \
          patch.object(h,'complete',side_effect=lambda mid,req,target:h.redirect(target)):
@@ -96,6 +98,34 @@ def run_case(browser, width, consent=None, marketing=False, provider='kakao', us
     context.close()
 
 
+def run_locked_provider_case(browser):
+    app=FastAPI();app.include_router(h.make_router(replace(cfg(), origin=ORIGIN)))
+    context=browser.new_context(viewport={'width':390,'height':900},service_workers='block')
+    context.add_cookies([{'name':name,'value':value,'url':ORIGIN,'secure':True,'httpOnly':True,'sameSite':'Lax'}
+                        for name,value in [(h.BROWSER,'B'*43),(h.TICKET,'T'*43)]])
+    identity=core.VerifiedIdentity('naver','test-naver','synthetic-uid','제공자 이름')
+    profile=providers.ProviderProfile('제공자 이름','01022223333',None)
+    with patch.object(store,'pending',return_value=(identity,'/portal/mypage')), \
+         patch.object(store,'signup_profile',return_value=profile):
+        page=context.new_page()
+        def intercept(route):
+            request=route.request;url=urlsplit(request.url)
+            if shared_asset(route,ORIGIN): return
+            assert url.scheme+'://'+url.netloc==ORIGIN
+            with TestClient(app,base_url=ORIGIN) as client:
+                response=client.request(request.method,request.url,headers=request.all_headers(),
+                    content=request.post_data_buffer,follow_redirects=False)
+            route.fulfill(status=response.status_code,headers=dict(response.headers),body=response.content)
+        context.route('**/*',intercept)
+        page.goto(ORIGIN+'/auth/signup')
+        assert page.locator('[name=name]').is_editable() is False
+        assert page.locator('[name=phone]').is_editable() is False
+        assert page.locator('[name=email]').is_editable() is True
+        assert page.locator('[name=name]').input_value()=='제공자 이름'
+        assert page.locator('[name=phone]').input_value()=='01022223333'
+    context.close()
+
+
 def main():
     with sync_playwright() as p:
         options={'headless':True}
@@ -111,6 +141,7 @@ def main():
                         run_case(browser,width,consent,marketing)
             run_case(browser,390,True,False,use_all=True)
             run_case(browser,390,True,True,use_all=True)
+            run_locked_provider_case(browser)
         finally:
             browser.close()
     print('PASS: synthetic Chromium / consent order, whole-consent toggle, marketing opt-in/out, same-origin POST, mobile width.')
