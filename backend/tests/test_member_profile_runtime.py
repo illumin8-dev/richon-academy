@@ -25,7 +25,8 @@ def test_signup_works_with_exact_runtime_grants_and_no_ticket_update(profile_db,
         conn.execute('GRANT USAGE ON SCHEMA richon TO richon_portal_login')
         for table in (*ready.READ, 'member_profiles'):
             conn.execute(sql.SQL('GRANT SELECT ON richon.{} TO richon_portal_login').format(sql.Identifier(table)))
-        inserts = {**ready.INSERT, 'member_profiles': profile.INSERT_COLUMNS}
+        inserts = {**ready.merged_grants(ready.INSERT,ready.PROVIDER_PROFILE_INSERT),
+                   'member_profiles': profile.INSERT_COLUMNS}
         for operation, mapping in (('INSERT', inserts), ('UPDATE', ready.UPDATE)):
             for table, columns in mapping.items():
                 statement = sql.SQL('GRANT {} ({}) ON richon.{} TO richon_portal_login').format(
