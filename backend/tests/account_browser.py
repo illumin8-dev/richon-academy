@@ -85,6 +85,32 @@ def main():
             reqroute.fulfill(status=response.status_code,headers=dict(response.headers),body=response.content)
         context.route('**/*',route)
         page=context.new_page()
+        provider_requests=[]
+        provider_failures=[]
+        console_categories=[]
+        start_responses=[]
+        def on_request(request):
+            u=urlsplit(request.url)
+            if u.netloc in {'kauth.kakao.com','nid.naver.com'}:
+                provider_requests.append((request.method,u.netloc,u.path))
+        def on_failed(request):
+            u=urlsplit(request.url)
+            if u.netloc in {'kauth.kakao.com','nid.naver.com'}:
+                provider_failures.append((u.netloc,u.path,request.failure))
+        def on_console(message):
+            if message.type=='error':
+                text=message.text
+                console_categories.append('csp' if ('Content Security Policy' in text or 'form-action' in text or 'violates' in text) else 'browser-error')
+        def on_response(response):
+            u=urlsplit(response.url)
+            if u.path=='/auth/start':
+                location=response.headers.get('location','')
+                target=urlsplit(location) if location else None
+                start_responses.append((response.status,target.netloc if target else '',target.path if target else ''))
+        page.on('request',on_request)
+        page.on('requestfailed',on_failed)
+        page.on('console',on_console)
+        page.on('response',on_response)
         for width in (320,390,1280):
             page.set_viewport_size({'width':width,'height':900})
             page.goto(ORIGIN+'/portal/mypage')
@@ -137,8 +163,18 @@ def main():
         request=submitted.value
         assert 'provider=kakao' in (request.post_data or '')
         assert 'over14=yes' in (request.post_data or '')
-        page.wait_for_url(re.compile(r'^https://kauth\\.kakao\\.com/oauth/authorize\\?'), timeout=5000)
-        expect(page.get_by_role('heading',name='PROVIDER')).to_be_visible()
+        page.wait_for_timeout(1500)
+        print('MODAL_REDIRECT_DIAGNOSTIC:', {
+            'page_host':urlsplit(page.url).netloc,
+            'page_path':urlsplit(page.url).path,
+            'start_responses':start_responses,
+            'provider_requests':provider_requests,
+            'provider_failures':provider_failures,
+            'console_categories':console_categories,
+        })
+        assert start_responses and start_responses[-1][0]==303, start_responses
+        assert start_responses[-1][1:] == ('kauth.kakao.com','/oauth/authorize'), start_responses
+        assert provider_requests, '303 was received but browser never attempted provider navigation'
         context.close();browser.close()
     print('PASS: shared member chrome, responsive shell, account edit/link/withdraw dialogs, quiet withdrawal action and same-page provider selector; synthetic only')
 
