@@ -43,4 +43,5 @@ def test_runtime_contract_removes_member_name_update():
     import portal_readiness as ready
     assert 'name' not in ready.ACCOUNT_UPDATE['member_profiles']
     for field in ('provider_name','provider_phone','provider_email'):
-        assert field in ready.INSERT['oauth_signups']
+        assert field in ready.PROVIDER_PROFILE_INSERT['oauth_signups']
+        assert field not in ready.INSERT['oauth_signups']
