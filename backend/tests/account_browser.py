@@ -98,6 +98,8 @@ def main():
         page.locator('#edit-profile').click()
         expect(page.locator('#profile-dialog')).to_be_visible()
         expect(page.locator('#edit-name')).to_have_value('합성 회원')
+        assert page.locator('#edit-name').is_editable() is False
+        expect(page.locator('#profile-dialog')).to_contain_text('이름은 가입 후 직접 수정할 수 없습니다.')
         expect(page.locator('#edit-age')).to_have_value('30-39')
         page.locator('[data-close-dialog]').first.click()
         page.locator('#manage-logins').click()

@@ -32,7 +32,8 @@ def restricted_account(account_db,monkeypatch):
         conn.execute('GRANT USAGE ON SCHEMA richon TO richon_portal_login')
         for table in (*ready.READ,'member_profiles',*ready.ACCOUNT_READ):
             conn.execute(sql.SQL('GRANT SELECT ON richon.{} TO richon_portal_login').format(sql.Identifier(table)))
-        inserts=ready.merged_grants({**ready.INSERT,'member_profiles':profile.INSERT_COLUMNS},ready.ACCOUNT_INSERT)
+        base_inserts=ready.merged_grants(ready.INSERT,ready.PROVIDER_PROFILE_INSERT)
+        inserts=ready.merged_grants({**base_inserts,'member_profiles':profile.INSERT_COLUMNS},ready.ACCOUNT_INSERT)
         updates=ready.merged_grants(ready.UPDATE,ready.ACCOUNT_UPDATE)
         for operation,mapping in (('INSERT',inserts),('UPDATE',updates)):
             for table,columns in mapping.items():
@@ -81,7 +82,11 @@ def test_profile_link_external_unlink_completion_and_withdraw_under_exact_grants
     mid=save(naver)
     session=core.issue_session(mid)
     assert account.recent_session(session.token,mid)
-    account.update_profile(mid,profile.Registration('권한 테스트','010-2222-3333','runtime@example.invalid',None,None,False,True))
+    with account_db() as conn:
+        before_name=conn.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()[0]
+    account.update_profile(mid,'010-2222-3333','runtime@example.invalid',None,None,False)
+    with account_db() as conn:
+        assert conn.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(before_name,)
     kakao=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원')
     assert add_provider(settings,mid,kakao)==['kakao','naver']
     assert prove(settings,mid,kakao,'unlink')[:2]==('unlink',mid)
@@ -123,6 +128,7 @@ def test_profile_link_external_unlink_completion_and_withdraw_under_exact_grants
     "UPDATE richon.orders SET amount_krw=1 WHERE FALSE",
     "SELECT * FROM richon.schema_migrations",
     "TRUNCATE richon.member_profiles",
+    "UPDATE richon.member_profiles SET name=name WHERE FALSE",
     "UPDATE richon.member_profiles SET terms_version=terms_version WHERE FALSE",
     "UPDATE richon.auth_identities SET subject=subject WHERE FALSE",
     "SELECT * FROM richon.retained_order_records",

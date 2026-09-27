@@ -90,6 +90,8 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
         assert "script-src 'self'" in response.headers['content-security-policy']
     for forbidden in ('홈페이지로','MY LEARNING JOURNEY','조회 버전','계정으로 계속해서 이용하세요','카카오 회원님'):
         assert forbidden not in page.text+fallback.text
+    assert '/auth/assets/site.css' in fallback.text and '/auth/assets/site.js' in fallback.text
+    assert '/portal/assets/site.css' not in fallback.text
     assert '사이드바' not in page.text and 'class="sidebar"' not in page.text
     assert '회원탈퇴 문의' in page.text
     assert 'href="tel:0322368944"' in page.text
@@ -105,6 +107,14 @@ def test_shared_assets_are_available_without_customer_queries(monkeypatch,name):
     assert r.status_code==200 and r.headers['cache-control']=='no-store'
     assert r.content==(ROOT/'frontend/shared'/name).read_bytes()
     assert TestClient(app).get('/portal/assets/site-header.html').status_code==404
+
+
+@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js'])
+def test_auth_shared_assets_are_same_source(name):
+    r=client().get('/auth/assets/'+name)
+    assert r.status_code==200 and r.headers['cache-control']=='no-store'
+    assert r.content==(ROOT/'frontend/shared'/name).read_bytes()
+    assert client().get('/auth/assets/account.js').status_code==404
 
 
 def test_account_scripts_store_no_identity_or_session_state():

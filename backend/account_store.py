@@ -61,24 +61,23 @@ def providers_for(member_id, settings):
         return _providers_cur(cur,member_id,settings)
 
 
-def update_profile(member_id, registration):
-    if not isinstance(registration,profile.Registration):
-        raise ProfileUnavailable()
+def update_profile(member_id, phone, email, age_range, gender, consultation_consent):
     with core._transaction() as cur:
         cur.execute('SELECT status FROM richon.members WHERE member_id=%s FOR UPDATE',(member_id,))
         row=cur.fetchone()
         if not row or row[0]!='active':
             raise core.MemberUnavailable()
-        cur.execute('SELECT 1 FROM richon.member_profiles WHERE member_id=%s',(member_id,))
-        if cur.fetchone()!=(1,):
+        cur.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s FOR UPDATE',(member_id,))
+        current=cur.fetchone()
+        if not current:
             raise ProfileUnavailable()
+        registration=profile.Registration(
+            current[0],phone,email,age_range,gender,consultation_consent,True)
         cur.execute('''UPDATE richon.member_profiles
-            SET name=%s,phone=%s,email=%s,age_range=%s,gender=%s,consultation_consent=%s
+            SET phone=%s,email=%s,age_range=%s,gender=%s,consultation_consent=%s
             WHERE member_id=%s''',
-            (registration.name,registration.phone,registration.email,registration.age_range,
+            (registration.phone,registration.email,registration.age_range,
              registration.gender,registration.consultation_consent,member_id))
-        cur.execute('UPDATE richon.members SET display_name=%s WHERE member_id=%s',
-                    (registration.name,member_id))
 
 
 def set_marketing_consent(member_id, consent):

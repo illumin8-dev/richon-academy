@@ -30,21 +30,36 @@ def notice(settings):
 <p><a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> / <a href="{e(settings.privacy_url)}" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></p></details>'''
 
 
-def signup_form(settings, csrf, suggested_name=''):
+def signup_form(settings, csrf, provider_profile=None):
     options = '<option value="">선택하지 않음</option>' + ''.join(
         f'<option value="{age}">{"14~19세" if age == "14-19" else age.replace("-", "~") + "세"}</option>' for age in AGE_RANGES)
+    provider_profile = provider_profile or type('EmptyProfile', (), {'name':None,'phone':None,'email':None})()
     marketing_input = (
         '<label><input type="checkbox" name="marketing" value="yes" data-consent-item> '
         '[선택] 광고성 정보 수신 동의 (문자·이메일)</label>'
         if marketing.enabled() else '')
+
+    def field(name, label, value, *, kind='text', autocomplete='', maxlength=''):
+        locked = isinstance(value, str) and bool(value)
+        attrs = [
+            f'name="{name}"', f'type="{kind}"', f'autocomplete="{autocomplete}"',
+            f'value="{e(value or "")}"', 'required'
+        ]
+        if maxlength:
+            attrs.append(f'maxlength="{maxlength}"')
+        if locked:
+            attrs.extend(['readonly', 'aria-readonly="true"', 'data-provider-locked="true"'])
+        suffix = '<span class="provider-locked-note">소셜 계정에서 확인된 정보 / 가입 단계에서 수정할 수 없습니다.</span>' if locked else ''
+        return f'<label>{label} [필수]<input {" ".join(attrs)}>{suffix}</label>'
+
     return f'''<p>회원정보를 확인해 주세요. 기존 계정은 그대로 유지됩니다.</p>{notice(settings)}
 <form method="post" action="/auth/signup" data-richon-signup>
 <input type="hidden" name="csrf" value="{e(csrf)}">
 <input type="hidden" name="terms_version" value="{VERSION}">
 <input type="hidden" name="privacy_version" value="{VERSION}">
-<label>이름 [필수]<input name="name" autocomplete="name" maxlength="80" value="{e(suggested_name)}" required></label>
-<label>휴대전화번호 [필수]<input name="phone" type="tel" autocomplete="tel" maxlength="32" required></label>
-<label>이메일 [필수]<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+{field('name','이름',provider_profile.name,autocomplete='name',maxlength='80')}
+{field('phone','휴대전화번호',provider_profile.phone,kind='tel',autocomplete='tel',maxlength='32')}
+{field('email','이메일',provider_profile.email,kind='email',autocomplete='email',maxlength='254')}
 <label><input id="consent-all" type="checkbox" data-consent-all> <strong>전체 동의</strong> <small>(선택 항목 포함)</small></label>
 <fieldset><legend>상담정보 [선택]</legend>
 <label>연령대<select name="age_range">{options}</select></label>
@@ -57,3 +72,4 @@ def signup_form(settings, csrf, suggested_name=''):
 {marketing_input}
 <p><small>전체 동의를 선택해도 선택 항목은 개별적으로 해제할 수 있습니다.</small></p>
 <button type="submit">동의하고 가입 완료</button></form>'''
+

@@ -68,7 +68,7 @@ def page(title,body):
     static = Path(__file__).parent / 'portal_static'
     header = (static / 'site-header.html').read_text()
     footer = (static / 'site-footer.html').read_text()
-    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/portal/assets/site.css"><script src="/portal/assets/site.js"></script><script defer src="/portal/assets/signup.js"></script>'
+    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/auth/assets/site.css"><script src="/auth/assets/site.js"></script><script defer src="/auth/assets/signup.js"></script>'
     content = content.replace('</head>', assets + '</head>', 1)
     content = content.replace('<body><main><p>RICHON ACADEMY</p>', '<body class="richon-page auth-page">' + header + '<main>', 1)
     content = content.replace('</main></body>', '</main>' + footer + '</body>', 1)
@@ -153,6 +153,12 @@ def make_router(settings):
         return FileResponse(Path(__file__).parent / 'portal_static' / 'naver-login.png',
                             media_type='image/png', headers=HEADERS)
 
+    @router.get('/assets/{asset}',include_in_schema=False)
+    def shared_auth_asset(asset:str):
+        if asset not in {'site.css','site.js','login.js','signup.js'}:
+            raise HTTPException(404,'not_found',headers=HEADERS)
+        return FileResponse(Path(__file__).parent / 'portal_static' / asset, headers=HEADERS)
+
     @router.get('/login',response_class=HTMLResponse)
     def login(request:Request):
         target=login_return(request,settings)
@@ -175,7 +181,7 @@ def make_router(settings):
         if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
         if collect_profile:
             body += signup_views.notice(settings)
-            body += f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="return_to" value="{target}"><label><input type="checkbox" name="over14" value="yes" required> [필수] 만 14세 이상입니다.</label>'
+            body += f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="return_to" value="{target}"><label><input type="checkbox" name="over14" value="yes" required> [필수] 만 14세 이상입니다.</label><p class="login-age-hint">로그인 버튼을 누르기 전에 위 확인을 체크해 주세요.</p>'
         for name,label in [('kakao','카카오'),('naver','네이버')]:
             if name in settings.providers:
                 # Keep official image bytes/ratios and readable symbol sizes.
@@ -260,11 +266,17 @@ def make_router(settings):
                 return response
             target=store.consume_attempt(settings,provider,state,browser)
             if q.get('error'): return failed(target)
-            identity=providers.exchange(settings,provider,code,state,browser)
+            if collect_profile:
+                verified=providers.exchange_session(settings,provider,code,state,browser)
+                identity=verified.identity
+                provider_profile=verified.profile
+            else:
+                identity=providers.exchange(settings,provider,code,state,browser)
+                provider_profile=None
             member_id=store.member_for(identity)
             if member_id is not None and (not collect_profile or member_profile_store.completed(member_id, settings)):
                 return complete(member_id,request,target)
-            ticket=store.stage_signup(settings,identity,browser,target)
+            ticket=store.stage_signup(settings,identity,browser,target,provider_profile)
             response=redirect('/auth/signup');set_temporary(response,TICKET,ticket)
             return response
         except Exception:
@@ -279,10 +291,11 @@ def make_router(settings):
         try:
             browser=cookie(request,BROWSER);ticket=cookie(request,TICKET)
             identity, _ = store.pending(settings,ticket,browser)
+            provider_profile = store.signup_profile(settings,ticket,browser) if collect_profile else None
         except Exception: return failed()
         if collect_profile:
-            suggested = '' if identity.display_name == '회원' else identity.display_name
-            return page('회원가입 안내', signup_views.signup_form(settings, proof(browser,ticket), suggested))
+            return page('회원가입 안내',
+                        signup_views.signup_form(settings, proof(browser,ticket), provider_profile))
         e=html.escape
         body=f'''<p>처음 방문하셨습니다. 아래 문서를 확인한 뒤 가입해 주세요.</p>
 <form method="post" action="/auth/signup"><input type="hidden" name="csrf" value="{proof(browser,ticket)}">

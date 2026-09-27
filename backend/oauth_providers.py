@@ -25,14 +25,23 @@ class ProviderRejected(Exception):
     """Safe fixed error; never contains provider response bodies or credentials."""
 
 
+@dataclass(frozen=True)
+class ProviderProfile:
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+
+
 @dataclass(frozen=True, repr=False)
 class VerifiedProviderSession:
     identity: VerifiedIdentity
     access_token: str = field(repr=False)
+    profile: ProviderProfile = field(default_factory=ProviderProfile)
 
     def __post_init__(self):
         if (not isinstance(self.access_token, str)
-                or not re.fullmatch(r'[A-Za-z0-9._~+/-]{1,8192}={0,2}', self.access_token)):
+                or not re.fullmatch(r'[A-Za-z0-9._~+/-]{1,8192}={0,2}', self.access_token)
+                or not isinstance(self.profile, ProviderProfile)):
             raise ProviderRejected()
 
 
@@ -129,6 +138,16 @@ def _json(client,method,url,**kwargs):
 def _client():
     return httpx.Client(timeout=httpx.Timeout(8.0),follow_redirects=False,trust_env=False)
 
+
+def _profile_value(cleaner, value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        return cleaner(value)
+    except member_profile.InvalidProfile:
+        return None
+
+
 def exchange_session(settings,name,code,state,browser):
     provider=settings.providers[name]
     form={'grant_type':'authorization_code','client_id':provider.client_id,'client_secret':provider.secret,
@@ -147,8 +166,11 @@ def exchange_session(settings,name,code,state,browser):
                 or type(info.get('app_id')) is not int or info['app_id']!=provider.kakao_app_id
                 or type(info.get('expires_in')) is not int or info['expires_in']<=0):
                 raise ProviderRejected()
+            fields=(['kakao_account.name','kakao_account.email','kakao_account.phone_number']
+                    if member_profile.enabled(settings.terms_version, settings.privacy_version)
+                    else ['kakao_account.profile'])
             profile=_json(client,'GET',ENDPOINTS[name][2],headers=headers,
-                          params={'property_keys':json.dumps(['kakao_account.name'] if member_profile.enabled(settings.terms_version, settings.privacy_version) else ['kakao_account.profile'])})
+                          params={'property_keys':json.dumps(fields)})
             subject=profile.get('id')
             if type(subject) is not int or subject!=info['id']: raise ProviderRejected()
             account=profile.get('kakao_account')
@@ -160,14 +182,27 @@ def exchange_session(settings,name,code,state,browser):
             if profile.get('resultcode')!='00' or not isinstance(response,dict): raise ProviderRejected()
             subject=response.get('id');nickname=response.get('nickname')
             if not isinstance(subject,str) or not 1<=len(subject)<=255: raise ProviderRejected()
+        provider_profile=ProviderProfile()
         if member_profile.enabled(settings.terms_version, settings.privacy_version):
-            nickname = account.get('name') if name == 'kakao' and isinstance(account, dict) else (response.get('name') if name == 'naver' else None)
+            if name=='kakao' and isinstance(account,dict):
+                provider_profile=ProviderProfile(
+                    _profile_value(member_profile.clean_name,account.get('name')),
+                    _profile_value(member_profile.clean_phone,account.get('phone_number')),
+                    _profile_value(member_profile.clean_email,account.get('email')),
+                )
+            elif name=='naver':
+                provider_profile=ProviderProfile(
+                    _profile_value(member_profile.clean_name,response.get('name')),
+                    _profile_value(member_profile.clean_phone,response.get('mobile')),
+                    _profile_value(member_profile.clean_email,response.get('email')),
+                )
+            nickname=provider_profile.name
         display=nickname if isinstance(nickname,str) else ''
         display=''.join(c for c in display if not unicodedata.category(c).startswith('C')).strip()[:80]
         if not display: display='회원' if member_profile.enabled(settings.terms_version, settings.privacy_version) else ('카카오 회원' if name=='kakao' else '네이버 회원')
         try:
             identity=VerifiedIdentity(name,provider.identity_scope,str(subject),display)
-            return VerifiedProviderSession(identity,access)
+            return VerifiedProviderSession(identity,access,provider_profile)
         except ValueError:
             raise ProviderRejected() from None
 

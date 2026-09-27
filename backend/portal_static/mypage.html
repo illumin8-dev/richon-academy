@@ -54,7 +54,8 @@
 <button class="account-dialog-close" type="button" data-close-dialog aria-label="닫기">×</button>
 <h2 id="profile-dialog-title">내 정보 수정</h2>
 <div class="account-form">
-<label>이름<input id="edit-name" maxlength="80" autocomplete="name"></label>
+<label>이름<input id="edit-name" maxlength="80" autocomplete="name" readonly aria-readonly="true"></label>
+<p class="account-dialog-note">이름은 가입 후 직접 수정할 수 없습니다. 변경이 필요한 경우 관리자에게 문의해 주세요.</p>
 <label>휴대전화<input id="edit-phone" inputmode="tel" autocomplete="tel"></label>
 <label>이메일<input id="edit-email" type="email" maxlength="254" autocomplete="email"></label>
 <label>연령대 [선택]<select id="edit-age"><option value="">선택하지 않음</option><option value="14-19">14~19세</option><option value="20-29">20~29세</option><option value="30-39">30~39세</option><option value="40-49">40~49세</option><option value="50-59">50~59세</option><option value="60-69">60~69세</option><option value="70+">70세 이상</option></select></label>

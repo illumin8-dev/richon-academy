@@ -37,12 +37,20 @@ def finish(settings, ticket, browser, registration):
         # A later failure rolls this deletion back in the same transaction.
         cur.execute('''DELETE FROM richon.oauth_signups WHERE ticket_hash=%s AND browser_hash=%s
             AND expires_at>CURRENT_TIMESTAMP AND terms_version=%s AND privacy_version=%s
-            RETURNING provider,app_id,subject,display_name,return_to''', (digest, browser_digest, settings.terms_version, settings.privacy_version))
+            RETURNING provider,app_id,subject,display_name,
+                      provider_name,provider_phone,provider_email,return_to''',
+            (digest, browser_digest, settings.terms_version, settings.privacy_version))
         row = cur.fetchone()
         if (not row or row[0] not in settings.providers
-                or settings.providers[row[0]].identity_scope != row[1] or row[4] not in RETURNS):
+                or settings.providers[row[0]].identity_scope != row[1] or row[7] not in RETURNS):
             raise InvalidFlow()
         identity = core.VerifiedIdentity(*row[:4])
+        effective = profile.Registration(
+            row[4] or registration.name,
+            row[5] or registration.phone,
+            row[6] or registration.email,
+            registration.age_range, registration.gender,
+            registration.consultation_consent, True)
         scope = json.dumps([identity.provider, identity.app_id, identity.subject], separators=(',', ':'))
         lock = int.from_bytes(hashlib.sha256(scope.encode()).digest()[:8], 'big', signed=True)
         cur.execute('SELECT pg_advisory_xact_lock(%s)', (lock,))
@@ -57,7 +65,7 @@ def finish(settings, ticket, browser, registration):
         if not member:
             cur.execute('''INSERT INTO richon.members(member_id,display_name,terms_version,privacy_version)
                 VALUES(%s,%s,%s,%s)''',
-                (member_id, registration.name, settings.terms_version, settings.privacy_version))
+                (member_id, effective.name, settings.terms_version, settings.privacy_version))
             cur.execute('''INSERT INTO richon.auth_identities(provider,app_id,subject,member_id)
                 VALUES(%s,%s,%s,%s)''', (identity.provider, identity.app_id, identity.subject, member_id))
         cur.execute('SELECT terms_version,privacy_version FROM richon.member_profiles WHERE member_id=%s', (member_id,))
@@ -69,8 +77,8 @@ def finish(settings, ticket, browser, registration):
                 (member_id,name,phone,email,age_range,gender,consultation_consent,
                  over14_confirmed,terms_version,privacy_version)
                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
-                (member_id, registration.name, registration.phone, registration.email,
-                 registration.age_range, registration.gender, registration.consultation_consent,
+                (member_id, effective.name, effective.phone, effective.email,
+                 effective.age_range, effective.gender, effective.consultation_consent,
                  True, settings.terms_version, settings.privacy_version))
         if marketing.enabled():
             granted=registration.marketing_consent
@@ -79,4 +87,4 @@ def finish(settings, ticket, browser, registration):
                 VALUES(%s,%s,%s,%s,CASE WHEN %s THEN CURRENT_TIMESTAMP END)
                 ON CONFLICT (member_id) DO NOTHING''',
                 (member_id,granted,granted,marketing.VERSION,granted))
-    return member_id, row[4]
+    return member_id, row[7]

@@ -14,7 +14,9 @@ def shared_asset(route, origin):
         # Do not fetch external fonts or send test credentials to any provider.
         route.fulfill(status=200,content_type='text/css',body='/* offline typography fixture */')
         return True
-    if url.scheme+'://'+url.netloc==origin and url.path.startswith('/portal/assets/') and url.path.rsplit('/',1)[1] in NAMES:
+    if (url.scheme+'://'+url.netloc==origin
+            and (url.path.startswith('/portal/assets/') or url.path.startswith('/auth/assets/'))
+            and url.path.rsplit('/',1)[1] in NAMES):
         name=url.path.rsplit('/',1)[1]
         route.fulfill(status=200,content_type='text/css' if name.endswith('.css') else 'text/javascript',body=(STATIC/name).read_bytes())
         return True
