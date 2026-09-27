@@ -90,6 +90,10 @@ def browser_case(browser, origin, landed, *, legacy=False, signup=False, screens
         if shared_asset(route, origin): return
         request=route.request;url=urlsplit(request.url)
         if url.scheme+'://'+url.netloc!=origin:
+            if request.method=='GET' and url.netloc=='kauth.kakao.com' and url.path=='/oauth/authorize':
+                navigation.append((request.method,url.path))
+                route.fulfill(status=200,content_type='text/html',body='<h1>PROVIDER</h1>')
+                return
             route.abort('blockedbyclient')
             raise AssertionError('Unexpected network request blocked')
         navigation.append((request.method,url.path))
@@ -106,15 +110,10 @@ def browser_case(browser, origin, landed, *, legacy=False, signup=False, screens
         if request.method=='POST':
             captured.append((url.path,headers.get('origin'),response.status_code,
                              urlsplit(response.headers.get('location','')).path))
-        if url.path=='/auth/start' and response.status_code==303:
-            assert response.headers['location'].startswith('https://kauth.kakao.com/oauth/authorize?')
-            # Do not allow the browser to contact a real OAuth provider.
-            route.fulfill(status=200,content_type='text/html',body='<h1>MOCK PROVIDER REDIRECT CAPTURED</h1>')
-        else:
-            if 300<=response.status_code<400:
-                location=response.headers.get('location','')
-                assert location=='/apply.html', 'Unexpected fixture redirect blocked'
-            route.fulfill(status=response.status_code,headers=outgoing,body=response.content)
+        if 300<=response.status_code<400:
+            location=response.headers.get('location','')
+            assert location=='/apply.html', 'Unexpected fixture redirect blocked'
+        route.fulfill(status=response.status_code,headers=outgoing,body=response.content)
     context.route('**/*',intercept)
     page=context.new_page()
     page.on('requestfailed',lambda request:failures.append((urlsplit(request.url).path,request.failure)))
@@ -133,15 +132,22 @@ def browser_case(browser, origin, landed, *, legacy=False, signup=False, screens
             if not legacy and signup:
                 page.wait_for_url(origin+'/apply.html',wait_until='domcontentloaded',timeout=5000)
                 assert page.locator('h1').inner_text()=='RETURNED'
+            elif not legacy:
+                page.wait_for_url('https://kauth.kakao.com/oauth/authorize?*',wait_until='domcontentloaded',timeout=5000)
+                assert page.locator('h1').inner_text()=='PROVIDER'
             else:
                 page.wait_for_load_state('domcontentloaded')
         expected_path='/auth/signup' if signup else '/auth/start'
-        expected_location='' if legacy else ('/apply.html' if signup else '/oauth/authorize')
-        assert captured==[(expected_path,'null' if legacy else origin,403 if legacy else 303,expected_location)], captured
+        expected_status=403 if legacy else (303 if signup else 200)
+        expected_location='' if legacy or not signup else '/apply.html'
+        assert captured==[(expected_path,'null' if legacy else origin,expected_status,expected_location)], captured
         assert not failures, failures
         if not legacy and signup:
             assert page.url==origin+'/apply.html'
             assert landed[before:]==['/apply.html'], 'Final page must be loaded by the real redirect'
+        elif not legacy:
+            assert urlsplit(page.url).netloc=='kauth.kakao.com'
+            assert ('GET','/oauth/authorize') in navigation
         else:
             assert len(landed)==before
         print('PASS: '+('signup' if signup else 'login')+' native form / '+('legacy null Origin reproduced' if legacy else 'real same-origin Origin accepted'))
