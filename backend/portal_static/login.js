@@ -50,11 +50,11 @@
           || new Set(data.providers).size!==data.providers.length || data.providers.some(p=>!Object.hasOwn(providers,p)))throw new Error('invalid_login_configuration');
       const form=node('form',undefined,'richon-login-form');form.method='post';form.action='/auth/start';
       const hidden=(name,value)=>{const field=node('input');field.type='hidden';field.name=name;field.value=value;form.append(field);return field;};
-      hidden('csrf',data.csrf);hidden('return_to',target);const provider=hidden('provider','');
+      hidden('csrf',data.csrf);hidden('return_to',target);
       if(data.collect_profile){const label=node('label');const field=node('input');field.type='checkbox';field.name='over14';field.value='yes';field.required=true;label.append(field,document.createTextNode(' 만 14세 이상입니다.'));form.append(label,node('p','로그인 버튼을 누르기 전에 위 확인을 체크해 주세요.','richon-login-status'));}
       let submitting=false;
       form.addEventListener('submit',event=>{if(submitting){event.preventDefault();return;}submitting=true;});
-      for(const name of data.providers){const spec=providers[name];const button=node('button',undefined,'provider-login '+name+'-login');button.type='button';button.setAttribute('aria-label',spec.label);const img=node('img');img.src='/auth/assets/'+name+'-login.png';img.alt=spec.label;img.width=spec.width;img.height=spec.height;img.referrerPolicy='no-referrer';button.append(img);button.addEventListener('click',()=>{if(submitting)return;provider.value=name;form.requestSubmit();});form.append(button);}
+      for(const name of data.providers){const spec=providers[name];const button=node('button',undefined,'provider-login '+name+'-login');button.type='submit';button.name='provider';button.value=name;button.setAttribute('aria-label',spec.label);const img=node('img');img.src='/auth/assets/'+name+'-login.png';img.alt=spec.label;img.width=spec.width;img.height=spec.height;img.referrerPolicy='no-referrer';button.append(img);form.append(button);}
       const children=[form];
       if(data.collect_profile){if(typeof data.notice!=='string'||data.notice.length>8000)throw new Error('invalid_notice');children.push(safeNotice(data.notice));}
       content.replaceChildren(...children);
