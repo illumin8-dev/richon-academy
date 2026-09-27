@@ -91,7 +91,9 @@ def test_reauth_start_allows_stale_session_and_uses_exact_linked_provider_flow(c
     begin=Mock(return_value='S'*43);monkeypatch.setattr(store,'begin_action',begin)
     form={'csrf':core.csrf_token(TOKEN),'provider':'naver'}
     response=client.post('/portal/api/me/reauth/start',data=form,headers={'Origin':ORIGIN},follow_redirects=False)
-    assert response.status_code==303 and response.headers['location'].startswith('https://nid.naver.com/')
+    assert response.status_code==200
+    assert 'data-richon-provider-handoff' in response.text
+    assert 'https://nid.naver.com/oauth2.0/authorize?' in response.text
     assert begin.call_args.args[3]=='reauth'
     assert '__Host-richon-oauth=' in response.headers['set-cookie']
 
@@ -111,7 +113,9 @@ def test_withdraw_provider_start_requires_prepared_store_action_not_client_ident
     begin=Mock(return_value='S'*43);monkeypatch.setattr(store,'begin_action',begin)
     form={'csrf':core.csrf_token(TOKEN),'provider':'kakao'}
     response=client.post('/portal/api/me/withdraw/provider/start',data=form,headers={'Origin':ORIGIN},follow_redirects=False)
-    assert response.status_code==303 and response.headers['location'].startswith('https://kauth.kakao.com/')
+    assert response.status_code==200
+    assert 'data-richon-provider-handoff' in response.text
+    assert 'https://kauth.kakao.com/oauth/authorize?' in response.text
     assert begin.call_args.args[1:4]==(member.member_id,'kakao','withdraw')
 
 
