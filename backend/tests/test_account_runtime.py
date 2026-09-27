@@ -81,7 +81,10 @@ def test_profile_link_external_unlink_completion_and_withdraw_under_exact_grants
     mid=save(naver)
     session=core.issue_session(mid)
     assert account.recent_session(session.token,mid)
-    account.update_profile(mid,profile.Registration('권한 테스트','010-2222-3333','runtime@example.invalid',None,None,False,True))
+    before_name=account_db().execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()[0]
+    account.update_profile(mid,'010-2222-3333','runtime@example.invalid',None,None,False)
+    with account_db() as conn:
+        assert conn.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(before_name,)
     kakao=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원')
     assert add_provider(settings,mid,kakao)==['kakao','naver']
     assert prove(settings,mid,kakao,'unlink')[:2]==('unlink',mid)
