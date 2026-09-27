@@ -32,7 +32,8 @@ def restricted_account(account_db,monkeypatch):
         conn.execute('GRANT USAGE ON SCHEMA richon TO richon_portal_login')
         for table in (*ready.READ,'member_profiles',*ready.ACCOUNT_READ):
             conn.execute(sql.SQL('GRANT SELECT ON richon.{} TO richon_portal_login').format(sql.Identifier(table)))
-        inserts=ready.merged_grants({**ready.INSERT,'member_profiles':profile.INSERT_COLUMNS},ready.ACCOUNT_INSERT)
+        base_inserts=ready.merged_grants(ready.INSERT,ready.PROVIDER_PROFILE_INSERT)
+        inserts=ready.merged_grants({**base_inserts,'member_profiles':profile.INSERT_COLUMNS},ready.ACCOUNT_INSERT)
         updates=ready.merged_grants(ready.UPDATE,ready.ACCOUNT_UPDATE)
         for operation,mapping in (('INSERT',inserts),('UPDATE',updates)):
             for table,columns in mapping.items():
