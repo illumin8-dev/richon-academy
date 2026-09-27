@@ -33,16 +33,21 @@ def headers():
     return {'Origin':ORIGIN,'X-CSRF-Token':core.csrf_token(TOKEN)}
 
 
-def test_profile_update_uses_validated_values_and_csrf(client,member,monkeypatch):
+def test_profile_update_uses_csrf_and_does_not_accept_name(client,member,monkeypatch):
     update=Mock();monkeypatch.setattr(store,'update_profile',update)
-    body={'name':' 테스트 이름 ','phone':'010-1234-5678','email':'Tester@EXAMPLE.invalid',
+    body={'phone':'010-1234-5678','email':'Tester@EXAMPLE.invalid',
           'age_range':'30-39','gender':'female','consultation_consent':True}
     assert client.post('/portal/api/me/profile',json=body).status_code==403
     response=client.post('/portal/api/me/profile',json=body,headers=headers())
     assert response.status_code==204
-    saved=update.call_args.args[1]
-    assert saved.name=='테스트 이름' and saved.phone=='01012345678' and saved.email=='Tester@example.invalid'
-    assert saved.age_range=='30-39' and saved.gender=='female'
+    update.assert_called_once_with(member.member_id,'010-1234-5678','Tester@EXAMPLE.invalid',
+                                   '30-39','female',True)
+
+    update.reset_mock()
+    response=client.post('/portal/api/me/profile',
+                         json={**body,'name':'변조 이름'},headers=headers())
+    assert response.status_code==422
+    update.assert_not_called()
 
 
 def test_marketing_consent_is_separate_optional_csrf_action(client,member,monkeypatch):
