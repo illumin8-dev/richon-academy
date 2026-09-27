@@ -138,15 +138,14 @@ def test_existing_member_needs_profile_not_a_new_identity(monkeypatch,completed)
 
 @pytest.mark.parametrize('provider',['kakao','naver'])
 def test_v1_collects_valid_provider_signup_profile_without_using_nickname(monkeypatch,provider):
+    seen=[]
     def respond(r):
-        if str(r.url)==p.ENDPOINTS[provider][1]:
+        seen.append(str(r.url))
+        if r.url.host in {'kauth.kakao.com','nid.naver.com'} and r.url.path.endswith('/token'):
             return httpx.Response(200,json={'access_token':'synthetic','token_type':'bearer'})
         if 'access_token_info' in str(r.url):
             return httpx.Response(200,json={'id':42,'app_id':1585992,'expires_in':100})
         if provider=='kakao':
-            query=parse_qs(r.url.query.decode())
-            keys=query['property_keys'][0]
-            assert 'kakao_account.name' in keys and 'kakao_account.email' in keys and 'kakao_account.phone_number' in keys
             return httpx.Response(200,json={'id':42,'kakao_account':{
                 'name':'제공자 이름','email':'provider@example.invalid','phone_number':'+82 10-2222-3333',
                 'profile':{'nickname':'NEVER_AS_NAME'}}})
@@ -158,6 +157,10 @@ def test_v1_collects_valid_provider_signup_profile_without_using_nickname(monkey
     assert session.identity.display_name=='제공자 이름'
     assert session.profile==p.ProviderProfile('제공자 이름','01022223333','provider@example.invalid')
     assert 'NEVER_AS_NAME' not in repr(session.identity)
+    if provider=='kakao':
+        profile_url=next(url for url in seen if '/v2/user/me' in url)
+        keys=parse_qs(urlsplit(profile_url).query)['property_keys'][0]
+        assert 'kakao_account.name' in keys and 'kakao_account.email' in keys and 'kakao_account.phone_number' in keys
 
 
 @pytest.mark.parametrize('provider',['kakao','naver'])
