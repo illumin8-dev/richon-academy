@@ -7,7 +7,7 @@ import db
 VERSION='012_oauth_signup_provider_profile'
 DIRECTORY=Path(__file__).parent/'migrations'
 DEPENDENCIES=('001_pending_orders','002_auth_foundation','007_oauth_handoff',
-              '008_login_return_paths','009_member_profiles')
+              '008_login_return_paths')
 
 
 def checksum(name):
