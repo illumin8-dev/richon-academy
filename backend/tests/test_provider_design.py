@@ -87,9 +87,10 @@ def test_official_buttons_keep_origin_and_browser_proof_checks(monkeypatch, name
     assert bad.status_code == 403 and bad.json()['detail'] == 'invalid_login_flow'
     begin.assert_not_called()
     ok = c.post('/auth/start', data=data, headers={'Origin': ORIGIN}, follow_redirects=False)
-    assert ok.status_code == 303
-    assert ok.headers['location'].startswith('https://kauth.kakao.com/' if name == 'kakao' else 'https://nid.naver.com/')
-    assert 'test-secret' not in ok.headers['location']
+    assert ok.status_code == 200
+    expected = 'https://kauth.kakao.com/oauth/authorize?' if name == 'kakao' else 'https://nid.naver.com/oauth2.0/authorize?'
+    assert expected in ok.text and 'data-richon-provider-handoff' in ok.text
+    assert 'test-secret' not in ok.text
 
 
 def test_image_allowlist_and_equal_button_geometry_are_declared():
