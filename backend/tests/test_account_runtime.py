@@ -81,7 +81,8 @@ def test_profile_link_external_unlink_completion_and_withdraw_under_exact_grants
     mid=save(naver)
     session=core.issue_session(mid)
     assert account.recent_session(session.token,mid)
-    before_name=account_db().execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()[0]
+    with account_db() as conn:
+        before_name=conn.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()[0]
     account.update_profile(mid,'010-2222-3333','runtime@example.invalid',None,None,False)
     with account_db() as conn:
         assert conn.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(before_name,)
@@ -126,6 +127,7 @@ def test_profile_link_external_unlink_completion_and_withdraw_under_exact_grants
     "UPDATE richon.orders SET amount_krw=1 WHERE FALSE",
     "SELECT * FROM richon.schema_migrations",
     "TRUNCATE richon.member_profiles",
+    "UPDATE richon.member_profiles SET name=name WHERE FALSE",
     "UPDATE richon.member_profiles SET terms_version=terms_version WHERE FALSE",
     "UPDATE richon.auth_identities SET subject=subject WHERE FALSE",
     "SELECT * FROM richon.retained_order_records",
