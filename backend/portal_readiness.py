@@ -101,6 +101,13 @@ def marketing_grants_prepared(cur):
     return cur.fetchone() == (True,)
 
 
+def provider_profile_schema_ready(cur):
+    cur.execute("""SELECT count(*) FROM pg_attribute
+        WHERE attrelid='richon.oauth_signups'::regclass AND attnum>0 AND NOT attisdropped
+          AND attname=ANY(ARRAY['provider_name','provider_phone','provider_email'])""")
+    return cur.fetchone()==(3,)
+
+
 def check_role(cur):
     # Explicit target checks also work for a non-superuser schema owner, without SET ROLE.
     cur.execute("SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s", (ROLE,))
@@ -120,6 +127,8 @@ def check_role(cur):
         raise ValueError('account_requires_member_profile_policy')
     if marketing_active and not profile_active:
         raise ValueError('marketing_requires_member_profile_policy')
+    if profile_active and not provider_profile_schema_ready(cur):
+        raise ValueError('provider_profile_schema_required')
     account_grants = account or account_grants_prepared(cur)
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
     tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
