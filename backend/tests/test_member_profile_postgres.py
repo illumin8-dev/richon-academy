@@ -29,7 +29,7 @@ pytestmark = pytest.mark.skipif(
 def profile_db(oauth_db):
     assert portal_migrate.apply_migration()
     assert migration.apply_migration()
-    assert provider_migration.apply_migration()
+    assert provider_migration.apply_migration() is False
     return oauth_db
 
 
