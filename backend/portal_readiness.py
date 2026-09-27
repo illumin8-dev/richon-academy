@@ -14,7 +14,9 @@ INSERT = {
     'auth_identities': ('provider', 'app_id', 'subject', 'member_id'),
     'member_sessions': ('token_hash', 'member_id', 'auth_version', 'role_at_issue', 'expires_at', 'idle_expires_at'),
     'oauth_attempts': ('state_hash', 'browser_hash', 'provider', 'app_id', 'return_to', 'expires_at'),
-    'oauth_signups': ('ticket_hash', 'browser_hash', 'provider', 'app_id', 'subject', 'display_name', 'return_to', 'terms_version', 'privacy_version', 'expires_at'),
+    'oauth_signups': ('ticket_hash', 'browser_hash', 'provider', 'app_id', 'subject', 'display_name',
+                      'provider_name', 'provider_phone', 'provider_email',
+                      'return_to', 'terms_version', 'privacy_version', 'expires_at'),
 }
 UPDATE = {'members': ('auth_version',),
           'member_sessions': ('last_seen_at', 'idle_expires_at', 'revoked_at'),
@@ -39,7 +41,7 @@ ACCOUNT_INSERT = {
 }
 ACCOUNT_UPDATE = {
     'members': ('display_name','status','withdrawn_at'),
-    'member_profiles': ('name','phone','email','age_range','gender','consultation_consent'),
+    'member_profiles': ('phone','email','age_range','gender','consultation_consent'),
     'oauth_account_attempts': ('consumed_at',),
     'orders': ('request_fingerprint','customer_name','customer_phone','customer_email'),
 }
