@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'backend'))
+sys.path[:0]=[str(ROOT/'backend'),str(ROOT/'ops')]
 
 import db
 import oauth_signup_profile_migrate as migration
