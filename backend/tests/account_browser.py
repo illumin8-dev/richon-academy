@@ -20,6 +20,7 @@ import oauth_http as oauth
 import oauth_store
 import portal
 import portal_store
+import member_profile
 from portal_entry import EdgeBoundary
 from shared_ui_fixture import shared_asset
 from test_oauth import settings, ORIGIN
@@ -28,7 +29,8 @@ KEY='E'*43
 TOKEN='X'*43
 
 def make_app():
-    cfg=replace(settings(),terms_url=ORIGIN+'/terms.html',privacy_url=ORIGIN+'/privacy.html')
+    cfg=replace(settings(),terms_url=ORIGIN+'/terms.html',privacy_url=ORIGIN+'/privacy.html',
+                terms_version=member_profile.VERSION,privacy_version=member_profile.VERSION)
     app=FastAPI()
     app.include_router(auth.make_router(auth.AuthSettings(frozenset({ORIGIN}))))
     app.include_router(oauth.make_router(cfg))
@@ -119,15 +121,21 @@ def main():
         page.locator('#gate-login').click()
         expect(page.locator('#richon-login-dialog')).to_be_visible()
         expect(page.locator('#richon-login-dialog .provider-login')).to_have_count(2)
+        expect(page.locator('#richon-login-dialog input[name=over14]')).to_be_visible()
         assert '계정으로 계속' not in page.locator('#richon-login-dialog').inner_text()
         page.keyboard.press('Escape')
         expect(page.locator('#richon-login-dialog')).to_be_hidden()
         expect(page.locator('#gate-login')).to_be_focused()
         page.locator('#gate-login').click()
+        expect(page.locator('#richon-login-dialog input[name=over14]')).to_be_visible()
+        page.locator('#richon-login-dialog .kakao-login').click()
+        expect(page.locator('#richon-login-dialog')).to_be_visible()
+        page.locator('#richon-login-dialog input[name=over14]').check()
         with page.expect_request(lambda request: urlsplit(request.url).path=='/auth/start' and request.method=='POST') as submitted:
             page.locator('#richon-login-dialog .kakao-login').click()
         request=submitted.value
         assert 'provider=kakao' in (request.post_data or '')
+        assert 'over14=yes' in (request.post_data or '')
         context.close();browser.close()
     print('PASS: shared member chrome, responsive shell, account edit/link/withdraw dialogs, quiet withdrawal action and same-page provider selector; synthetic only')
 
