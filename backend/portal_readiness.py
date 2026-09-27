@@ -108,6 +108,17 @@ def provider_profile_schema_ready(cur):
     return cur.fetchone()==(3,)
 
 
+def provider_profile_grants_prepared(cur):
+    if not provider_profile_schema_ready(cur):
+        return False
+    cur.execute("""SELECT
+        has_column_privilege(%s,'richon.oauth_signups','provider_name','INSERT'),
+        has_column_privilege(%s,'richon.oauth_signups','provider_phone','INSERT'),
+        has_column_privilege(%s,'richon.oauth_signups','provider_email','INSERT')""",
+        (ROLE,ROLE,ROLE))
+    return cur.fetchone()==(True,True,True)
+
+
 def check_role(cur):
     # Explicit target checks also work for a non-superuser schema owner, without SET ROLE.
     cur.execute("SELECT rolname,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s", (ROLE,))
@@ -129,11 +140,12 @@ def check_role(cur):
         raise ValueError('marketing_requires_member_profile_policy')
     if profile_active and not provider_profile_schema_ready(cur):
         raise ValueError('provider_profile_schema_required')
+    provider_profile_grants = profile_active or provider_profile_grants_prepared(cur)
     account_grants = account or account_grants_prepared(cur)
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
     tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
-    if profile_active:
+    if provider_profile_grants:
         inserts = merged_grants(inserts, PROVIDER_PROFILE_INSERT)
     updates = UPDATE
     deletes = DELETE
