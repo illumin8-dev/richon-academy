@@ -266,12 +266,17 @@ def make_router(settings):
                 return response
             target=store.consume_attempt(settings,provider,state,browser)
             if q.get('error'): return failed(target)
-            verified=providers.exchange_session(settings,provider,code,state,browser)
-            identity=verified.identity
+            if collect_profile:
+                verified=providers.exchange_session(settings,provider,code,state,browser)
+                identity=verified.identity
+                provider_profile=verified.profile
+            else:
+                identity=providers.exchange(settings,provider,code,state,browser)
+                provider_profile=None
             member_id=store.member_for(identity)
             if member_id is not None and (not collect_profile or member_profile_store.completed(member_id, settings)):
                 return complete(member_id,request,target)
-            ticket=store.stage_signup(settings,identity,browser,target,verified.profile)
+            ticket=store.stage_signup(settings,identity,browser,target,provider_profile)
             response=redirect('/auth/signup');set_temporary(response,TICKET,ticket)
             return response
         except Exception:
