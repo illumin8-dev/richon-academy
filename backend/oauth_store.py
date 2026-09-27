@@ -1,7 +1,7 @@
 """Short-lived browser-bound one-time OAuth transactions. Uses verified TLS DB."""
 import secrets
 from auth_core import _transaction,token_digest,VerifiedIdentity,MemberUnavailable
-from oauth_providers import RETURNS
+from oauth_providers import RETURNS,ProviderProfile
 
 class InvalidFlow(Exception):
     pass
@@ -40,17 +40,21 @@ def member_for(identity):
     return row[0] if row else None
 
 
-def stage_signup(settings,identity,browser,return_to):
+def stage_signup(settings,identity,browser,return_to,provider_profile=None):
+    provider_profile=provider_profile or ProviderProfile()
     if (identity.provider not in settings.providers or identity.app_id != settings.providers[identity.provider].identity_scope
-        or return_to not in RETURNS): raise InvalidFlow()
+        or return_to not in RETURNS or not isinstance(provider_profile,ProviderProfile)): raise InvalidFlow()
     ticket=secrets.token_urlsafe(32)
     with _transaction() as cur:
         cur.execute('DELETE FROM richon.oauth_signups WHERE browser_hash=%s',(token_digest(browser),))
         cur.execute('''INSERT INTO richon.oauth_signups
-          (ticket_hash,browser_hash,provider,app_id,subject,display_name,return_to,terms_version,privacy_version,expires_at)
-          VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP+interval '10 minutes')''',
+          (ticket_hash,browser_hash,provider,app_id,subject,display_name,
+           provider_name,provider_phone,provider_email,
+           return_to,terms_version,privacy_version,expires_at)
+          VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP+interval '10 minutes')''',
           (token_digest(ticket),token_digest(browser),identity.provider,identity.app_id,identity.subject,
-           identity.display_name,return_to,settings.terms_version,settings.privacy_version))
+           identity.display_name,provider_profile.name,provider_profile.phone,provider_profile.email,
+           return_to,settings.terms_version,settings.privacy_version))
     return ticket
 
 
@@ -64,3 +68,16 @@ def pending(settings,ticket,browser,*,consume=False):
         if not row or row[4] not in RETURNS: raise InvalidFlow()
         if row[0] not in settings.providers or settings.providers[row[0]].identity_scope!=row[1]: raise InvalidFlow()
     return VerifiedIdentity(*row[:4]),row[4]
+
+def signup_profile(settings,ticket,browser):
+    with _transaction() as cur:
+        cur.execute('''SELECT provider,app_id,provider_name,provider_phone,provider_email
+            FROM richon.oauth_signups
+            WHERE ticket_hash=%s AND browser_hash=%s AND expires_at>CURRENT_TIMESTAMP
+              AND terms_version=%s AND privacy_version=%s''',
+            (token_digest(ticket),token_digest(browser),settings.terms_version,settings.privacy_version))
+        row=cur.fetchone()
+        if not row or row[0] not in settings.providers or settings.providers[row[0]].identity_scope!=row[1]:
+            raise InvalidFlow()
+    return ProviderProfile(*row[2:])
+
