@@ -9,6 +9,8 @@ import pytest
 import auth_core as core
 import member_profile as profile
 import member_profile_migrate as migration
+import oauth_signup_profile_migrate as provider_migration
+import oauth_providers as providers
 import member_profile_store as registration
 import oauth_store as tickets
 import portal_migrate
@@ -27,6 +29,7 @@ pytestmark = pytest.mark.skipif(
 def profile_db(oauth_db):
     assert portal_migrate.apply_migration()
     assert migration.apply_migration()
+    assert provider_migration.apply_migration()
     return oauth_db
 
 
@@ -45,8 +48,10 @@ def save(identity=None, **fields):
 
 def test_migration_reentry_and_no_public_access(profile_db):
     assert migration.apply_migration() is False
+    assert provider_migration.apply_migration() is False
     with profile_db() as c:
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='009_member_profiles'").fetchone() == (1,)
+        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='012_oauth_signup_provider_profile'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM pg_class t, LATERAL aclexplode(t.relacl) a WHERE t.oid='richon.member_profiles'::regclass AND a.grantee=0").fetchone() == (0,)
 
 
@@ -83,6 +88,30 @@ def test_same_contacts_different_provider_not_merged(profile_db):
     a, _, _ = pending('naver')
     b, _, _ = pending('kakao')
     assert save(a) != save(b)
+
+
+def test_provider_profile_overrides_tampered_locked_signup_fields(profile_db):
+    settings=cfg();identity=core.VerifiedIdentity('naver',settings.providers['naver'].identity_scope,uuid4().hex,'제공자 이름')
+    browser=secrets.token_urlsafe(32)
+    locked=providers.ProviderProfile('제공자 이름','01022223333','provider@example.invalid')
+    ticket=tickets.stage_signup(settings,identity,browser,'/portal/mypage',locked)
+    submitted=profile.Registration('변조 이름','01099998888','tampered@example.invalid',None,None,False,True)
+    mid,_=registration.finish(settings,ticket,browser,submitted)
+    with profile_db() as conn:
+        assert conn.execute('SELECT name,phone,email FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(
+            '제공자 이름','01022223333','provider@example.invalid')
+
+
+def test_missing_provider_fields_remain_user_supplied(profile_db):
+    settings=cfg();identity=core.VerifiedIdentity('naver',settings.providers['naver'].identity_scope,uuid4().hex,'회원')
+    browser=secrets.token_urlsafe(32)
+    ticket=tickets.stage_signup(settings,identity,browser,'/portal/mypage',
+                                providers.ProviderProfile(name='제공자 이름'))
+    submitted=profile.Registration('변조 이름','01033334444','user@example.invalid',None,None,False,True)
+    mid,_=registration.finish(settings,ticket,browser,submitted)
+    with profile_db() as conn:
+        assert conn.execute('SELECT name,phone,email FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(
+            '제공자 이름','01033334444','user@example.invalid')
 
 
 def test_concurrent_tickets_one_member_and_profile(profile_db):
