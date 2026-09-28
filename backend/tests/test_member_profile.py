@@ -75,20 +75,17 @@ def test_required_normalization_and_explicit_activation():
 
 
 @pytest.mark.parametrize('provider',['kakao','naver'])
-def test_age_checkbox_required_before_oauth_attempt(monkeypatch,provider):
+def test_age_confirmation_is_signup_only(monkeypatch,provider):
     c=client();r=c.get('/auth/login');csrf=re.search(r'name="csrf" value="([^"]+)"',r.text)[1]
-    assert r.text.count('name="over14"')==1
-    assert '생년월일' not in r.text and '본인인증을 의미하지 않습니다' in r.text
+    assert 'name="over14"' not in r.text
     assert '회원 관리와 상담에 필요한 정보를 수집합니다.' in r.text
     begin=Mock(return_value='S'*43);monkeypatch.setattr(s,'begin',begin)
     form={'csrf':csrf,'provider':provider,'return_to':'/portal/mypage'}
-    for value in (None,'no','true'):
-        q=form if value is None else {**form,'over14':value}
-        assert c.post('/auth/start',data=q,headers={'Origin':ORIGIN},follow_redirects=False).status_code==422
-    begin.assert_not_called()
-    response=c.post('/auth/start',data={**form,'over14':'yes'},headers={'Origin':ORIGIN},follow_redirects=False)
+    response=c.post('/auth/start',data=form,headers={'Origin':ORIGIN},follow_redirects=False)
     assert response.status_code==200 and 'data-richon-provider-handoff' in response.text
     assert begin.call_count==1
+    assert c.post('/auth/start',data={**form,'over14':'yes'},headers={'Origin':ORIGIN},follow_redirects=False).status_code==422
+
 
 
 def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
