@@ -98,6 +98,10 @@ def test_provider_handoff_is_exact_host_navigation_document():
     assert 'data-richon-provider-handoff' in body
     assert 'https://kauth.kakao.com/oauth/authorize?' in body
     assert '/auth/assets/handoff.js' in body
+    assert 'data-richon-provider-fallback' in body
+    assert 'visibility:hidden' in body
+    assert '2s forwards' in body
+    assert '이동이 안 되면 계속' in body
     assert "form-action 'none'" in response.headers['content-security-policy']
     assert response.headers['referrer-policy']=='no-referrer'
     for bad in (
