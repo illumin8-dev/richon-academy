@@ -14,9 +14,10 @@
 - provider 이동이 2초 이상 지연되거나 JS 자동이동에 문제가 있을 때만 "이동이 안 되면 계속" fallback 노출
 - 최신 protected candidate: richon-portal-handoff-36381388633-1
 - 기존 유일 회원은 member/auth identity 유지 / member_profiles 0 / 세션 0 상태로 의도적으로 대기
-- Kakao 개인정보 동의항목 1차 신청 반려: 회원가입 절차 확인자료 부족 / CI 실제 미수집
-- 반려 대응: 공개 signup-guide 추가 / 필수·선택 수집조건 명시 / privacy·terms 실제 소셜 가입 방식으로 정합 / CI·DI 미수집 명시
-- Kakao 재신청 시 CI 제외 / 이름·전화번호 필수, 성별·연령대 선택 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정
+- Kakao 개인정보 동의항목 1차 신청 반려: 회원가입 절차 확인자료 부족 / 당시 CI 실제 미수집
+- 사용자 결정 변경: CI를 동일인 중복가입 방지 및 기존 회원 비교 식별 목적으로 실제 사용
+- 반려 대응: 공개 signup-guide / privacy / terms를 CI 필수(카카오), 이름·전화번호 필수, 성별·연령대 선택 구조로 정합
+- CI는 raw 저장하지 않고 SHA-256 digest만 저장 / provider subject는 계속 로그인 주 식별자 / CI는 본인인증 대체 아님
 - Naver API 제공정보는 이름·이메일·휴대전화 필수 / 성별·연령대 추가로 설정
 - Naver 개인정보 국외이전 2건 등록 완료 / 사전 검수 승인 요청 제출 완료
 - 운영 DB 현재 확인: active member 0 / auth identity 0 / profile 0 / session 0 / withdrawn member 2
@@ -56,7 +57,9 @@
 - [x] PR #53 protected candidate 배포 / default 100% traffic unchanged
 - [x] Naver 국외이전 정보 2건 등록
 - [x] Kakao 1차 반려 사유 분석 / 회원가입 안내·정책 정합 수정 (fork main PR #60)
-- [ ] Kakao 재신청: CI 제외 + 회원가입 경로/전체 절차 화면 첨부
+- [x] PR #63 Kakao CI 중복가입 방지 코드 병합
+- [x] DB014 provider_ci_digest/member_ci_claims + 최소권한 적용/readback PASS
+- [ ] Kakao 재신청: 이름·전화번호·CI 필수 / 성별·연령대 선택 + 회원가입 경로/전체 절차 화면 첨부
 - [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정
 - [ ] Naver 사전 검수 승인 (승인 요청 제출 완료)
 - [ ] Naver 테스트 로그인으로 신규가입 진행 / 이름·휴대전화·이메일·연령대·성별 실제 반환 확인
