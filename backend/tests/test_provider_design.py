@@ -100,7 +100,9 @@ def test_image_allowlist_and_equal_button_geometry_are_declared():
         assert f'!backend/portal_static/{name}-login.png' in ignore.splitlines()
     assert '!backend/portal_static/*' not in ignore.splitlines()
     html = client().get('/auth/login').text
-    assert '.provider-login{' in html and 'height:48px;min-height:48px' in html
-    assert '.naver-login{background:#03a94d}' in html
-    assert '.kakao-login{background:#fee500}' in html
-    assert '.naver-login img{width:368px;height:48px}' in html
+    css = client().get('/auth/assets/site.css').text
+    assert '/auth/assets/auth.css' in html and '<style>' not in html
+    assert '.provider-login{' in css and 'height:48px' in css
+    assert '.naver-login{background:#03a94d}' in css
+    assert '.kakao-login{background:#fee500}' in css
+    assert '.naver-login img{width:368px;height:48px}' in css
