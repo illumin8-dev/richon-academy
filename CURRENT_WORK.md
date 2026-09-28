@@ -34,13 +34,15 @@
 - [x] PR #46 signup-only age gate + reliable OAuth handoff 병합/배포
 - [x] 로그인 화면에서 만14세 체크 제거 / 신규 가입 단계에서만 유지
 - [x] Kakao/Naver 1회 클릭으로 provider 로그인 화면 자동 이동 확인
-- [ ] Kakao 실제 로그인 E2E
-- [ ] Naver 실제 로그인 E2E
+- [x] Kakao 실제 로그인 E2E (사용자 확인 / 2026-09-28)
+- [x] Naver 실제 로그인 E2E (사용자 확인 / 2026-09-28)
 - [ ] Kakao↔Naver 계정 연결
 - [ ] 연결 해제 / 마지막 로그인 수단 보호
-- [ ] 회원탈퇴 / provider unlink-revoke
+- [x] 회원탈퇴 / provider unlink-revoke 실사용 흐름 확인 (사용자 확인 / 2026-09-28)
 - [ ] 탈퇴 후 재가입
 - [ ] 로그인 전체화면 / 팝업 CSS / 모바일 확인
+- [ ] OAuth handoff 중간 화면의 "로그인 페이지로 이동합니다 / 계속" 노출을 UX상 최소화 (자동이동 유지 / 실패 시 fallback만 노출)
+- [ ] Kakao/Naver 이름/휴대전화/이메일 실제 반환 및 동의 범위 확인 / 신규 가입 시 반환 필드는 자동입력+잠금, 미반환 필드만 직접입력
 - [ ] E2E 완료 후에만 공개 홈페이지 로그인 버튼 노출
 
 현재 운영 경계:
