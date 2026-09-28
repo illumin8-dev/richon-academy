@@ -20,6 +20,13 @@ assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
 assert '대표 멘토' in index and '리치온 아카데미 대표 멘토' in index and '실전 멘토' in index
+assert '각 분야의 실전 관점은 강의별 커리큘럼 안에서 연결합니다.' not in index
+assert '대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.' in index
+for mentor in ('가위남','이루민','인생곰부','재부스','키네스트','후니동산'):
+    assert f'<b>{mentor}</b>' in index
+assert index.count('class="mentor-card"') == 6
+assert index.count('class="mentor-field"') == 6
+assert index.count('<div class="mentor-card">') == 6
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
 
@@ -32,10 +39,13 @@ for course in ("pre","study","redev","interior","subscription"):
 assert "redev:{name:'재개발 중급반'" in apply and "status:'waitlist'" in apply
 assert "interior:{name:'리치온 인테리어'" in apply and "status:'upcoming'" in apply
 assert "subscription:{name:'청약 실전반'" in apply and "status:'upcoming'" in apply
-assert 'href="apply.html?course=redev">대기 신청 →' in index
+assert 'class="course-cta a-wait" href="apply.html?course=redev">대기 신청 →' in index
+assert '<span class="status waitlist">대기 신청</span>' in index
+assert index.count('class="course-cta a-apply"') == 2
+assert index.count('class="course-cta a-disabled" aria-disabled="true">모집 예정</span>') == 2
 assert 'href="apply.html?course=interior"' not in index
 assert 'href="apply.html?course=welcome"' not in index
-assert index.count('aria-disabled="true">모집 예정</span>') >= 2
+assert index.count('aria-disabled="true">모집 예정</span>') == 2
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
 assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
@@ -62,7 +72,7 @@ assert 'frontend/shared/site.css' in hero
 assert '기존 리치온 헤더를 오프닝 뒤에만 노출' not in hero
 assert '.hero-js .site-nav' in hero
 
-print('PASS: public landing uses shared chrome, external images and approved mentor layout')
+print('PASS: public landing uses shared chrome, external images, unified course CTAs and approved mentor layout')
 
 
 guide=(ROOT/'signup-guide.html').read_text()
