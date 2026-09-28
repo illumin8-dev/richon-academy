@@ -8,7 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import auth_core as core,auth_http as auth
-import oauth_store as store,oauth_http as h,oauth_providers as p,oauth_migrate,login_return_migrate,oauth_signup_profile_migrate,oauth_signup_demographics_migrate
+import oauth_store as store,oauth_http as h,oauth_providers as p,oauth_migrate,login_return_migrate,oauth_signup_profile_migrate,oauth_signup_demographics_migrate,kakao_ci_migrate
 from test_orders_postgres import postgres
 from test_auth_postgres import guarded_target,auth_postgres,CONSENT
 from test_oauth import settings,ORIGIN
@@ -21,6 +21,7 @@ def oauth_db(auth_postgres):
     assert login_return_migrate.apply_migration()
     assert oauth_signup_profile_migrate.apply_migration()
     assert oauth_signup_demographics_migrate.apply_migration()
+    assert kakao_ci_migrate.apply_migration()
     assert store.consume_attempt(settings(),'kakao',previous,'B'*43)=='/portal/mypage'
     return auth_postgres
 
