@@ -131,7 +131,7 @@ def test_provider_unlink_requires_provider_proof_and_never_removes_last_method(a
 
 
 def test_withdrawal_erases_account_auth_profile_after_all_provider_unlinks_and_retains_transaction(account_db):
-    settings=cfg();identity,mid=registered('naver');session=core.issue_session(mid)
+    settings=cfg();identity,mid=registered('kakao');session=core.issue_session(mid)
     run=uuid4().hex;course='account-'+run
     with account_db() as conn:
         conn.execute('INSERT INTO richon.courses(course_id,title,cohort,price_krw,enabled) VALUES(%s,%s,%s,1000,TRUE)',
@@ -142,7 +142,7 @@ def test_withdrawal_erases_account_auth_profile_after_all_provider_unlinks_and_r
     with account_db() as conn:
         conn.execute('INSERT INTO richon.member_order_links(order_id,member_id) VALUES(%s,%s)',(order.order_id,mid))
     store.prepare_withdrawal(mid)
-    assert store.withdrawal_status(mid,settings)==['naver']
+    assert store.withdrawal_status(mid,settings)==['kakao']
     assert verified_action(settings,mid,identity,'withdraw')[:2]==('withdraw',mid)
     assert store.complete_withdraw_provider(settings,mid,identity)==[]
     assert store.finalize_withdrawal(mid)==1
@@ -152,6 +152,7 @@ def test_withdrawal_erases_account_auth_profile_after_all_provider_unlinks_and_r
         assert conn.execute('SELECT status,withdrawn_at IS NOT NULL,display_name FROM richon.members WHERE member_id=%s',(mid,)).fetchone()==(
             'withdrawn',True,'탈퇴 회원')
         assert conn.execute('SELECT count(*) FROM richon.member_profiles WHERE member_id=%s',(mid,)).fetchone()==(0,)
+        assert conn.execute('SELECT count(*) FROM richon.member_ci_claims WHERE member_id=%s',(mid,)).fetchone()==(0,)
         assert conn.execute('SELECT count(*) FROM richon.auth_identities WHERE member_id=%s',(mid,)).fetchone()==(0,)
         assert conn.execute('SELECT count(*) FROM richon.member_sessions WHERE member_id=%s',(mid,)).fetchone()==(0,)
         assert conn.execute('SELECT member_id FROM richon.member_order_links WHERE order_id=%s',(order.order_id,)).fetchone() is None
