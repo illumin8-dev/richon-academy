@@ -41,3 +41,19 @@ assert '기존 리치온 헤더를 오프닝 뒤에만 노출' not in hero
 assert '.hero-js .site-nav' in hero
 
 print('PASS: public landing uses shared chrome, external images and approved mentor layout')
+
+
+guide=(ROOT/'signup-guide.html').read_text()
+footer=(shared/'footer.html').read_text()
+privacy=(ROOT/'privacy.html').read_text()
+terms=(ROOT/'terms.html').read_text()
+
+assert 'href="/signup-guide.html"' in footer
+for value in ('회원가입 전체 절차','이름','휴대전화번호','이메일','연령대','성별',
+              'CI(연계정보)는 수집하지 않습니다.'):
+    assert value in guide
+assert '필수' in guide and '선택' in guide
+assert 'CI·DI 기반 동일인 확인을 수행하지 않으며' in privacy
+assert '비밀번호, 이름, 닉네임, 생년월일' not in privacy
+assert '본인확인값(CI,DI)' not in privacy
+assert '별도의 서비스 비밀번호나 CI·DI 기반 본인인증을 요구하지 않습니다.' in terms
