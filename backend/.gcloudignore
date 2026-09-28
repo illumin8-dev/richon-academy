@@ -34,5 +34,7 @@ portal_static/*
 !portal_static/manual.html
 !portal_static/manual.css
 !portal_static/manual.js
+!portal_static/auth.css
+!portal_static/ops.css
 !.dockerignore
 !.gcloudignore
