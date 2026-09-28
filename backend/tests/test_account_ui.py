@@ -63,19 +63,17 @@ def test_modal_does_not_weaken_origin(monkeypatch,origin):
 
 
 @pytest.mark.parametrize('collect',[False,True])
-def test_native_modal_confirmation_retains_existing_auth_contract(monkeypatch,collect):
+def test_native_modal_login_does_not_require_age_confirmation(monkeypatch,collect):
     c=client(collect);data=c.get('/auth/login?view=modal').json()
     begin=Mock(return_value='S'*43);monkeypatch.setattr(oauth_store,'begin',begin)
     body={'csrf':data['csrf'],'provider':'naver','return_to':'/'}
-    if collect:
-        assert c.post('/auth/start',data=body,headers={'Origin':ORIGIN}).status_code==422
-        begin.assert_not_called();body['over14']='yes'
     r=c.post('/auth/start',data=body,headers={'Origin':ORIGIN},follow_redirects=False)
     assert r.status_code==200
     assert 'data-richon-provider-handoff' in r.text
     assert 'https://nid.naver.com/oauth2.0/authorize?' in r.text
     assert "form-action 'none'" in r.headers['content-security-policy']
     assert r.headers['referrer-policy']=='no-referrer';begin.assert_called_once()
+    assert c.post('/auth/start',data={**body,'over14':'yes'},headers={'Origin':ORIGIN}).status_code==422
 
 
 def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
