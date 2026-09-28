@@ -85,36 +85,33 @@ def classify_handoff_errors(revision):
     filt=(
         'resource.type="cloud_run_revision" AND '
         f'resource.labels.service_name="{c.SERVICE}" AND '
-        f'resource.labels.revision_name="{revision}" AND severity>=ERROR'
+        f'resource.labels.revision_name="{revision}" AND '
+        'logName:"run.googleapis.com%2Fstderr"'
     )
     raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
-                   '--freshness=30m','--limit=100','--order=desc','--format=json'],
-                  timeout=90)
+                   '--freshness=45m','--limit=200','--order=desc','--format=json'],
+                  timeout=120)
     try:
         rows=json.loads(raw) if raw.strip() else []
     except (ValueError,UnicodeError):
         raise c.Stop('invalid_error_log_response') from None
     c.need(isinstance(rows,list),'invalid_error_log_response')
-    counts=Counter()
-    for row in rows:
-        parts=[]
-        if isinstance(row.get('textPayload'),str):
-            parts.append(row['textPayload'])
-        payload=row.get('jsonPayload')
-        if isinstance(payload,dict):
-            for key in ('message','error','exception'):
-                if isinstance(payload.get(key),str):
-                    parts.append(payload[key])
-        text=' '.join(parts).lower()
-        if 'handoff.js' not in text:
-            continue
-        if 'does not exist' in text or 'filenotfound' in text or 'no such file' in text:
-            counts['asset_missing']+=1
-        elif 'permission' in text:
-            counts['asset_permission']+=1
-        else:
-            counts['other_handoff_error']+=1
-    return counts
+    joined='\n'.join(row.get('textPayload','') for row in rows
+                     if isinstance(row.get('textPayload'),str)).lower()
+    categories={
+        'file_not_found': ('no such file or directory','filenotfounderror','does not exist'),
+        'file_response': ('fileresponse','file at path'),
+        'permission': ('permissionerror','permission denied'),
+        'traceback': ('traceback (most recent call last)',),
+        'handoff_path': ('handoff.js',),
+    }
+    result={}
+    for key,markers in categories.items():
+        count=sum(joined.count(marker) for marker in markers)
+        if count:
+            result[key]=count
+    return result
+
 
 def run():
     c.source(live=True)
