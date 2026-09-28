@@ -30,7 +30,10 @@
 - [x] 버튼 무반응 원인을 실제 로그로 확정
 - [x] PR #44 OAuth provider handoff CSP 수정 병합
 - [x] richon-portal-deploy 서비스계정에 Logs Viewer 최소권한 추가 / GitHub WIF 로그 조회 가능
-- [ ] PR #44 이미지를 protected candidate에 재반영
+- [x] PR #44 handoff 계열 수정 protected candidate 반영
+- [x] PR #46 signup-only age gate + reliable OAuth handoff 병합/배포
+- [x] 로그인 화면에서 만14세 체크 제거 / 신규 가입 단계에서만 유지
+- [x] Kakao/Naver 1회 클릭으로 provider 로그인 화면 자동 이동 확인
 - [ ] Kakao 실제 로그인 E2E
 - [ ] Naver 실제 로그인 E2E
 - [ ] Kakao↔Naver 계정 연결
@@ -61,6 +64,7 @@
 - [ ] lazy loading / WebP / 표시크기 최적화
 - [ ] 중복 CSS / 폰트 굵기 정리
 - [ ] public/apply/member/admin 공통 header/footer/mobile menu 정합
+- [ ] /portal/mypage 푸터의 블로그/카페/유튜브/개인정보처리방침/이용약관 링크가 브라우저 기본 파란색으로 보이는 스타일 불일치 수정 (Frontend/UI cleanup 때 함께 처리)
 - [ ] apply의 {{구글폼URL}} / {{결제링크URL}} / {{입금계좌}} launch 전 점검
 - [ ] OAuth HTML/CSS embedded refactor는 인증 안정화 후 별도 검토
 
@@ -98,7 +102,8 @@
 
 ## 5. 정책 / 운영
 
-- [ ] Kakao/Naver production review/승인 상태 실제 콘솔 확인
+- [x] Kakao 비즈니스 앱 승인 완료 (사용자 확인 / 2026-09-28)
+- [ ] Naver production review/승인 상태 실제 콘솔 확인
 - [ ] 공개 terms/privacy 최신 정본 통합
 - [ ] member-info-v1 시행일/문구/기능 일치
 - [ ] 개인정보 파기/탈퇴 운영 절차 최종 확인
