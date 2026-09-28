@@ -103,9 +103,15 @@ def provider_handoff(target):
     body=('<!doctype html><html lang="ko"><head><meta charset="utf-8">'
           '<meta name="viewport" content="width=device-width,initial-scale=1">'
           '<meta name="robots" content="noindex,nofollow">'
-          '<title>로그인 연결 중</title></head><body>'
-          '<main><p>로그인 페이지로 이동합니다.</p>'
-          f'<a data-richon-provider-handoff href="{safe}" rel="noreferrer">계속</a></main>'
+          '<title>로그인 연결 중</title>'
+          '<style>html,body{margin:0;min-height:100%;background:#fff}'
+          '[data-richon-provider-fallback]{visibility:hidden;max-width:420px;margin:12vh auto;'
+          'padding:24px;box-sizing:border-box;font:15px/1.6 system-ui,sans-serif;color:#5f554d;'
+          'animation:richonHandoffFallback 0s linear 2s forwards}'
+          '@keyframes richonHandoffFallback{to{visibility:visible}}'
+          'a{color:#c44916}</style></head><body>'
+          '<main data-richon-provider-fallback><p>로그인 페이지로 이동 중입니다.</p>'
+          f'<a data-richon-provider-handoff href="{safe}" rel="noreferrer">이동이 안 되면 계속</a></main>'
           '<script defer src="/auth/assets/handoff.js"></script></body></html>')
     return HTMLResponse(body,headers={**HEADERS,'Content-Security-Policy':HANDOFF_CSP})
 
