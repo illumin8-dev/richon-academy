@@ -116,6 +116,7 @@ jobs:
               'portal_static/portal.css', 'portal_static/portal.js',
               'portal_static/enrollments.html', 'portal_static/enrollments.css', 'portal_static/enrollments.js',
               'portal_static/manual.html', 'portal_static/manual.css', 'portal_static/manual.js',
+              'portal_static/auth.css', 'portal_static/ops.css',
           }
           if files != expected:
               print('Missing files:', sorted(expected - files))
