@@ -21,6 +21,9 @@ backend/*
 !backend/manual_models.py
 !backend/manual_store.py
 !backend/manual_portal.py
+!backend/catalog_models.py
+!backend/catalog_store.py
+!backend/catalog_portal.py
 !backend/portal_entry.py
 !backend/portal_readiness.py
 !backend/portal_static/
