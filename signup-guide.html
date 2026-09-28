@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<title>회원가입 안내 | 리치온 아카데미</title>
+<meta name="description" content="리치온 아카데미 간편로그인 회원가입 절차와 개인정보 수집 항목을 안내합니다.">
+<link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/frontend/shared/site.css">
+<style>
+:root{--orange:#f47920;--ink:#1c1f26;--muted:#64676d;--line:#e7e3da;--paper:#f8f6f1}
+body{margin:0;background:#fff;color:var(--ink);font-family:'Pretendard',system-ui,sans-serif}
+.signup-guide{max-width:960px;margin:0 auto;padding:64px 24px 96px}
+.guide-hero{text-align:center;padding:36px 0 46px}
+.guide-eyebrow{display:inline-block;color:#b85f1f;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.guide-hero h1{margin:10px 0 14px;font-size:clamp(32px,5vw,48px);letter-spacing:-.04em;line-height:1.15}
+.guide-hero p{margin:0 auto;max-width:700px;color:var(--muted);font-size:16px;line-height:1.75}
+.guide-hero .guide-cta{margin-top:24px}
+.guide-cta a{display:inline-flex;align-items:center;justify-content:center;padding:13px 22px;border-radius:999px;background:var(--orange);color:#fff;text-decoration:none;font-weight:800}
+.guide-section{margin-top:32px;padding:30px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.guide-section h2{margin:0 0 18px;font-size:24px;letter-spacing:-.03em}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.step{position:relative;padding:18px;border-radius:14px;background:var(--paper);min-height:150px}
+.step b{display:flex;width:28px;height:28px;align-items:center;justify-content:center;border-radius:999px;background:var(--orange);color:#fff;font-size:13px}
+.step h3{margin:14px 0 7px;font-size:16px}
+.step p{margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+.profile-card{max-width:620px;margin:0 auto;border:1px solid #ddd8ce;border-radius:16px;padding:24px;background:#fff;box-shadow:0 20px 54px -42px rgba(0,0,0,.35)}
+.profile-card h3{margin:0 0 18px;font-size:20px}
+.field{display:grid;grid-template-columns:130px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eeeae3}
+.field:last-child{border-bottom:0}.field strong{font-size:14px}.field span{font-size:14px}.badge{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800}
+.required{background:#fff0e6;color:#b44d0d}.optional{background:#f1f3f5;color:#5b626a}
+.consent-box{margin-top:18px;padding:16px;border-radius:12px;background:#faf8f4;color:#555;font-size:13px;line-height:1.7}
+.collection-table{width:100%;border-collapse:collapse;font-size:14px}
+.collection-table th,.collection-table td{padding:13px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.collection-table th{background:#faf8f4;font-weight:800}
+.collection-table td:first-child{white-space:nowrap;font-weight:700}
+.note{margin-top:16px;color:#6a625a;font-size:13px;line-height:1.7}
+.no-ci{margin-top:18px;padding:16px 18px;border-left:4px solid var(--orange);background:#fff8f2;font-size:14px;line-height:1.7}
+@media(max-width:780px){.steps{grid-template-columns:1fr 1fr}.field{grid-template-columns:1fr auto}.field span{grid-column:1/-1}.guide-section{padding:22px}}
+@media(max-width:520px){.steps{grid-template-columns:1fr}.signup-guide{padding:40px 16px 72px}.collection-table{font-size:12px}.collection-table th,.collection-table td{padding:10px 8px}.collection-table td:first-child{white-space:normal}}
+</style>
+<script defer src="/frontend/shared/site.js"></script>
+</head>
+<body class="richon-page">
+<nav class="site-nav" id="siteNav" aria-label="리치온 아카데미 메뉴">
+  <a class="site-logo" href="/#top" aria-label="리치온 아카데미 홈"><span class="r">RICH</span><span class="o">ON</span><small>ESTATE STUDY</small></a>
+  <div class="site-menu" id="navMenu">
+    <a href="/#proof">후기</a>
+    <a href="/#programs">정규 프로그램</a>
+    <a href="/#instructor">강사/멘토</a>
+  </div>
+  <div class="site-nav-right">
+    <a class="site-btn site-btn-line site-chat" href="https://open.kakao.com/o/gPdQcklh" target="_blank" rel="noopener noreferrer">오픈카톡방</a>
+    <a class="site-btn site-btn-o" href="/apply.html">강의 신청</a>
+    <a class="site-account-link" id="site-account-login" href="/auth/login" data-richon-login hidden>로그인</a>
+    <a class="site-account-link" id="site-account-me" href="/portal/mypage" hidden>마이페이지</a>
+    <button class="site-account-link" id="logout" type="button" hidden>로그아웃</button>
+    <button class="site-burger" id="burger" type="button" aria-controls="navMenu" aria-label="메뉴" aria-expanded="false"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<main class="signup-guide">
+  <section class="guide-hero">
+    <span class="guide-eyebrow">Membership Guide</span>
+    <h1>간편로그인으로 회원가입합니다</h1>
+    <p>리치온 아카데미는 별도의 아이디와 비밀번호를 만들지 않습니다. 카카오 또는 네이버 로그인으로 본인 계정을 확인한 뒤, 최초 1회 회원정보와 필수 동의를 확인하면 가입이 완료됩니다.</p>
+    <div class="guide-cta"><a href="/auth/login?return_to=%2Fportal%2Fmypage">간편로그인으로 회원가입 시작</a></div>
+  </section>
+
+  <section class="guide-section" aria-labelledby="process-title">
+    <h2 id="process-title">회원가입 전체 절차</h2>
+    <div class="steps">
+      <article class="step"><b>1</b><h3>간편로그인 선택</h3><p>카카오 또는 네이버 로그인을 선택합니다.</p></article>
+      <article class="step"><b>2</b><h3>정보 제공 동의</h3><p>소셜 로그인 제공자의 동의 화면에서 서비스 가입에 필요한 정보 제공 여부를 확인합니다.</p></article>
+      <article class="step"><b>3</b><h3>회원정보 확인</h3><p>제공받은 정보는 자동 입력됩니다. 제공되지 않은 필수 항목만 직접 입력합니다.</p></article>
+      <article class="step"><b>4</b><h3>동의 후 가입 완료</h3><p>만 14세 이상 / 이용약관 / 개인정보 수집·이용에 동의하면 회원가입이 완료됩니다.</p></article>
+    </div>
+  </section>
+
+  <section class="guide-section" aria-labelledby="screen-title">
+    <h2 id="screen-title">최초 로그인 후 회원정보 확인 화면</h2>
+    <div class="profile-card" aria-label="회원가입 화면 예시">
+      <h3>회원정보를 확인해 주세요</h3>
+      <div class="field"><strong>이름</strong><span>소셜 계정 제공값 자동입력 / 미제공 시 직접입력</span><em class="badge required">필수</em></div>
+      <div class="field"><strong>휴대전화번호</strong><span>소셜 계정 제공값 자동입력 / 미제공 시 직접입력</span><em class="badge required">필수</em></div>
+      <div class="field"><strong>이메일</strong><span>소셜 계정 제공값 자동입력 / 미제공 시 직접입력</span><em class="badge required">필수</em></div>
+      <div class="field"><strong>연령대</strong><span>소셜 계정 제공 시 자동선택 / 상담정보 동의 시 저장</span><em class="badge optional">선택</em></div>
+      <div class="field"><strong>성별</strong><span>소셜 계정 제공 시 자동선택 / 상담정보 동의 시 저장</span><em class="badge optional">선택</em></div>
+      <div class="consent-box">
+        [필수] 만 14세 이상입니다.<br>
+        [필수] 이용약관 동의<br>
+        [필수] 개인정보 수집·이용 동의<br>
+        [선택] 상담정보 수집·이용 동의 — 연령대 / 성별<br>
+        [선택] 광고성 정보 수신 동의 — 문자 / 이메일
+      </div>
+    </div>
+  </section>
+
+  <section class="guide-section" aria-labelledby="collection-title">
+    <h2 id="collection-title">회원가입 시 수집 항목과 조건</h2>
+    <table class="collection-table">
+      <thead><tr><th>조건</th><th>항목</th><th>이용 목적</th></tr></thead>
+      <tbody>
+        <tr><td>필수</td><td>카카오/네이버 앱별 이용자 식별정보</td><td>회원 식별 / 로그인 계정 관리</td></tr>
+        <tr><td>필수</td><td>이름</td><td>회원 확인 / 수강생 관리 / 상담 대상 확인</td></tr>
+        <tr><td>필수</td><td>휴대전화번호</td><td>회원 서비스 안내 / 상담 연락</td></tr>
+        <tr><td>필수</td><td>이메일</td><td>회원 서비스 안내 / 강의자료 발송</td></tr>
+        <tr><td>선택</td><td>연령대 / 성별</td><td>수강 상담 준비 / 생애주기와 주거 수요를 고려한 상담 분석</td></tr>
+        <tr><td>필수</td><td>만 14세 이상 확인 / 약관 및 개인정보 동의 버전·시점</td><td>가입 대상 및 동의 내역 확인</td></tr>
+      </tbody>
+    </table>
+    <p class="note">선택정보는 동의하지 않아도 회원가입과 기본 서비스를 이용할 수 있습니다. 소셜 계정에서 받은 연령대·성별도 상담정보 수집·이용에 동의한 경우에만 저장합니다.</p>
+    <div class="no-ci"><strong>CI(연계정보)는 수집하지 않습니다.</strong><br>리치온 아카데미 회원가입에서는 별도의 휴대전화 본인인증이나 CI/DI 기반 동일인 확인을 수행하지 않습니다.</div>
+  </section>
+</main>
+<footer class="site-footer">
+  <div class="site-wrap">
+    <div class="site-footer-top">
+      <a class="site-logo" href="/#top" aria-label="리치온 아카데미 홈"><span class="r">RICH</span><span class="o">ON</span></a>
+      <div class="site-footer-links">
+        <a href="https://blog.naver.com/zzang092121" target="_blank" rel="noopener noreferrer">블로그</a>
+        <a href="https://cafe.naver.com/richonacademy1" target="_blank" rel="noopener noreferrer">카페</a>
+        <a href="https://www.youtube.com/channel/UCtU94tFmH_DL1i7uszY40PA" target="_blank" rel="noopener noreferrer">유튜브</a>
+        <a href="/signup-guide.html">회원가입 안내</a>
+        <a href="/privacy.html">개인정보처리방침</a>
+        <a href="/terms.html">이용약관</a>
+      </div>
+    </div>
+    <div class="site-legal">
+      상호: 리치온 아카데미 ｜ 대표: 장순호 ｜ 사업자등록번호: 175-01-03647 ｜ 전화: 032-236-8944<br>
+      주소: 경기도 부천시 소사구 송내대로 42번길 81, 1층 1호 (송내동)<br>
+      © <span data-site-year>2026</span> RICHON Academy.
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
