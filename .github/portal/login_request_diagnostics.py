@@ -28,42 +28,38 @@ def candidate_revision(svc):
 
 
 def read_logs(revision):
-    filt=(
-        'resource.type="cloud_run_revision" AND '
-        f'resource.labels.service_name="{c.SERVICE}" AND '
-        f'resource.labels.revision_name="{revision}" AND '
-        'httpRequest.requestMethod=("*") AND '
-        '(httpRequest.requestUrl:"/auth/login" OR httpRequest.requestUrl:"/auth/start" OR '
-        'httpRequest.requestUrl:"/auth/assets/handoff.js" OR '
-        'httpRequest.requestUrl:"/auth/kakao/callback" OR httpRequest.requestUrl:"/auth/naver/callback")'
-    )
-    raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
-                   '--freshness=15m','--limit=100','--order=asc','--format=json'],
-                  timeout=240)
-    try:
-        rows=json.loads(raw) if raw.strip() else []
-    except (ValueError,UnicodeError):
-        raise c.Stop('invalid_log_response') from None
-    c.need(isinstance(rows,list),'invalid_log_response')
     result=[]
-    for row in rows:
-        req=row.get('httpRequest') or {}
-        method=req.get('requestMethod')
-        status=req.get('status')
-        url=req.get('requestUrl','')
+    for wanted in sorted(ALLOWED_PATHS):
+        filt=(
+            'resource.type="cloud_run_revision" AND '
+            f'resource.labels.service_name="{c.SERVICE}" AND '
+            f'resource.labels.revision_name="{revision}" AND '
+            f'httpRequest.requestUrl:"{wanted}"'
+        )
+        raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
+                       '--freshness=15m','--limit=40','--order=asc','--format=json'],
+                      timeout=90)
         try:
-            path=urlsplit(url).path
-        except ValueError:
-            continue
-        if path not in ALLOWED_PATHS or method not in {'GET','POST'}:
-            continue
-        if not isinstance(status,int):
-            continue
-        stamp=row.get('timestamp','')
-        if not isinstance(stamp,str) or len(stamp)>40:
-            stamp=''
-        result.append((stamp,path,method,status))
-    return result
+            rows=json.loads(raw) if raw.strip() else []
+        except (ValueError,UnicodeError):
+            raise c.Stop('invalid_log_response') from None
+        c.need(isinstance(rows,list),'invalid_log_response')
+        for row in rows:
+            req=row.get('httpRequest') or {}
+            method=req.get('requestMethod')
+            status=req.get('status')
+            url=req.get('requestUrl','')
+            try:
+                path=urlsplit(url).path
+            except ValueError:
+                continue
+            if path != wanted or method not in {'GET','POST'} or not isinstance(status,int):
+                continue
+            stamp=row.get('timestamp','')
+            if not isinstance(stamp,str) or len(stamp)>40:
+                stamp=''
+            result.append((stamp,path,method,status))
+    return sorted(result)
 
 
 def warning_count(revision):
