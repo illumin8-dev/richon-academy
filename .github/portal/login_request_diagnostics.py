@@ -38,8 +38,8 @@ def read_logs(revision):
         'httpRequest.requestUrl:"/auth/kakao/callback" OR httpRequest.requestUrl:"/auth/naver/callback")'
     )
     raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
-                   '--freshness=45m','--limit=200','--order=asc','--format=json'],
-                  timeout=120)
+                   '--freshness=15m','--limit=100','--order=asc','--format=json'],
+                  timeout=240)
     try:
         rows=json.loads(raw) if raw.strip() else []
     except (ValueError,UnicodeError):
@@ -74,7 +74,7 @@ def warning_count(revision):
         'textPayload="oauth_flow_not_completed"'
     )
     raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
-                   '--freshness=45m','--limit=100','--format=json'],timeout=120)
+                   '--freshness=15m','--limit=50','--format=json'],timeout=120)
     try:
         rows=json.loads(raw) if raw.strip() else []
     except (ValueError,UnicodeError):
@@ -95,7 +95,7 @@ def run():
 
     print('LOGIN_REQUEST_DIAGNOSTICS=READ_ONLY')
     print('CANDIDATE_REVISION='+revision)
-    print('WINDOW=45m')
+    print('WINDOW=15m')
     print('REQUEST_COUNT='+str(len(rows)))
     for (path,method,status),count in sorted(counts.items()):
         labels={
