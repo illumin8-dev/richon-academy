@@ -30,6 +30,8 @@ class ProviderProfile:
     name: str | None = None
     phone: str | None = None
     email: str | None = None
+    age_range: str | None = None
+    gender: str | None = None
 
 
 @dataclass(frozen=True, repr=False)
@@ -148,6 +150,43 @@ def _profile_value(cleaner, value):
         return None
 
 
+def _provider_gender(provider, value):
+    if provider == 'kakao':
+        return value if value in member_profile.GENDERS else None
+    if provider == 'naver':
+        return {'F': 'female', 'M': 'male'}.get(value)
+    return None
+
+
+def _provider_age_range(provider, value):
+    if not isinstance(value, str):
+        return None
+    if provider == 'kakao':
+        match = re.fullmatch(r'([0-9]{1,3})~([0-9]{1,3})', value)
+        if not match:
+            return None
+        low, high = map(int, match.groups())
+        if (low, high) == (15, 19):
+            return '14-19'
+    elif provider == 'naver':
+        match = re.fullmatch(r'([0-9]{1,3})-([0-9]{1,3})', value)
+        if not match:
+            return None
+        low, high = map(int, match.groups())
+        # 10-19 is ambiguous for a 14+ service, so teenagers select 14-19 manually.
+        if low < 20:
+            return None
+    else:
+        return None
+    if high != low + 9:
+        return None
+    if 20 <= low <= 60 and low % 10 == 0:
+        return f'{low}-{high}'
+    if low >= 70:
+        return '70+'
+    return None
+
+
 def exchange_session(settings,name,code,state,browser):
     provider=settings.providers[name]
     form={'grant_type':'authorization_code','client_id':provider.client_id,'client_secret':provider.secret,
@@ -166,7 +205,8 @@ def exchange_session(settings,name,code,state,browser):
                 or type(info.get('app_id')) is not int or info['app_id']!=provider.kakao_app_id
                 or type(info.get('expires_in')) is not int or info['expires_in']<=0):
                 raise ProviderRejected()
-            fields=(['kakao_account.name','kakao_account.email','kakao_account.phone_number']
+            fields=(['kakao_account.name','kakao_account.email','kakao_account.phone_number',
+                     'kakao_account.age_range','kakao_account.gender']
                     if member_profile.enabled(settings.terms_version, settings.privacy_version)
                     else ['kakao_account.profile'])
             profile=_json(client,'GET',ENDPOINTS[name][2],headers=headers,
@@ -189,12 +229,16 @@ def exchange_session(settings,name,code,state,browser):
                     _profile_value(member_profile.clean_name,account.get('name')),
                     _profile_value(member_profile.clean_phone,account.get('phone_number')),
                     _profile_value(member_profile.clean_email,account.get('email')),
+                    _provider_age_range('kakao',account.get('age_range')),
+                    _provider_gender('kakao',account.get('gender')),
                 )
             elif name=='naver':
                 provider_profile=ProviderProfile(
                     _profile_value(member_profile.clean_name,response.get('name')),
                     _profile_value(member_profile.clean_phone,response.get('mobile')),
                     _profile_value(member_profile.clean_email,response.get('email')),
+                    _provider_age_range('naver',response.get('age')),
+                    _provider_gender('naver',response.get('gender')),
                 )
             nickname=provider_profile.name
         display=nickname if isinstance(nickname,str) else ''
