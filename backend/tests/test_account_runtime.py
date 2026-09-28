@@ -30,7 +30,7 @@ def restricted_account(account_db,monkeypatch):
         assert conn.execute('SELECT 1 FROM pg_roles WHERE rolname=%s',(ready.ROLE,)).fetchone() is None
         conn.execute('CREATE ROLE richon_portal_login NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT')
         conn.execute('GRANT USAGE ON SCHEMA richon TO richon_portal_login')
-        for table in (*ready.READ,'member_profiles',*ready.ACCOUNT_READ):
+        for table in (*ready.READ,*ready.PROVIDER_PROFILE_READ,'member_profiles',*ready.ACCOUNT_READ):
             conn.execute(sql.SQL('GRANT SELECT ON richon.{} TO richon_portal_login').format(sql.Identifier(table)))
         base_inserts=ready.merged_grants(ready.INSERT,ready.PROVIDER_PROFILE_INSERT)
         inserts=ready.merged_grants({**base_inserts,'member_profiles':profile.INSERT_COLUMNS},ready.ACCOUNT_INSERT)
