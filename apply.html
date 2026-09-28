@@ -194,7 +194,7 @@ body.apply-page{margin:0;background:#fff;color:var(--site-ink);font-family:var(-
     status.className='apply-status '+course.status;status.textContent=STATUS[course.status];
     const price=document.getElementById('summary-price');
     price.replaceChildren(document.createTextNode(course.price+' '));
-    const small=document.createElement('small');small.textContent=course.sub;price.append(small);
+    const priceSmall=document.createElement('small');priceSmall.textContent=course.sub;price.append(priceSmall);
 
     document.getElementById('open-actions').hidden=course.status!=='open';
     document.getElementById('waitlist-actions').hidden=course.status!=='waitlist';
