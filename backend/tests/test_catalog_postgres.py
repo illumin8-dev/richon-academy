@@ -121,12 +121,15 @@ def test_run_enrollment_trigger_enforces_fixed_months(setup,catalog_db):
           VALUES(%s,%s,%s,'2026-10-01','2026-11-30','SCHEDULED','complimentary',%s)""",
           (uuid4(),learner,r['run_id'],setup['admin']))
     import psycopg
+    bad_learner=uuid4()
+    with catalog_db() as db:
+        db.execute("INSERT INTO richon.enrollment_learners(learner_id,name) VALUES(%s,'가상 잘못된 기간')",(bad_learner,))
     with pytest.raises(psycopg.errors.RaiseException):
         with catalog_db() as db:
             db.execute("""INSERT INTO richon.run_enrollments
               (enrollment_id,learner_id,run_id,access_start,access_end,status,source,created_by)
               VALUES(%s,%s,%s,'2026-12-01','2027-02-28','SCHEDULED','manual',%s)""",
-              (uuid4(),uuid4(),r['run_id'],setup['admin']))
+              (uuid4(),bad_learner,r['run_id'],setup['admin']))
 
 def test_non_admin_cannot_read_or_mutate(setup):
     with setup['client'](setup['sm']) as c:
