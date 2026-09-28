@@ -9,7 +9,7 @@ import secrets
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit, urlencode
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 import auth_core as core
 import auth_http as auth
@@ -27,6 +27,21 @@ LINK='__Host-richon-link'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
 CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 HANDOFF_CSP="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+HANDOFF_JS="""/* Provider navigation starts only after the same-origin form POST has completed. */
+'use strict';
+(() => {
+  const link=document.querySelector('[data-richon-provider-handoff]');
+  if(!link)return;
+  let url;
+  try{url=new URL(link.href);}catch{return;}
+  const allowed=(url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&!url.hash)&&(
+    (url.hostname==='kauth.kakao.com'&&url.pathname==='/oauth/authorize')||
+    (url.hostname==='nid.naver.com'&&url.pathname==='/oauth2.0/authorize')
+  );
+  if(!allowed)return;
+  window.location.replace(url.href);
+})();
+"""
 logger=logging.getLogger('richon.oauth')
 
 
@@ -189,6 +204,8 @@ def make_router(settings):
     def shared_auth_asset(asset:str):
         if asset not in {'site.css','site.js','login.js','signup.js','handoff.js'}:
             raise HTTPException(404,'not_found',headers=HEADERS)
+        if asset == 'handoff.js':
+            return Response(HANDOFF_JS,media_type='text/javascript',headers=HEADERS)
         return FileResponse(Path(__file__).parent / 'portal_static' / asset, headers=HEADERS)
 
     @router.get('/login',response_class=HTMLResponse)
