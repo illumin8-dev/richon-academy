@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'apply.html'
       - 'frontend/shared/**'
       - 'assets/hero/**'
       - 'assets/images/**'
+      - 'assets/apply/**'
       - 'tools/check_public_ui.py'
       - '.github/workflows/public-ui-ci.yml'
   workflow_dispatch:
