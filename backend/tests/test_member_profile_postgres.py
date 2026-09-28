@@ -7,11 +7,13 @@ import os
 import secrets
 import pytest
 import auth_core as core
+import identity_verification as verification
 import member_profile as profile
 import member_profile_migrate as migration
 import oauth_signup_profile_migrate as provider_migration
 import oauth_signup_demographics_migrate as demographic_migration
 import kakao_ci_migrate as ci_migration
+import verified_ci_migrate as verified_migration
 import oauth_providers as providers
 import member_profile_store as registration
 import oauth_store as tickets
@@ -34,6 +36,8 @@ def profile_db(oauth_db):
     assert provider_migration.apply_migration() is False
     assert demographic_migration.apply_migration() is False
     assert ci_migration.apply_migration() is False
+    assert verified_migration.apply_migration()
+    assert verified_migration.apply_migration() is False
     return oauth_db
 
 
@@ -61,6 +65,7 @@ def test_migration_reentry_and_no_public_access(profile_db):
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='012_oauth_signup_provider_profile'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='013_oauth_signup_provider_demographics'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='014_kakao_ci_dedup'").fetchone() == (1,)
+        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='015_verified_ci_identity'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM pg_class t, LATERAL aclexplode(t.relacl) a WHERE t.oid='richon.member_profiles'::regclass AND a.grantee=0").fetchone() == (0,)
 
 
@@ -116,6 +121,66 @@ def test_kakao_signup_requires_ci(profile_db):
     ticket=tickets.stage_signup(settings,identity,browser,'/portal/mypage',providers.ProviderProfile())
     with pytest.raises(tickets.InvalidFlow):
         registration.finish(settings,ticket,browser,profile.Registration.from_form(data()))
+
+
+def test_service_verified_ci_blocks_cross_provider_duplicate(profile_db,monkeypatch):
+    monkeypatch.setenv('RICHON_IDENTITY_VERIFICATION_ENABLED','true')
+    settings=cfg()
+    ci=core.token_digest(secrets.token_urlsafe(32))
+    person=verification.VerifiedPerson(ci)
+
+    naver=core.VerifiedIdentity('naver',settings.providers['naver'].identity_scope,uuid4().hex,'회원1')
+    browser1=secrets.token_urlsafe(32)
+    ticket1=tickets.stage_signup(settings,naver,browser1,'/portal/mypage',providers.ProviderProfile())
+    first,_=registration.finish(
+        settings,ticket1,browser1,profile.Registration.from_form(data()),person)
+
+    kakao=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원2')
+    browser2=secrets.token_urlsafe(32)
+    ticket2=tickets.stage_signup(
+        settings,kakao,browser2,'/portal/mypage',providers.ProviderProfile(ci_digest=ci))
+    with pytest.raises(registration.ExistingMemberMatch):
+        registration.finish(
+            settings,ticket2,browser2,profile.Registration.from_form(data()),person)
+
+    with profile_db() as conn:
+        assert conn.execute(
+            'SELECT member_id,provider FROM richon.member_ci_claims WHERE ci_digest=%s',(ci,)
+        ).fetchone()==(first,'verified')
+        assert conn.execute(
+            'SELECT count(*) FROM richon.auth_identities WHERE provider=%s AND app_id=%s AND subject=%s',
+            (kakao.provider,kakao.app_id,kakao.subject)
+        ).fetchone()==(0,)
+
+
+def test_service_verified_ci_allows_kakao_before_kakao_ci_permission(profile_db,monkeypatch):
+    monkeypatch.setenv('RICHON_IDENTITY_VERIFICATION_ENABLED','true')
+    settings=cfg()
+    person=verification.VerifiedPerson(core.token_digest(secrets.token_urlsafe(32)))
+    kakao=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원')
+    browser=secrets.token_urlsafe(32)
+    ticket=tickets.stage_signup(settings,kakao,browser,'/portal/mypage',providers.ProviderProfile())
+    mid,_=registration.finish(
+        settings,ticket,browser,profile.Registration.from_form(data()),person)
+    with profile_db() as conn:
+        assert conn.execute(
+            'SELECT provider FROM richon.member_ci_claims WHERE member_id=%s',(mid,)
+        ).fetchone()==('verified',)
+
+
+def test_kakao_ci_must_match_service_verified_ci(profile_db,monkeypatch):
+    monkeypatch.setenv('RICHON_IDENTITY_VERIFICATION_ENABLED','true')
+    settings=cfg()
+    service_ci=core.token_digest(secrets.token_urlsafe(32))
+    kakao_ci=core.token_digest(secrets.token_urlsafe(32))
+    identity=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원')
+    browser=secrets.token_urlsafe(32)
+    ticket=tickets.stage_signup(
+        settings,identity,browser,'/portal/mypage',providers.ProviderProfile(ci_digest=kakao_ci))
+    with pytest.raises(tickets.InvalidFlow):
+        registration.finish(
+            settings,ticket,browser,profile.Registration.from_form(data()),
+            verification.VerifiedPerson(service_ci))
 
 
 def test_same_contacts_different_provider_not_merged(profile_db):
