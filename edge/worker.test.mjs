@@ -67,7 +67,7 @@ test('Worker entry ignores execution context as transport',async()=>{
 // emulated here. These assertions prevent reintroducing forced cache TTLs.
 test('all auth and portal subrequests bypass cache rather than cache with TTL zero',async()=>{
   const cases=[['/auth/login','GET'],['/auth/signup','GET'],['/auth/kakao/callback','GET'],
-    ['/auth/naver/callback','GET'],['/auth/assets/kakao-login.png','GET'],['/auth/assets/site.css','GET'],['/auth/assets/handoff.js','GET'],['/auth/me','GET'],
+    ['/auth/naver/callback','GET'],['/auth/assets/kakao-login.png','GET'],['/auth/assets/site.css','GET'],['/auth/assets/auth.css','GET'],['/auth/assets/handoff.js','GET'],['/auth/me','GET'],
     ['/portal/mypage','GET'],['/auth/start','POST'],['/auth/signup','POST'],['/auth/logout','POST']];
   for(const [path,method] of cases){
     let observed;

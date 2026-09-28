@@ -25,7 +25,7 @@ BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
 LINK='__Host-richon-link'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
-CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+CSP="default-src 'none'; script-src 'self'; style-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 HANDOFF_CSP="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
 HANDOFF_JS="""/* Provider navigation starts only after the same-origin form POST has completed. */
 'use strict';
@@ -117,13 +117,13 @@ def provider_handoff(target):
 
 
 def page(title,body):
-    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 var(--site-font);margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.collection-notice{font-size:13px;margin:16px 0}.collection-notice summary{cursor:pointer}.collection-notice table{width:100%;border-collapse:collapse;table-layout:fixed}.collection-notice td,.collection-notice th{padding:8px 4px;text-align:left;border-bottom:1px solid #eee;overflow-wrap:anywhere}.collection-notice caption{margin-top:12px}input:not([type=checkbox]):not([type=hidden]),select{box-sizing:border-box;width:100%;padding:10px;font:inherit;min-width:0}fieldset{min-width:0;border:1px solid #e7d6c5;border-radius:8px}fieldset p{font-size:13px}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title></head><body class="richon-page auth-page"><main class="auth-main"><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
     static = Path(__file__).parent / 'portal_static'
     header = (static / 'site-header.html').read_text()
     footer = (static / 'site-footer.html').read_text()
-    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/auth/assets/site.css"><script src="/auth/assets/site.js"></script><script defer src="/auth/assets/signup.js"></script>'
+    assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/auth/assets/site.css"><link rel="stylesheet" href="/auth/assets/auth.css"><script src="/auth/assets/site.js"></script><script defer src="/auth/assets/signup.js"></script>'
     content = content.replace('</head>', assets + '</head>', 1)
-    content = content.replace('<body><main><p>RICHON ACADEMY</p>', '<body class="richon-page auth-page">' + header + '<main>', 1)
+    content = content.replace('<body class="richon-page auth-page">', '<body class="richon-page auth-page">' + header, 1)
     content = content.replace('</main></body>', '</main>' + footer + '</body>', 1)
     # Native form POSTs need a non-null same-origin Origin. Cross-site referrers
     # remain suppressed; callback/redirect/error responses keep no-referrer.
@@ -208,7 +208,7 @@ def make_router(settings):
 
     @router.get('/assets/{asset}',include_in_schema=False)
     def shared_auth_asset(asset:str):
-        if asset not in {'site.css','site.js','login.js','signup.js','handoff.js'}:
+        if asset not in {'site.css','site.js','login.js','signup.js','handoff.js','auth.css'}:
             raise HTTPException(404,'not_found',headers=HEADERS)
         if asset == 'handoff.js':
             return Response(HANDOFF_JS,media_type='text/javascript',headers=HEADERS)

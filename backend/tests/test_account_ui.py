@@ -91,7 +91,8 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
         assert "script-src 'self'" in response.headers['content-security-policy']
     for forbidden in ('홈페이지로','MY LEARNING JOURNEY','조회 버전','계정으로 계속해서 이용하세요','카카오 회원님'):
         assert forbidden not in page.text+fallback.text
-    assert '/auth/assets/site.css' in fallback.text and '/auth/assets/site.js' in fallback.text
+    assert '/auth/assets/site.css' in fallback.text and '/auth/assets/auth.css' in fallback.text and '/auth/assets/site.js' in fallback.text
+    assert '<style>' not in fallback.text and '#fff7ed' not in fallback.text and '#c44916' not in fallback.text
     assert '/portal/assets/site.css' not in fallback.text
     shared_css=(ROOT/'frontend/shared/site.css').read_text()
     assert '.site-footer-links a{color:inherit;' in shared_css
@@ -106,7 +107,7 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
         assert forbidden not in page.text
 
 
-@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','account.css','account.js'])
+@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','auth.css','ops.css','account.css','account.js'])
 def test_shared_assets_are_available_without_customer_queries(monkeypatch,name):
     app=app_with_portal(monkeypatch)
     r=TestClient(app).get('/portal/assets/'+name)
@@ -115,7 +116,7 @@ def test_shared_assets_are_available_without_customer_queries(monkeypatch,name):
     assert TestClient(app).get('/portal/assets/site-header.html').status_code==404
 
 
-@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','handoff.js'])
+@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','handoff.js','auth.css'])
 def test_auth_shared_assets_are_same_source(name):
     r=client().get('/auth/assets/'+name)
     assert r.status_code==200 and r.headers['cache-control']=='no-store'
