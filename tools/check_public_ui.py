@@ -3,22 +3,44 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
+apply=(ROOT/'apply.html').read_text()
 shared=ROOT/'frontend'/'shared'
+work=(ROOT/'CURRENT_WORK.md').read_text()
 
 def wrapped(name):
     value=(shared/(name+'.html')).read_text().strip()
     return '<!-- richon:shared-'+name+' -->\n'+value+'\n<!-- /richon:shared-'+name+' -->'
 
-assert wrapped('header') in index
-assert wrapped('footer') in index
-assert 'href="frontend/shared/site.css"' in index
-assert 'src="frontend/shared/site.js"' in index
+for page in (index,apply):
+    assert wrapped('header') in page
+    assert wrapped('footer') in page
+    assert 'href="frontend/shared/site.css"' in page
+    assert 'src="frontend/shared/site.js"' in page
 assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
 assert '대표 멘토' in index and '리치온 아카데미 대표 멘토' in index and '실전 멘토' in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
+
+assert len(apply) > 5000
+assert apply.count('id="burger"') == 1
+assert apply.count('class="site-footer"') == 1
+assert "briefing:" not in apply and "welcome:" not in apply
+for course in ("pre","study","redev","interior","subscription"):
+    assert course+":{" in apply
+assert "redev:{name:'재개발 중급반'" in apply and "status:'waitlist'" in apply
+assert "interior:{name:'리치온 인테리어'" in apply and "status:'upcoming'" in apply
+assert "subscription:{name:'청약 실전반'" in apply and "status:'upcoming'" in apply
+assert 'href="apply.html?course=redev">대기 신청 →' in index
+assert 'href="apply.html?course=interior"' not in index
+assert 'href="apply.html?course=welcome"' not in index
+assert index.count('aria-disabled="true">모집 예정</span>') >= 2
+assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
+assert "현재는 UI 준비 상태입니다." in apply
+assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
+assert '회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`' not in work
+assert '원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음' in work
 
 images=[
     'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',

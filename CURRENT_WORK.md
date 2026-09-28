@@ -68,6 +68,7 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] DB014 provider_ci_digest/member_ci_claims + 최소권한 적용/readback PASS
 - [x] PR #63 protected candidate richon-portal-handoff-36389551578-1 배포 / default 100% unchanged
 - [x] PR #64 signup-guide/privacy/terms를 CI 중복가입 방지 목적과 정합
+- [x] PR #68 카카오 CI 심사용 가입 화면 표시 보강 / feat/backend-portal-deploy 병합
 - [ ] Kakao 재신청: 이름·전화번호·CI 필수 / 성별·연령대 선택 + 회원가입 경로/전체 절차 화면 첨부
 - [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정
 - [ ] Naver 사전 검수 승인 (승인 요청 제출 완료)
@@ -85,9 +86,10 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 
 ## 1. Frontend / UI foundation cleanup
 
-진행 중:
-- 회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`
-- /portal/mypage 푸터 링크 기본 파란색 제거 및 모바일 공통 메뉴 정리 작업 중 / 아직 PR·병합 전
+현재 UI closeout 경계:
+- fork main 공개 홈페이지/강의 신청 UI closeout은 PR #69 범위
+- 기존 `fix/member-shared-ui-closeout` 브랜치는 최신 backend 기준 고유 변경 0 / stale 상태이므로 작업 기준에서 제외
+- 원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음
 
 
 완료:
@@ -108,13 +110,15 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] PR #56 회원 공통 shell 마감 병합 + protected candidate 배포
 - [x] PR #61 회원 푸터 링크/모바일 메뉴 공통화 후 protected candidate richon-portal-handoff-36387697145-1 배포
 - [x] PR #57 public UI foundation 병합 (fork main)
+- [x] PR #69 공개 신청 UI 복구 / 모집상태별 CTA / shared chrome·JS 계약 강화 (fork main)
 
 남은 항목 / 경계:
 - [ ] 강의별 주차 담당 강사는 course 데이터/상세 화면 구현 시 강의 안에서 표시
 - [ ] 외부화한 본문 JPEG의 WebP 변환은 후속 성능 최적화 항목
-- [ ] apply.html은 fork/original 모두 현재 0 byte / 신청 페이지 요구사항 확정 후 재구성 필요
+- [x] fork main apply.html은 기존 승인 신청/결제 UI를 복구하고 현재 5개 과정/모집상태에 맞게 정합
+- [ ] 원본 marururu00/richon-academy apply.html은 아직 0 byte / fork main 검증 후 별도 원본 반영 필요
 - [ ] admin은 공개/회원과 다른 운영 UI family이므로 동일 header 강제 대신 course/admin 구현 단계에서 brand token·간격·타이포 정합
-- [ ] OAuth HTML/CSS embedded refactor는 인증 provider 승인/실 E2E 종료 후 별도
+- [ ] OAuth HTML/CSS embedded refactor는 다음 UI closeout PR에서 shared token/asset 기준으로 분리
 - [ ] 원본 marururu00/richon-academy에 public UI foundation + Kakao signup-guide/policy 반영: repo metadata는 push=true로 보이지만 branch/PR API는 여전히 403 Resource not accessible by integration
 - [ ] 원본 public 배포 전 {{구글폼URL}} / {{결제링크URL}} / {{입금계좌}} 등 launch placeholder 재점검
 

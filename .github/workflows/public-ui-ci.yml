@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'apply.html'
       - 'frontend/shared/**'
       - 'assets/hero/**'
       - 'assets/images/**'
@@ -24,3 +25,14 @@ jobs:
         with:
           python-version: '3.13'
       - run: python3 tools/check_public_ui.py
+      - name: Check application inline JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html=Path('apply.html').read_text()
+          scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
+          assert scripts, 'apply inline script missing'
+          Path('/tmp/richon-apply-inline.js').write_text('\n'.join(scripts))
+          PY
+          node --check /tmp/richon-apply-inline.js
