@@ -12,11 +12,11 @@
 - OAuth form POST 뒤 cross-origin redirect의 Chromium CSP 문제는 same-origin handoff 방식으로 해결
 - handoff fallback 문구/링크는 정상 자동이동 중 즉시 보이지 않도록 기본 숨김
 - provider 이동이 2초 이상 지연되거나 JS 자동이동에 문제가 있을 때만 "이동이 안 되면 계속" fallback 노출
-- 최신 protected candidate: richon-portal-handoff-36378715533-1
+- 최신 protected candidate: richon-portal-handoff-36381388633-1
 - 기존 유일 회원은 member/auth identity 유지 / member_profiles 0 / 세션 0 상태로 의도적으로 대기
-- Kakao 개인정보 동의항목 추가 기능 신청 진행 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정 필요
+- Kakao 개인정보 동의항목 추가 기능 승인 요청 제출 완료 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정 필요
 - Naver API 제공정보는 이름·이메일·휴대전화 필수 / 성별·연령대 추가로 설정
-- Naver 개인정보 국외이전 2건 등록 완료
+- Naver 개인정보 국외이전 2건 등록 완료 / 사전 검수 승인 요청 제출 완료
 - 운영 DB 현재 확인: active member 0 / auth identity 0 / profile 0 / session 0 / withdrawn member 2
 - 따라서 다음 Naver 로그인은 기존 회원 보완이 아니라 신규 회원가입 흐름으로 진행되며, 검수용 provider 자동입력 확인에 적합
 완료:
@@ -47,14 +47,14 @@
 - [ ] 탈퇴 후 재가입
 - [x] 기존 유일 회원 프로필 1회 초기화 / 현재 세션 전부 종료 / members·auth_identities 유지 (2026-09-28)
 - [ ] 다음 Kakao/Naver 로그인에서 기존 회원이 회원정보 완료 화면을 다시 타고 provider 제공 필드가 자동입력+잠금되는지 확인
-- [ ] 로그인 전체화면 / 팝업 CSS / 모바일 확인
+- [x] 로그인 전체화면 / 팝업 / 회원 모바일 UI synthetic 회귀검증
 - [x] 최신 배포에서 handoff fallback이 정상 이동 중 체감상 보이지 않는지 사용자 최종 확인
 - [x] PR #53 소셜 이름/전화/이메일/연령대/성별 자동반영 코드 병합
 - [x] DB013 oauth_signups provider_age_range/provider_gender + 최소 INSERT grant 적용/readback PASS
 - [x] PR #53 protected candidate 배포 / default 100% traffic unchanged
 - [x] Naver 국외이전 정보 2건 등록
-- [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정
-- [ ] Naver 사전 검수 제출/승인
+- [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정 (승인 요청 제출 완료)
+- [ ] Naver 사전 검수 승인 (승인 요청 제출 완료)
 - [ ] Naver 테스트 로그인으로 신규가입 진행 / 이름·휴대전화·이메일·연령대·성별 실제 반환 확인
 - [ ] 회원정보 완료 후 마이페이지 5개 정보 + 활용목적 문구 캡처 / Naver 제공정보 활용처 자료로 제출
 - [ ] Kakao 승인 후 동일 자동입력/잠금 검증
@@ -69,21 +69,37 @@
 
 ## 1. Frontend / UI foundation cleanup
 
-9/25 승인됐지만 아직 미구현 또는 부분 구현:
-- [ ] 리치온 초이 큰 대표 이미지 제거
-- [ ] 직함을 '리치온 아카데미 대표 멘토'로 정리
-- [ ] 별도 인사말 생략하는 B안
-- [ ] 핵심 소개 설명 유지
-- [ ] 하단을 '실전 멘토' 구성으로 변경
-- [ ] 실전 멘토는 개인 강의 링크 없이 간단 소개
-- [ ] 강의별 주차 담당 강사는 강의 안에서 표시
-- [ ] index/apply base64 이미지 외부 asset 분리
-- [ ] lazy loading / WebP / 표시크기 최적화
-- [ ] 중복 CSS / 폰트 굵기 정리
-- [ ] public/apply/member/admin 공통 header/footer/mobile menu 정합
-- [ ] /portal/mypage 푸터의 블로그/카페/유튜브/개인정보처리방침/이용약관 링크가 브라우저 기본 파란색으로 보이는 스타일 불일치 수정 (Frontend/UI cleanup 때 함께 처리)
-- [ ] apply의 {{구글폼URL}} / {{결제링크URL}} / {{입금계좌}} launch 전 점검
-- [ ] OAuth HTML/CSS embedded refactor는 인증 안정화 후 별도 검토
+완료:
+- [x] 리치온 초이 큰 대표 이미지 제거
+- [x] 직함을 '리치온 아카데미 대표 멘토'로 정리
+- [x] 별도 인사말 생략하는 B안 반영
+- [x] 핵심 소개 설명 유지 / 간결화
+- [x] 하단을 '실전 멘토' 구성으로 변경
+- [x] 실전 멘토는 개인 강의 링크 없이 간단 소개
+- [x] index 본문 base64 JPEG 6개를 assets/images 외부 파일로 분리
+- [x] 기존 loading=lazy 유지 + decoding=async 적용
+- [x] public/member 공통 header/footer/site.css/site.js 정본화
+- [x] public/member 모바일 메뉴 full-screen overlay 방향 통일
+- [x] /portal/mypage 푸터 링크 기본 파란색 제거 / 공통 푸터 톤 적용
+- [x] landing 중복 header/footer JS 제거 / hero CSS에서 공통 header 기본 스타일 분리
+- [x] index.html 약 550KB → 약 34KB 축소
+- [x] public UI 정적 계약 CI 추가
+- [x] PR #56 회원 공통 shell 마감 병합 + protected candidate 배포
+- [x] PR #57 public UI foundation 병합 (fork main)
+
+남은 항목 / 경계:
+- [ ] 강의별 주차 담당 강사는 course 데이터/상세 화면 구현 시 강의 안에서 표시
+- [ ] 외부화한 본문 JPEG의 WebP 변환은 후속 성능 최적화 항목
+- [ ] apply.html은 fork/original 모두 현재 0 byte / 신청 페이지 요구사항 확정 후 재구성 필요
+- [ ] admin은 공개/회원과 다른 운영 UI family이므로 동일 header 강제 대신 course/admin 구현 단계에서 brand token·간격·타이포 정합
+- [ ] OAuth HTML/CSS embedded refactor는 인증 provider 승인/실 E2E 종료 후 별도
+- [ ] 원본 marururu00/richon-academy에 public UI foundation 반영: 현재 GitHub App write가 실제 API에서 403이라 미반영
+- [ ] 원본 public 배포 전 {{구글폼URL}} / {{결제링크URL}} / {{입금계좌}} 등 launch placeholder 재점검
+
+현재 public 배포 경계:
+- fork main에는 PR #57 반영 완료
+- 원본 marururu00/richon-academy main은 아직 기존 v7 landing 상태
+- 원본 write/PR 생성은 현재 연결 앱에서 403 Resource not accessible by integration
 
 ## 2. 강의 데이터 / 관리자
 
@@ -128,15 +144,13 @@
 
 ## 작업 순서
 
-1. Naver 테스트 로그인으로 provider 5개 필드 반환/자동입력 확인
-2. 회원정보 완료 → 마이페이지 캡처 → Naver 사전 검수 제출
-3. Kakao 추가 개인정보 심사/이메일 동의항목 완료 후 동일 검증
-4. 남은 계정 연결/해제/재가입 lifecycle 검증
-5. Frontend/UI foundation cleanup + 누락된 멘토/푸터/성능 작업 회수
-6. course DB + admin
-7. 수강생 관리
-8. 내 강의
-9. 결제
+1. Kakao/Naver provider 심사 승인 대기 / 승인 후 실제 5개 필드 자동입력·잠금 검증
+2. 원본 GitHub write 권한이 확보되는 즉시 PR #57 public UI foundation을 원본에 반영
+3. 남은 계정 연결/해제/재가입 실 provider lifecycle 검증
+4. course DB + admin 요구사항/옵션 검토 후 구현
+5. 수강생 관리
+6. 내 강의
+7. 결제
 
 ## 주의
 
