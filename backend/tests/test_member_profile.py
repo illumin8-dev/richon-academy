@@ -88,6 +88,17 @@ def test_age_confirmation_is_signup_only(monkeypatch,provider):
 
 
 
+def test_kakao_signup_form_always_discloses_required_ci_before_permission(monkeypatch):
+    monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('kakao','test-kakao','subject','회원'),'/')))
+    monkeypatch.setattr(s,'signup_profile',Mock(return_value=p.ProviderProfile()))
+    c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
+    r=c.get('/auth/signup')
+    assert r.status_code==200
+    assert 'CI(연계정보) [필수 / 카카오]' in r.text
+    assert '동일인의 중복 회원가입 방지 및 기존 회원 비교 식별에만 사용합니다.' in r.text
+    assert '카카오에서 확인 완료' not in r.text
+
+
 def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
     monkeypatch.setenv('RICHON_MARKETING_CONSENT_ENABLED','true')
     monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('naver','test-naver','subject','회원'),'/')))
@@ -99,6 +110,7 @@ def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
     assert 'data-consent-all' in r.text and 'name="marketing"' in r.text
     assert '광고성 정보 수신 동의 (문자·이메일)' in r.text
     assert 'CI(연계정보)' in r.text and '중복 회원가입 방지' in r.text
+    assert '필수 / 카카오' not in r.text
     assert r.text.index('선택 / 연령대·성별') < r.text.index('필수 / 만 14세 이상 자기확인')
     assert 'value="회원"' not in r.text and 'name="password"' not in r.text
 

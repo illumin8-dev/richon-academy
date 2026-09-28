@@ -31,7 +31,7 @@ def notice(settings):
 <p><a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> / <a href="{e(settings.privacy_url)}" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></p></details>'''
 
 
-def signup_form(settings, csrf, provider_profile=None):
+def signup_form(settings, csrf, provider_profile=None, provider=None):
     provider_profile = provider_profile or type('EmptyProfile', (), {
         'name':None,'phone':None,'email':None,'age_range':None,'gender':None,'ci_digest':None})()
     marketing_input = (
@@ -81,7 +81,7 @@ def signup_form(settings, csrf, provider_profile=None):
 {field('name','이름',provider_profile.name,autocomplete='name',maxlength='80')}
 {field('phone','휴대전화번호',provider_profile.phone,kind='tel',autocomplete='tel',maxlength='32')}
 {field('email','이메일',provider_profile.email,kind='email',autocomplete='email',maxlength='254')}
-{('<p class="provider-locked-note"><strong>CI(연계정보) [필수]</strong> / 카카오에서 확인 완료 / 동일인 중복 가입 방지용으로만 사용합니다.</p>' if provider_profile.ci_digest else '')}
+{('<p class="provider-locked-note"><strong>CI(연계정보) [필수 / 카카오]</strong> / 동일인의 중복 회원가입 방지 및 기존 회원 비교 식별에만 사용합니다.' + (' / 카카오에서 확인 완료' if provider_profile.ci_digest else '') + '</p>' if provider == 'kakao' else '')}
 <label><input id="consent-all" type="checkbox" data-consent-all> <strong>전체 동의</strong> <small>(선택 항목 포함)</small></label>
 <fieldset><legend>상담정보 [선택]</legend>
 {optional_select('age_range','연령대',age_values,provider_profile.age_range)}
