@@ -9,7 +9,7 @@ import secrets
 from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit, urlencode
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 import auth_core as core
 import auth_http as auth
@@ -27,6 +27,21 @@ LINK='__Host-richon-link'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
 CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 HANDOFF_CSP="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+HANDOFF_JS="""/* Provider navigation starts only after the same-origin form POST has completed. */
+'use strict';
+(() => {
+  const link=document.querySelector('[data-richon-provider-handoff]');
+  if(!link)return;
+  let url;
+  try{url=new URL(link.href);}catch{return;}
+  const allowed=(url.protocol==='https:'&&!url.username&&!url.password&&!url.port&&!url.hash)&&(
+    (url.hostname==='kauth.kakao.com'&&url.pathname==='/oauth/authorize')||
+    (url.hostname==='nid.naver.com'&&url.pathname==='/oauth2.0/authorize')
+  );
+  if(!allowed)return;
+  window.location.replace(url.href);
+})();
+"""
 logger=logging.getLogger('richon.oauth')
 
 
@@ -189,6 +204,8 @@ def make_router(settings):
     def shared_auth_asset(asset:str):
         if asset not in {'site.css','site.js','login.js','signup.js','handoff.js'}:
             raise HTTPException(404,'not_found',headers=HEADERS)
+        if asset == 'handoff.js':
+            return Response(HANDOFF_JS,media_type='text/javascript',headers=HEADERS)
         return FileResponse(Path(__file__).parent / 'portal_static' / asset, headers=HEADERS)
 
     @router.get('/login',response_class=HTMLResponse)
@@ -213,7 +230,7 @@ def make_router(settings):
         if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
         if collect_profile:
             body += signup_views.notice(settings)
-            body += f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="return_to" value="{target}"><label><input type="checkbox" name="over14" value="yes" required> [필수] 만 14세 이상입니다.</label><p class="login-age-hint">로그인 버튼을 누르기 전에 위 확인을 체크해 주세요.</p>'
+            body += f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="return_to" value="{target}">'
         for name,label in [('kakao','카카오'),('naver','네이버')]:
             if name in settings.providers:
                 # Keep official image bytes/ratios and readable symbol sizes.
@@ -233,10 +250,8 @@ def make_router(settings):
 
     @router.post('/start')
     async def start(request:Request):
-        data=await form(request,{'csrf','provider','return_to'} | ({'over14'} if collect_profile else set()))
+        data=await form(request,{'csrf','provider','return_to'})
         browser=check_post(request,data,settings)
-        if collect_profile and data.get('over14') != 'yes':
-            raise HTTPException(422, 'age_confirmation_required', headers=HEADERS)
         name=data.get('provider');target=data.get('return_to','/')
         if name not in settings.providers or target not in providers.RETURNS:
             raise HTTPException(422,'invalid_login_request',headers=HEADERS)
