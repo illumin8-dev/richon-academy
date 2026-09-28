@@ -8,6 +8,3 @@ ALTER TABLE richon.oauth_signups
       ('14-19','20-29','30-39','40-49','50-59','60-69','70+')),
   ADD CONSTRAINT oauth_signups_provider_gender_check
     CHECK (provider_gender IS NULL OR provider_gender IN ('female','male'));
-
-GRANT INSERT (provider_age_range, provider_gender)
-  ON richon.oauth_signups TO richon_portal_login;
