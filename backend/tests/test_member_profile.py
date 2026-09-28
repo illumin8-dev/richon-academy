@@ -14,6 +14,7 @@ import oauth_http as h
 import oauth_providers as p
 import oauth_store as s
 import auth_core as core
+import identity_verification as iv
 from test_oauth import settings, ORIGIN
 
 
@@ -29,6 +30,13 @@ def data():
 def client():
     a=FastAPI();a.include_router(h.make_router(cfg()))
     return TestClient(a, base_url=ORIGIN)
+
+
+def enable_identity(monkeypatch):
+    monkeypatch.setenv('RICHON_IDENTITY_VERIFICATION_ENABLED','true')
+    monkeypatch.setenv('PORTONE_STORE_ID','store-12345678')
+    monkeypatch.setenv('PORTONE_IDENTITY_CHANNEL_KEY','channel-key-12345678')
+    monkeypatch.setenv('PORTONE_API_SECRET','synthetic-secret-value-1234567890')
 
 
 @pytest.mark.parametrize('field', ['name','phone','email','terms','privacy','over14','terms_version','privacy_version'])
@@ -101,6 +109,61 @@ def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
     assert 'CI(연계정보)' in r.text and '중복 회원가입 방지' in r.text
     assert r.text.index('선택 / 연령대·성별') < r.text.index('필수 / 만 14세 이상 자기확인')
     assert 'value="회원"' not in r.text and 'name="password"' not in r.text
+
+
+def test_signup_requires_server_verified_identity(monkeypatch):
+    enable_identity(monkeypatch)
+    monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('naver','test-naver','subject','회원'),'/')))
+    monkeypatch.setattr(s,'signup_profile',Mock(return_value=p.ProviderProfile()))
+    finish=Mock(return_value=(uuid4(),'/apply.html'));monkeypatch.setattr(ms,'finish',finish)
+    monkeypatch.setattr(h,'complete',lambda mid,request,target:h.redirect(target))
+    person=iv.VerifiedPerson('a'*64)
+    verify=Mock(return_value=person);monkeypatch.setattr(iv,'verify',verify)
+
+    c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
+    page=c.get('/auth/signup')
+    assert page.status_code==200
+    assert 'https://cdn.portone.io/v2/browser-sdk.js' in page.text
+    assert '휴대전화 본인확인 [필수]' in page.text
+    identity_id=re.search(r'data-verification-id="([^"]+)"',page.text)[1]
+    csrf=re.search(r'name="csrf" value="([^"]+)"',page.text)[1]
+    base={**data(),'csrf':csrf}
+
+    rejected=c.post('/auth/signup',data=base,headers={'Origin':ORIGIN},follow_redirects=False)
+    assert rejected.status_code==303 and rejected.headers['location']=='/auth/signup?identity_error=verification_failed'
+    finish.assert_not_called();verify.assert_not_called()
+
+    accepted=c.post('/auth/signup',data={**base,'identity_verification_id':identity_id},
+                    headers={'Origin':ORIGIN},follow_redirects=False)
+    assert accepted.status_code==303 and accepted.headers['location']=='/apply.html'
+    verify.assert_called_once()
+    assert finish.call_args.args[-1] is person
+
+
+def test_mobile_identity_redirect_is_server_verified_before_marking_complete(monkeypatch):
+    enable_identity(monkeypatch)
+    monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('kakao','test-kakao','subject','회원'),'/')))
+    monkeypatch.setattr(s,'signup_profile',Mock(return_value=p.ProviderProfile()))
+    person=iv.VerifiedPerson('b'*64)
+    verify=Mock(return_value=person);monkeypatch.setattr(iv,'verify',verify)
+
+    c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
+    first=c.get('/auth/signup')
+    identity_id=re.search(r'data-verification-id="([^"]+)"',first.text)[1]
+    returned=c.get('/auth/signup',params={'identityVerificationId':identity_id})
+    assert returned.status_code==200
+    assert 'data-identity-verified="true"' in returned.text
+    assert f'name="identity_verification_id" value="{identity_id}"' in returned.text
+    assert verify.call_count==1
+
+
+def test_identity_verification_configuration_fails_closed(monkeypatch):
+    monkeypatch.setenv('RICHON_IDENTITY_VERIFICATION_ENABLED','true')
+    monkeypatch.delenv('PORTONE_STORE_ID',raising=False)
+    monkeypatch.delenv('PORTONE_IDENTITY_CHANNEL_KEY',raising=False)
+    monkeypatch.delenv('PORTONE_API_SECRET',raising=False)
+    with pytest.raises(ValueError):
+        client()
 
 
 def test_signup_validates_before_save_and_does_not_echo_fields(monkeypatch):
