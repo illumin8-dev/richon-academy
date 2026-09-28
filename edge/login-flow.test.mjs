@@ -21,7 +21,7 @@ test('public returns allowed only at login completion, no external/query/travers
 test('new public destinations never become proxy request routes; asset exact GET only',()=>{
   for(const path of ['/','/index.html','/apply.html','/auth/assets/unknown.png']) assert.equal(allowed(path,'GET'),false);
   assert.equal(allowed('/auth/assets/kakao-login.png','GET'),true);assert.equal(allowed('/auth/assets/kakao-login.png','POST'),false);
-  for(const asset of ['site.css','site.js','login.js','signup.js','handoff.js']){
+  for(const asset of ['site.css','site.js','login.js','signup.js','handoff.js','auth.css']){
     assert.equal(allowed('/auth/assets/'+asset,'GET'),true);
     assert.equal(allowed('/auth/assets/'+asset,'POST'),false);
   }
