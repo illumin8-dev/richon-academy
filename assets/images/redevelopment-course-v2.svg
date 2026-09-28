@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="재개발 재건축과 도시 변화를 상징하는 이미지">
+<defs><linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffaf5"/><stop offset="1" stop-color="#f4efe8"/></linearGradient><linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd8b6"/><stop offset="1" stop-color="#f47920" stop-opacity=".18"/></linearGradient></defs>
+<rect width="1200" height="675" rx="28" fill="url(#bg3)"/><circle cx="885" cy="190" r="175" fill="url(#sky)"/>
+<g stroke="#777169" stroke-width="4" fill="#f9f6f1"><path d="M105 520V405h95v115z"/><path d="M215 520V365h115v155z"/><path d="M345 520V420h90v100z"/></g>
+<g stroke="#2f3338" stroke-width="5" fill="#fff"><path d="M610 520V245h125v275z"/><path d="M755 520V175h150v345z"/><path d="M925 520V285h110v235z"/></g>
+<g stroke="#f47920" stroke-width="6"><path d="M635 285h75M635 330h75M635 375h75M635 420h75"/><path d="M785 220h90M785 270h90M785 320h90M785 370h90M785 420h90"/><path d="M948 325h65M948 370h65M948 415h65"/></g>
+<g stroke="#a9a197" stroke-width="4" fill="none"><path d="M500 120v400"/><path d="M500 120h250"/><path d="m730 120-55 45"/><path d="M470 120h60"/></g>
+<path d="M450 345c68 0 99 0 148 0" stroke="#f47920" stroke-width="8" fill="none" stroke-linecap="round"/><path d="m574 323 25 22-25 22" fill="none" stroke="#f47920" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M75 555H1080" stroke="#cdc5ba" stroke-width="5"/><path d="M75 582H1010" stroke="#ded7ce" stroke-width="3"/>
+</svg>
