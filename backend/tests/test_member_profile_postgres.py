@@ -11,6 +11,7 @@ import member_profile as profile
 import member_profile_migrate as migration
 import oauth_signup_profile_migrate as provider_migration
 import oauth_signup_demographics_migrate as demographic_migration
+import kakao_ci_migrate as ci_migration
 import oauth_providers as providers
 import member_profile_store as registration
 import oauth_store as tickets
@@ -32,6 +33,7 @@ def profile_db(oauth_db):
     assert migration.apply_migration()
     assert provider_migration.apply_migration() is False
     assert demographic_migration.apply_migration() is False
+    assert ci_migration.apply_migration() is False
     return oauth_db
 
 
@@ -39,7 +41,10 @@ def pending(provider='naver', identity=None):
     settings = cfg()
     identity = identity or core.VerifiedIdentity(provider, settings.providers[provider].identity_scope, uuid4().hex, '회원')
     browser = secrets.token_urlsafe(32)
-    return identity, browser, tickets.stage_signup(settings, identity, browser, '/portal/mypage')
+    provider_profile = None
+    if identity.provider == 'kakao':
+        provider_profile = providers.ProviderProfile(ci_digest=core.token_digest(secrets.token_urlsafe(32)))
+    return identity, browser, tickets.stage_signup(settings, identity, browser, '/portal/mypage', provider_profile)
 
 
 def save(identity=None, **fields):
@@ -55,6 +60,7 @@ def test_migration_reentry_and_no_public_access(profile_db):
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='009_member_profiles'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='012_oauth_signup_provider_profile'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='013_oauth_signup_provider_demographics'").fetchone() == (1,)
+        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version='014_kakao_ci_dedup'").fetchone() == (1,)
         assert c.execute("SELECT count(*) FROM pg_class t, LATERAL aclexplode(t.relacl) a WHERE t.oid='richon.member_profiles'::regclass AND a.grantee=0").fetchone() == (0,)
 
 
@@ -85,6 +91,31 @@ def test_existing_account_keeps_identity_role_and_old_rows(profile_db):
     assert save(identity, name='다른 이름') == mid
     with profile_db() as c:
         assert c.execute('SELECT name FROM richon.member_profiles WHERE member_id=%s', (mid,)).fetchone() == ('테스트 이름',)
+
+
+def test_same_kakao_ci_cannot_create_second_member(profile_db):
+    settings=cfg();ci=core.token_digest(secrets.token_urlsafe(32))
+    one=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원1')
+    two=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원2')
+    browser1=secrets.token_urlsafe(32)
+    ticket1=tickets.stage_signup(settings,one,browser1,'/portal/mypage',providers.ProviderProfile(ci_digest=ci))
+    first,_=registration.finish(settings,ticket1,browser1,profile.Registration.from_form(data()))
+    browser2=secrets.token_urlsafe(32)
+    ticket2=tickets.stage_signup(settings,two,browser2,'/portal/mypage',providers.ProviderProfile(ci_digest=ci))
+    with pytest.raises(tickets.InvalidFlow):
+        registration.finish(settings,ticket2,browser2,profile.Registration.from_form(data()))
+    with profile_db() as conn:
+        assert conn.execute('SELECT member_id FROM richon.member_ci_claims WHERE ci_digest=%s',(ci,)).fetchone()==(first,)
+        assert conn.execute('SELECT count(*) FROM richon.auth_identities WHERE member_id<>%s AND provider=%s',
+                            (first,'kakao')).fetchone()==(0,)
+
+
+def test_kakao_signup_requires_ci(profile_db):
+    settings=cfg();identity=core.VerifiedIdentity('kakao',settings.providers['kakao'].identity_scope,uuid4().hex,'회원')
+    browser=secrets.token_urlsafe(32)
+    ticket=tickets.stage_signup(settings,identity,browser,'/portal/mypage',providers.ProviderProfile())
+    with pytest.raises(tickets.InvalidFlow):
+        registration.finish(settings,ticket,browser,profile.Registration.from_form(data()))
 
 
 def test_same_contacts_different_provider_not_merged(profile_db):
