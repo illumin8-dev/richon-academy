@@ -43,16 +43,20 @@ assert 'class="course-cta a-wait" href="apply.html?course=redev">대기 신청 �
 assert '<span class="status waitlist">대기 신청</span>' in index
 assert index.count('class="course-cta a-apply"') == 2
 assert index.count('class="course-cta a-disabled" aria-disabled="true">모집 예정</span>') == 2
+assert index.count('class="pcard reveal') == 6
+assert '새 강의 준비 중' in index and 'COMING SOON' in index
+assert '<div class="tags">' not in index and 'class="a-blog"' not in index
 assert 'href="apply.html?course=interior"' not in index
 assert 'href="apply.html?course=welcome"' not in index
 assert index.count('aria-disabled="true">모집 예정</span>') == 2
+assert 'aria-disabled="true">준비 중</span>' in index
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
 
 images=[
     'seoul-redevelopment-study.jpg',
-    'pre-richon-course-v2.svg','richon-study-course-v2.svg','redevelopment-course-v2.svg',
-    'interior-course-v2.svg','subscription-course-v2.svg',
+    'pre-richon-course-v3.webp','richon-study-course-v3.webp','redevelopment-course-v3.webp',
+    'interior-course-v3.webp','subscription-course-v3.webp',
 ]
 for name in images:
     path=ROOT/'assets'/'images'/name
@@ -70,7 +74,7 @@ assert 'frontend/shared/site.css' in hero
 assert '기존 리치온 헤더를 오프닝 뒤에만 노출' not in hero
 assert '.hero-js .site-nav' in hero
 
-print('PASS: public landing uses shared chrome, external images, unified course CTAs and approved mentor layout')
+print('PASS: public landing uses shared chrome, external course images, six-card course grid and approved mentor layout')
 
 
 guide=(ROOT/'signup-guide.html').read_text()
