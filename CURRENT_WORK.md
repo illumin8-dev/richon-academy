@@ -12,9 +12,12 @@
 - OAuth form POST 뒤 cross-origin redirect의 Chromium CSP 문제는 same-origin handoff 방식으로 해결
 - handoff fallback 문구/링크는 정상 자동이동 중 즉시 보이지 않도록 기본 숨김
 - provider 이동이 2초 이상 지연되거나 JS 자동이동에 문제가 있을 때만 "이동이 안 되면 계속" fallback 노출
-- 최신 protected candidate: richon-portal-handoff-36372938707-1
+- 최신 protected candidate: richon-portal-handoff-36378715533-1
 - 기존 유일 회원은 member/auth identity 유지 / member_profiles 0 / 세션 0 상태로 의도적으로 대기
-- Kakao/Naver 이름·휴대전화·이메일 추가 정보 권한은 아직 신청/승인 전이므로 자동입력 검증은 보류
+- Kakao 개인정보 동의항목 추가 기능 신청 진행 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정 필요
+- Naver API 제공정보는 이름·이메일·휴대전화 필수 / 성별·연령대 추가로 설정
+- Naver 개인정보 국외이전 2건 등록 완료
+- 기존 유일 회원은 프로필 미완료 상태로 유지하고 Naver 검수 캡처용 실제 provider 반환 검증 대기
 완료:
 - [x] DB012 oauth_signups provider_name/provider_phone/provider_email 적용
 - [x] runtime 최소권한 / readback PASS
@@ -44,9 +47,16 @@
 - [x] 기존 유일 회원 프로필 1회 초기화 / 현재 세션 전부 종료 / members·auth_identities 유지 (2026-09-28)
 - [ ] 다음 Kakao/Naver 로그인에서 기존 회원이 회원정보 완료 화면을 다시 타고 provider 제공 필드가 자동입력+잠금되는지 확인
 - [ ] 로그인 전체화면 / 팝업 CSS / 모바일 확인
-- [ ] 최신 배포에서 handoff fallback이 정상 이동 중 체감상 보이지 않는지 사용자 최종 확인
-- [ ] Kakao/Naver 이름/휴대전화/이메일 추가 정보 동의항목 신청/승인
-- [ ] 승인 후 실제 반환값 확인 / 신규 가입 시 반환 필드는 자동입력+잠금, 미반환 필드만 직접입력
+- [x] 최신 배포에서 handoff fallback이 정상 이동 중 체감상 보이지 않는지 사용자 최종 확인
+- [x] PR #53 소셜 이름/전화/이메일/연령대/성별 자동반영 코드 병합
+- [x] DB013 oauth_signups provider_age_range/provider_gender + 최소 INSERT grant 적용/readback PASS
+- [x] PR #53 protected candidate 배포 / default 100% traffic unchanged
+- [x] Naver 국외이전 정보 2건 등록
+- [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정
+- [ ] Naver 사전 검수 제출/승인
+- [ ] Naver 테스트 로그인으로 이름/휴대전화/이메일/연령대/성별 실제 반환 확인
+- [ ] 회원정보 완료 후 마이페이지 5개 정보 + 활용목적 문구 캡처 / Naver 제공정보 활용처 자료로 제출
+- [ ] Kakao 승인 후 동일 자동입력/잠금 검증
 - [ ] E2E 완료 후에만 공개 홈페이지 로그인 버튼 노출
 
 현재 운영 경계:
@@ -117,9 +127,9 @@
 
 ## 작업 순서
 
-1. 최신 handoff UX 실브라우저 최종 확인
-2. Kakao/Naver 추가 정보 동의항목 신청/승인
-3. 기존 프로필 미완료 상태에서 provider 자동입력/잠금 검증
+1. Naver 테스트 로그인으로 provider 5개 필드 반환/자동입력 확인
+2. 회원정보 완료 → 마이페이지 캡처 → Naver 사전 검수 제출
+3. Kakao 추가 개인정보 심사/이메일 동의항목 완료 후 동일 검증
 4. 남은 계정 연결/해제/재가입 lifecycle 검증
 5. Frontend/UI foundation cleanup + 누락된 멘토/푸터/성능 작업 회수
 6. course DB + admin
