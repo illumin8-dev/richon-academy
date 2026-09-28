@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="공간 디자인과 인테리어를 상징하는 이미지">
+<defs><linearGradient id="bg4" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffdf9"/><stop offset="1" stop-color="#f3eee7"/></linearGradient><linearGradient id="win" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#edf4f4"/><stop offset="1" stop-color="#dce9e8"/></linearGradient></defs>
+<rect width="1200" height="675" rx="28" fill="url(#bg4)"/><path d="M90 560V130h1020v430" fill="#fff" stroke="#ddd5cb" stroke-width="4"/>
+<rect x="690" y="170" width="310" height="250" rx="4" fill="url(#win)" stroke="#c8c1b7" stroke-width="4"/><path d="M845 170v250M690 295h310" stroke="#c8c1b7" stroke-width="4"/>
+<g fill="#eee6dd" stroke="#b9b0a6" stroke-width="4"><rect x="250" y="375" width="410" height="135" rx="20"/><rect x="285" y="330" width="150" height="85" rx="18"/><rect x="465" y="330" width="150" height="85" rx="18"/></g>
+<rect x="180" y="500" width="570" height="22" rx="11" fill="#d9d0c5"/><ellipse cx="920" cy="500" rx="115" ry="34" fill="#ead7c5"/><rect x="902" y="500" width="36" height="60" fill="#bda98f"/>
+<g stroke="#f47920" stroke-width="5" fill="none"><path d="M112 105h430v205H112z"/><path d="M160 145h150v120H160z"/><path d="M330 145h165v120H330z"/><path d="M310 145v120"/></g>
+<g fill="#6b7d6e"><path d="M1040 520c-15-75 18-125 55-155-5 64-2 106-55 155z"/><path d="M1025 525c-60-45-67-98-50-142 25 55 48 84 50 142z"/></g><rect x="1010" y="520" width="72" height="45" rx="8" fill="#d8c3a7"/>
+</svg>

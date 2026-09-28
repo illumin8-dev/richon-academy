@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="도시 주거와 투자 기초를 상징하는 이미지">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffaf3"/><stop offset="1" stop-color="#f5efe6"/></linearGradient><pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#e9e2d7" stroke-width="1"/></pattern><linearGradient id="sun" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd4ae"/><stop offset="1" stop-color="#f47920" stop-opacity=".28"/></linearGradient></defs>
+<rect width="1200" height="675" rx="28" fill="url(#bg)"/><rect width="1200" height="675" rx="28" fill="url(#grid)" opacity=".52"/><circle cx="875" cy="210" r="150" fill="url(#sun)"/>
+<g fill="#fff" stroke="#2e3137" stroke-width="5"><path d="M190 515V230h190v285z"/><path d="M425 515V160h235v355z"/><path d="M705 515V270h180v245z"/></g>
+<g stroke="#f47920" stroke-width="7" fill="none"><path d="M215 265h140M215 310h140M215 355h140M215 400h140"/><path d="M460 205h165M460 255h165M460 305h165M460 355h165M460 405h165"/><path d="M735 305h120M735 350h120M735 395h120"/></g>
+<g fill="#2e3137"><rect x="260" y="445" width="50" height="70" rx="3"/><rect x="520" y="430" width="50" height="85" rx="3"/><rect x="770" y="450" width="46" height="65" rx="3"/></g>
+<path d="M130 548H1010" stroke="#cfc7bb" stroke-width="5"/><path d="M130 575H940" stroke="#ded6ca" stroke-width="3"/>
+<g stroke="#f47920" fill="none" stroke-width="4"><path d="M980 420c38-62 72-88 112-122"/><path d="m1066 300 28-4-5 28"/></g>
+</svg>

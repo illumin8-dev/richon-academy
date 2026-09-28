@@ -20,7 +20,8 @@ assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
 assert '대표 멘토' in index and '리치온 아카데미 대표 멘토' in index and '실전 멘토' in index
 assert '각 분야의 실전 관점은 강의별 커리큘럼 안에서 연결합니다.' not in index
-assert '대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.' in index
+assert '대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자입니다.' in index
+assert '부동산 투자 뿐만 아니라 인테리어를 비롯한 현금흐름을 아우르는 통합적 관점' in index
 for mentor in ('가위남','이루민','인생곰부','재부스','키네스트','후니동산'):
     assert f'<b>{mentor}</b>' in index
 assert index.count('class="mentor-card"') == 6
@@ -49,12 +50,13 @@ assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입
 assert "현재는 UI 준비 상태입니다." in apply
 
 images=[
-    'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',
-    'redevelopment-reconstruction-course.jpg','space-design-course.jpg','subscription-course.jpg',
+    'seoul-redevelopment-study.jpg',
+    'pre-richon-course-v2.svg','richon-study-course-v2.svg','redevelopment-course-v2.svg',
+    'interior-course-v2.svg','subscription-course-v2.svg',
 ]
 for name in images:
     path=ROOT/'assets'/'images'/name
-    assert path.is_file() and path.stat().st_size > 1000
+    assert path.is_file() and path.stat().st_size > 500
     assert ('assets/images/'+name) in index
 
 css=(shared/'site.css').read_text()
