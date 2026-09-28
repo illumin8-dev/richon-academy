@@ -6,6 +6,13 @@
 
 ## 0. 최우선 / 로그인 안정화
 
+Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
+- 회원가입 링크/화면에서 전체 회원가입 절차와 수집 항목·필수/선택 조건이 확인되지 않는다는 사유
+- CI는 실제 자체 본인인증을 수행하는 서비스에 한해 검토되며, 현재 소셜 로그인만으로는 승인 근거 부족
+- CI를 유지하려면 별도 본인확인 절차 도입 여부를 사용자와 결정 후 재신청
+- CI를 제외할 경우 현재 provider identity + 명시적 계정 연결 정책 유지
+
+
 현재 확정 상태:
 - /portal/mypage 비로그인 gate → 간편 로그인 팝업 노출 정상
 - 로그인 시 만14세 체크는 제거 / 신규 회원정보 완료(/auth/signup)에서만 필수
@@ -77,6 +84,11 @@
 - 진단용 추가 권한: richon-portal-deploy@richon-academy.iam.gserviceaccount.com 에 roles/logging.viewer만 추가
 
 ## 1. Frontend / UI foundation cleanup
+
+진행 중:
+- 회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`
+- /portal/mypage 푸터 링크 기본 파란색 제거 및 모바일 공통 메뉴 정리 작업 중 / 아직 PR·병합 전
+
 
 완료:
 - [x] 리치온 초이 큰 대표 이미지 제거
