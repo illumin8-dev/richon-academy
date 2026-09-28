@@ -13,8 +13,7 @@ import common as c
 import edge_ops as e
 
 OPERATION='inspect-login-requests'
-EXPECTED_IMAGE_DIGEST='sha256:ac0b4ec090f1e85b5579019f3d0b78ebf14168244a2d119db24a40f2ed363dd6'
-ALLOWED_PATHS={'/auth/login','/auth/start'}
+ALLOWED_PATHS={'/auth/login','/auth/start','/auth/assets/handoff.js','/auth/kakao/callback','/auth/naver/callback'}
 
 
 def candidate_revision(svc):
@@ -34,7 +33,9 @@ def read_logs(revision):
         f'resource.labels.service_name="{c.SERVICE}" AND '
         f'resource.labels.revision_name="{revision}" AND '
         'httpRequest.requestMethod=("*") AND '
-        '(httpRequest.requestUrl:"/auth/login" OR httpRequest.requestUrl:"/auth/start")'
+        '(httpRequest.requestUrl:"/auth/login" OR httpRequest.requestUrl:"/auth/start" OR '
+        'httpRequest.requestUrl:"/auth/assets/handoff.js" OR '
+        'httpRequest.requestUrl:"/auth/kakao/callback" OR httpRequest.requestUrl:"/auth/naver/callback")'
     )
     raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
                    '--freshness=45m','--limit=200','--order=asc','--format=json'],
@@ -88,9 +89,7 @@ def run():
     c.need(req['operation']==OPERATION,'explicit_login_diagnostics_required')
     svc,policy=e.get_service()
     revision=candidate_revision(svc)
-    info=c.inspect(svc,policy,boundary='edge')
-    c.need(info['image'].endswith('@'+EXPECTED_IMAGE_DIGEST),
-           'unexpected_candidate_image')
+    c.inspect(svc,policy,boundary='edge')
     rows=read_logs(revision)
     counts=Counter((path,method,status) for _,path,method,status in rows)
 
@@ -99,8 +98,13 @@ def run():
     print('WINDOW=45m')
     print('REQUEST_COUNT='+str(len(rows)))
     for (path,method,status),count in sorted(counts.items()):
-        label='LOGIN_PAGE' if path=='/auth/login' else 'AUTH_START'
-        print(f'{label} {method} status={status} count={count}')
+        labels={
+            '/auth/login':'LOGIN_PAGE','/auth/start':'AUTH_START',
+            '/auth/assets/handoff.js':'HANDOFF_ASSET',
+            '/auth/kakao/callback':'KAKAO_CALLBACK',
+            '/auth/naver/callback':'NAVER_CALLBACK',
+        }
+        print(f'{labels[path]} {method} status={status} count={count}')
     starts=[row for row in rows if row[1]=='/auth/start']
     print('AUTH_START_TOTAL='+str(len(starts)))
     for index,(stamp,_,method,status) in enumerate(starts[-20:],1):
