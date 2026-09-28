@@ -16,6 +16,9 @@
 !manual_models.py
 !manual_store.py
 !manual_portal.py
+!catalog_models.py
+!catalog_store.py
+!catalog_portal.py
 !migrations/
 migrations/*
 !migrations/001_pending_orders.sql
