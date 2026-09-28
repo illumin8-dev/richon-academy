@@ -449,6 +449,7 @@ def finalize_withdrawal(member_id):
         if cur.fetchone()==(True,):
             cur.execute('DELETE FROM richon.member_marketing_consents WHERE member_id=%s',(member_id,))
         cur.execute('DELETE FROM richon.member_profiles WHERE member_id=%s',(member_id,))
+        cur.execute('DELETE FROM richon.member_ci_claims WHERE member_id=%s',(member_id,))
         cur.execute('DELETE FROM richon.account_withdrawals WHERE member_id=%s',(member_id,))
         cur.execute('''UPDATE richon.members
                        SET display_name=%s,status='withdrawn',withdrawn_at=CURRENT_TIMESTAMP,
