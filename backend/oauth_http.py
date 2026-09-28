@@ -19,13 +19,16 @@ import oauth_providers as providers
 import member_profile
 import member_profile_store
 import marketing_consent as marketing
+import identity_verification as verification
 import signup_views
 
 BROWSER='__Host-richon-oauth'
 TICKET='__Host-richon-signup'
 LINK='__Host-richon-link'
+IDENTITY='__Host-richon-identity'
 HEADERS={'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'}
 CSP="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+IDENTITY_CSP="default-src 'none'; script-src 'self' https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/; img-src 'self'; connect-src https://api.portone.io https://*.portone.io; frame-src https://*.portone.io https://checkout-service.prod.iamport.co; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 HANDOFF_CSP="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
 HANDOFF_JS="""/* Provider navigation starts only after the same-origin form POST has completed. */
 'use strict';
@@ -61,6 +64,20 @@ def cookie(request,name,required=True):
 def proof(browser,ticket=None):
     message=b'richon/oauth-form/v1' if ticket is None else ('richon/signup-form/v1/'+core.token_digest(ticket)).encode()
     return hmac.new(browser.encode(),message,hashlib.sha256).hexdigest()
+
+
+def opaque_cookie(request,name,required=True):
+    found=[]
+    for header in request.headers.getlist('cookie'):
+        for part in header.split(';'):
+            key,sep,value=part.strip().partition('=')
+            if key==name and sep:
+                found.append(value)
+    if not found and not required:
+        return None
+    if len(found)!=1 or not 1<=len(found[0])<=256 or any(ord(c)<33 or ord(c)>126 for c in found[0]):
+        raise store.InvalidFlow()
+    return found[0]
 
 
 def set_temporary(response,name,value):
@@ -116,18 +133,21 @@ def provider_handoff(target):
     return HTMLResponse(body,headers={**HEADERS,'Content-Security-Policy':HANDOFF_CSP})
 
 
-def page(title,body):
+def page(title,body,*,identity=False):
     content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title><style>body{font:16px/1.7 var(--site-font);margin:0;background:#fff7ed;color:#30241c}main{max-width:440px;margin:8vh auto;padding:32px;box-sizing:border-box;width:calc(100% - 32px);background:white;border-radius:16px}h1{font-size:26px}form{display:grid;gap:16px}button{padding:13px;font:inherit;border:1px solid #e7d6c5;border-radius:8px;cursor:pointer}p{color:#706054}label{display:block}a{color:#c44916}input{accent-color:#c44916}.collection-notice{font-size:13px;margin:16px 0}.collection-notice summary{cursor:pointer}.collection-notice table{width:100%;border-collapse:collapse;table-layout:fixed}.collection-notice td,.collection-notice th{padding:8px 4px;text-align:left;border-bottom:1px solid #eee;overflow-wrap:anywhere}.collection-notice caption{margin-top:12px}input:not([type=checkbox]):not([type=hidden]),select{box-sizing:border-box;width:100%;padding:10px;font:inherit;min-width:0}fieldset{min-width:0;border:1px solid #e7d6c5;border-radius:8px}fieldset p{font-size:13px}.provider-login{border:0;padding:0;width:100%;height:48px;min-height:48px;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:0;border-radius:12px}.provider-login img{display:block;max-width:none;flex-shrink:0}.provider-login:focus-visible{outline:3px solid #30241c;outline-offset:4px}.kakao-login{background:#fee500}.kakao-login img{width:448px;height:46px}.naver-login{background:#03a94d}.naver-login img{width:368px;height:48px}</style></head><body><main><p>RICHON ACADEMY</p><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
     static = Path(__file__).parent / 'portal_static'
     header = (static / 'site-header.html').read_text()
     footer = (static / 'site-footer.html').read_text()
     assets = '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" crossorigin referrerpolicy="no-referrer"><link rel="stylesheet" href="/auth/assets/site.css"><script src="/auth/assets/site.js"></script><script defer src="/auth/assets/signup.js"></script>'
+    if identity:
+        assets += '<script defer src="https://cdn.portone.io/v2/browser-sdk.js"></script><script defer src="/auth/assets/identity.js"></script>'
     content = content.replace('</head>', assets + '</head>', 1)
     content = content.replace('<body><main><p>RICHON ACADEMY</p>', '<body class="richon-page auth-page">' + header + '<main>', 1)
     content = content.replace('</main></body>', '</main>' + footer + '</body>', 1)
     # Native form POSTs need a non-null same-origin Origin. Cross-site referrers
     # remain suppressed; callback/redirect/error responses keep no-referrer.
-    return HTMLResponse(content,headers={**HEADERS,'Referrer-Policy':'same-origin','Content-Security-Policy':CSP})
+    return HTMLResponse(content,headers={**HEADERS,'Referrer-Policy':'same-origin',
+                                        'Content-Security-Policy':IDENTITY_CSP if identity else CSP})
 
 
 async def form(request,allowed):
@@ -162,8 +182,8 @@ def complete(member_id,request,return_to):
     session=core.issue_session(member_id,replace_token=old)
     response=redirect(return_to)
     auth.set_session_cookie(response,session)
-    response.delete_cookie(TICKET,path='/',secure=True,httponly=True,samesite='lax')
-    response.delete_cookie(BROWSER,path='/',secure=True,httponly=True,samesite='lax')
+    for name in (TICKET,BROWSER,IDENTITY):
+        response.delete_cookie(name,path='/',secure=True,httponly=True,samesite='lax')
     return response
 
 
@@ -195,6 +215,7 @@ def make_router(settings):
     router=APIRouter(prefix='/auth')
     collect_profile = member_profile.enabled(settings.terms_version, settings.privacy_version)
     account_enabled = os.getenv('RICHON_ACCOUNT_ENABLED','false') == 'true'
+    verification_settings = verification.Settings.from_env() if verification.enabled() else None
 
     @router.get('/assets/kakao-login.png',include_in_schema=False)
     def kakao_button():
@@ -208,7 +229,7 @@ def make_router(settings):
 
     @router.get('/assets/{asset}',include_in_schema=False)
     def shared_auth_asset(asset:str):
-        if asset not in {'site.css','site.js','login.js','signup.js','handoff.js'}:
+        if asset not in {'site.css','site.js','login.js','signup.js','identity.js','handoff.js'}:
             raise HTTPException(404,'not_found',headers=HEADERS)
         if asset == 'handoff.js':
             return Response(HANDOFF_JS,media_type='text/javascript',headers=HEADERS)
@@ -233,7 +254,11 @@ def make_router(settings):
             set_temporary(response, BROWSER, browser)
             return response
         body=''
-        if request.query_params.get('error'): body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
+        error=request.query_params.get('error')
+        if error=='existing_member':
+            body+='<p role="alert">이미 가입된 본인확인 정보가 있습니다. 기존 로그인 수단으로 로그인한 뒤 마이페이지에서 새 로그인 수단을 연결해 주세요.</p>'
+        elif error:
+            body+='<p role="alert">로그인을 완료하지 못했습니다. 다시 시도해 주세요.</p>'
         if collect_profile:
             body += signup_views.notice(settings)
             body += f'<form method="post" action="/auth/start"><input type="hidden" name="csrf" value="{proof(browser)}"><input type="hidden" name="return_to" value="{target}">'
@@ -345,10 +370,43 @@ def make_router(settings):
             browser=cookie(request,BROWSER);ticket=cookie(request,TICKET)
             identity, _ = store.pending(settings,ticket,browser)
             provider_profile = store.signup_profile(settings,ticket,browser) if collect_profile else None
+            identity_context=None
+            identity_binding=None
+            if verification_settings is not None:
+                ids=request.query_params.getlist('identityVerificationId')
+                if len(ids)>1:
+                    raise verification.VerificationRejected()
+                verified=False
+                if ids:
+                    verification_id=ids[0]
+                    bound=opaque_cookie(request,IDENTITY)
+                    verification.require_bound(verification_settings,browser,ticket,bound,verification_id)
+                    # A redirect without an error code is still verified server-side;
+                    # never trust the redirect query alone.
+                    if not request.query_params.get('code'):
+                        verification.verify(verification_settings,verification_id)
+                        verified=True
+                    identity_binding=bound
+                else:
+                    verification_id=verification.new_id()
+                    identity_binding=verification.bind(
+                        verification_settings,browser,ticket,verification_id)
+                identity_context={
+                    'store_id':verification_settings.store_id,
+                    'channel_key':verification_settings.channel_key,
+                    'verification_id':verification_id,
+                    'redirect_url':settings.origin+'/auth/signup',
+                    'verified':verified,
+                }
         except Exception: return failed()
         if collect_profile:
-            return page('회원가입 안내',
-                        signup_views.signup_form(settings, proof(browser,ticket), provider_profile))
+            response=page('회원가입 안내',
+                          signup_views.signup_form(settings, proof(browser,ticket), provider_profile,
+                                                   identity_context),
+                          identity=verification_settings is not None)
+            if identity_binding is not None:
+                set_temporary(response,IDENTITY,identity_binding)
+            return response
         e=html.escape
         body=f'''<p>처음 방문하셨습니다. 아래 문서를 확인한 뒤 가입해 주세요.</p>
 <form method="post" action="/auth/signup"><input type="hidden" name="csrf" value="{proof(browser,ticket)}">
@@ -360,7 +418,8 @@ def make_router(settings):
 
     @router.post('/signup')
     async def signup(request:Request):
-        data=await form(request,{'csrf','terms','privacy','terms_version','privacy_version'} | ({'name','phone','email','over14','consultation','age_range','gender'} | ({'marketing'} if marketing.enabled() else set()) if collect_profile else set()))
+        identity_fields={'identity_verification_id'} if verification_settings is not None else set()
+        data=await form(request,{'csrf','terms','privacy','terms_version','privacy_version'} | ({'name','phone','email','over14','consultation','age_range','gender'} | ({'marketing'} if marketing.enabled() else set()) | identity_fields if collect_profile else set()))
         browser=check_post(request,data,settings,signup=True)
         if (data.get('terms')!='yes' or data.get('privacy')!='yes' or data.get('terms_version')!=settings.terms_version
             or data.get('privacy_version')!=settings.privacy_version):
@@ -372,8 +431,24 @@ def make_router(settings):
                 raise HTTPException(422, str(error), headers=HEADERS) from None
             def save_profile():
                 try:
-                    member, target = member_profile_store.finish(settings, cookie(request,TICKET), browser, registration)
+                    verified_person=None
+                    ticket=cookie(request,TICKET)
+                    if verification_settings is not None:
+                        verification_id=data.get('identity_verification_id','')
+                        bound=opaque_cookie(request,IDENTITY)
+                        verification.require_bound(
+                            verification_settings,browser,ticket,bound,verification_id)
+                        verified_person=verification.verify(verification_settings,verification_id)
+                    member, target = member_profile_store.finish(
+                        settings,ticket,browser,registration,verified_person)
                     return complete(member, request, target)
+                except member_profile_store.ExistingMemberMatch:
+                    response=redirect('/auth/login?error=existing_member')
+                    for name in (BROWSER,TICKET,IDENTITY):
+                        response.delete_cookie(name,path='/',secure=True,httponly=True,samesite='lax')
+                    return response
+                except verification.VerificationRejected:
+                    return redirect('/auth/signup?identity_error=verification_failed')
                 except Exception:
                     return failed()
             return await run_in_threadpool(save_profile)
