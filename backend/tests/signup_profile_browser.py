@@ -98,9 +98,8 @@ def run_case(browser, width, consent=None, marketing=False, provider='kakao', us
         else:
             label='카카오' if provider=='kakao' else '네이버'
             button=page.get_by_role('button',name=label+'로 로그인')
-            assert '로그인 버튼을 누르기 전에 위 확인을 체크해 주세요.' in page.locator('main').inner_text()
-            button.click();assert not captured
-            page.locator('[name=over14]').check();button.click()
+            assert page.locator('[name=over14]').count()==0
+            button.click()
             page.get_by_role('heading',name='TEST COMPLETE').wait_for()
         assert len(captured)==1 and captured[0][1:]==((303 if signup else 200),ORIGIN)
     context.close()
