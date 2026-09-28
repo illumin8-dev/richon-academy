@@ -23,7 +23,7 @@ def test_signup_works_with_exact_runtime_grants_and_no_ticket_update(profile_db,
         assert conn.execute('SELECT 1 FROM pg_roles WHERE rolname=%s', (ready.ROLE,)).fetchone() is None
         conn.execute('CREATE ROLE richon_portal_login NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT')
         conn.execute('GRANT USAGE ON SCHEMA richon TO richon_portal_login')
-        for table in (*ready.READ, 'member_profiles'):
+        for table in (*ready.READ, *ready.PROVIDER_PROFILE_READ, 'member_profiles'):
             conn.execute(sql.SQL('GRANT SELECT ON richon.{} TO richon_portal_login').format(sql.Identifier(table)))
         inserts = {**ready.merged_grants(ready.INSERT,ready.PROVIDER_PROFILE_INSERT),
                    'member_profiles': profile.INSERT_COLUMNS}
