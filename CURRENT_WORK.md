@@ -86,9 +86,10 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 
 ## 1. Frontend / UI foundation cleanup
 
-진행 중:
-- 공개 홈페이지/강의 신청 UI closeout: 빈 apply.html 복구 / 모집상태별 CTA 정합 / public shared chrome 계약 강화
+현재 UI closeout 경계:
+- fork main 공개 홈페이지/강의 신청 UI closeout은 PR #69 범위
 - 기존 `fix/member-shared-ui-closeout` 브랜치는 최신 backend 기준 고유 변경 0 / stale 상태이므로 작업 기준에서 제외
+- 원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음
 
 
 완료:
@@ -109,6 +110,7 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] PR #56 회원 공통 shell 마감 병합 + protected candidate 배포
 - [x] PR #61 회원 푸터 링크/모바일 메뉴 공통화 후 protected candidate richon-portal-handoff-36387697145-1 배포
 - [x] PR #57 public UI foundation 병합 (fork main)
+- [x] PR #69 공개 신청 UI 복구 / 모집상태별 CTA / shared chrome·JS 계약 강화 (fork main)
 
 남은 항목 / 경계:
 - [ ] 강의별 주차 담당 강사는 course 데이터/상세 화면 구현 시 강의 안에서 표시
