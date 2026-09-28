@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-login-requests",
-  "request_id": "login-request-diagnostics-20260928-h"
+  "operation": "rollout-login-handoff",
+  "request_id": "handoff-fallback-ux-20260928-a"
 }
