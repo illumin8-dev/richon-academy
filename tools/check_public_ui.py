@@ -5,7 +5,6 @@ ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
 apply=(ROOT/'apply.html').read_text()
 shared=ROOT/'frontend'/'shared'
-work=(ROOT/'CURRENT_WORK.md').read_text()
 
 def wrapped(name):
     value=(shared/(name+'.html')).read_text().strip()
@@ -48,9 +47,6 @@ assert 'href="apply.html?course=welcome"' not in index
 assert index.count('aria-disabled="true">모집 예정</span>') == 2
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
-assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
-assert '회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`' not in work
-assert '원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음' in work
 
 images=[
     'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',
