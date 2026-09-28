@@ -49,12 +49,12 @@ def stage_signup(settings,identity,browser,return_to,provider_profile=None):
         cur.execute('DELETE FROM richon.oauth_signups WHERE browser_hash=%s',(token_digest(browser),))
         cur.execute('''INSERT INTO richon.oauth_signups
           (ticket_hash,browser_hash,provider,app_id,subject,display_name,
-           provider_name,provider_phone,provider_email,provider_age_range,provider_gender,
+           provider_name,provider_phone,provider_email,provider_age_range,provider_gender,provider_ci_digest,
            return_to,terms_version,privacy_version,expires_at)
-          VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP+interval '10 minutes')''',
+          VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP+interval '10 minutes')''',
           (token_digest(ticket),token_digest(browser),identity.provider,identity.app_id,identity.subject,
            identity.display_name,provider_profile.name,provider_profile.phone,provider_profile.email,
-           provider_profile.age_range,provider_profile.gender,
+           provider_profile.age_range,provider_profile.gender,provider_profile.ci_digest,
            return_to,settings.terms_version,settings.privacy_version))
     return ticket
 
@@ -73,7 +73,7 @@ def pending(settings,ticket,browser,*,consume=False):
 def signup_profile(settings,ticket,browser):
     with _transaction() as cur:
         cur.execute('''SELECT provider,app_id,provider_name,provider_phone,provider_email,
-                               provider_age_range,provider_gender
+                               provider_age_range,provider_gender,provider_ci_digest
             FROM richon.oauth_signups
             WHERE ticket_hash=%s AND browser_hash=%s AND expires_at>CURRENT_TIMESTAMP
               AND terms_version=%s AND privacy_version=%s''',
