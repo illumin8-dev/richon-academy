@@ -110,6 +110,17 @@ def test_provider_handoff_is_exact_host_navigation_document():
         with pytest.raises(p.ProviderRejected):
             h.provider_handoff(bad)
 
+def test_handoff_asset_is_served_without_runtime_file_dependency(monkeypatch):
+    monkeypatch.setattr(h,'FileResponse',Mock(side_effect=AssertionError('handoff must not use FileResponse')))
+    c=TestClient(app(),base_url=ORIGIN)
+    r=c.get('/auth/assets/handoff.js')
+    assert r.status_code==200
+    assert r.headers['content-type'].startswith('text/javascript')
+    assert r.headers['cache-control']=='no-store'
+    assert r.text.startswith('/* Provider navigation starts only after the same-origin form POST has completed. */')
+    assert "window.location.replace(url.href)" in r.text
+
+
 def test_callback_invalid_state_never_exchanges(monkeypatch):
     exchange=Mock();monkeypatch.setattr(p,'exchange',exchange)
     c=TestClient(app(),base_url=ORIGIN);c.get('/auth/login')
