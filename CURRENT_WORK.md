@@ -6,11 +6,14 @@
 
 ## 0. 최우선 / 로그인 안정화
 
-현재 사용자 실브라우저 관찰:
+현재 확정 상태:
 - /portal/mypage 비로그인 gate → 간편 로그인 팝업 노출 정상
 - 만 14세 이상 체크 UI 정상
-- Kakao / Naver 버튼은 체크 후에도 둘 다 무반응
-- 추정으로 추가 수정하지 말고 브라우저 Network/Console + Cloud Run request log로 요청 단계부터 정확히 분리 진단
+- Cloud Run access log에서 POST /auth/start가 실제 발생하고 303을 반환하는 것 확인
+- Chromium 진단에서 provider GET 시도 직후 CSP 오류와 net::ERR_ABORTED 확인
+- 원인: form POST 뒤 cross-origin provider 303 redirect가 Chromium CSP form-action 처리에 걸림
+- 버튼 이벤트 / CSRF / backend start 실패가 원인이 아님
+- PR #44에서 same-origin handoff document + /auth/assets/handoff.js 방식으로 수정 완료 / 아직 protected candidate 재반영 전
 
 완료:
 - [x] DB012 oauth_signups provider_name/provider_phone/provider_email 적용
@@ -24,7 +27,10 @@
 - [x] protected candidate richon-portal-login-260927180059 반영
 - [x] PR #41 modal native submit 후속 병합
 - [x] protected candidate richon-portal-modal-260927185145 반영
-- [ ] 버튼 무반응 원인을 실제 로그로 확정
+- [x] 버튼 무반응 원인을 실제 로그로 확정
+- [x] PR #44 OAuth provider handoff CSP 수정 병합
+- [x] richon-portal-deploy 서비스계정에 Logs Viewer 최소권한 추가 / GitHub WIF 로그 조회 가능
+- [ ] PR #44 이미지를 protected candidate에 재반영
 - [ ] Kakao 실제 로그인 E2E
 - [ ] Naver 실제 로그인 E2E
 - [ ] Kakao↔Naver 계정 연결
@@ -39,6 +45,7 @@
 - default Cloud Run 100% revision은 로그인 후보 시험 중 변경하지 않음
 - ACCOUNT=true / MARKETING=true 유지
 - IAM / Access 경계 유지
+- 진단용 추가 권한: richon-portal-deploy@richon-academy.iam.gserviceaccount.com 에 roles/logging.viewer만 추가
 
 ## 1. Frontend / UI foundation cleanup
 
@@ -99,8 +106,8 @@
 
 ## 작업 순서
 
-1. 로그인 버튼 무반응 로그 기반 원인 확정
-2. 로그인 전체 E2E 완료
+1. PR #44 protected candidate 재반영
+2. Kakao / Naver 로그인 전체 E2E 완료
 3. Frontend/UI foundation cleanup + 누락된 멘토/성능 작업 회수
 4. course DB + admin
 5. 수강생 관리
