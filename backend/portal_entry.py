@@ -31,7 +31,7 @@ def allowed(path, method):
         '/auth/assets/naver-login.png': {'GET'},
         '/auth/assets/site.css': {'GET'}, '/auth/assets/site.js': {'GET'},
         '/auth/assets/login.js': {'GET'}, '/auth/assets/signup.js': {'GET'},
-        '/auth/assets/handoff.js': {'GET'},
+        '/auth/assets/handoff.js': {'GET'}, '/auth/assets/auth.css': {'GET'},
         '/auth/signup': {'GET', 'POST'},
         '/auth/kakao/callback': {'GET'}, '/auth/naver/callback': {'GET'},
         '/auth/me': {'GET'}, '/auth/csrf': {'GET'},
