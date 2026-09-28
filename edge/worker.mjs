@@ -16,7 +16,7 @@ const AUTH = new Map([
   ['/auth/assets/naver-login.png', ['GET']],
   ['/auth/assets/site.css', ['GET']], ['/auth/assets/site.js', ['GET']],
   ['/auth/assets/login.js', ['GET']], ['/auth/assets/signup.js', ['GET']],
-  ['/auth/assets/handoff.js', ['GET']],
+  ['/auth/assets/handoff.js', ['GET']], ['/auth/assets/auth.css', ['GET']],
   ['/auth/me', ['GET']], ['/auth/csrf', ['GET']], ['/auth/logout', ['POST']], ['/auth/logout-all', ['POST']],
 ]);
 export function allowed(path, method) {
