@@ -2,6 +2,7 @@
 from html import escape as e
 from member_profile import AGE_RANGES, VERSION
 import marketing_consent as marketing
+import identity_verification as verification
 
 
 def notice(settings):
@@ -13,15 +14,26 @@ def notice(settings):
         '<p>광고성 정보 수신은 선택사항이며 동의하지 않아도 기본 회원 서비스를 이용할 수 있습니다. '
         '동의 후에도 마이페이지에서 철회할 수 있습니다.</p>'
         if marketing.enabled() else
-        '<p>전화·이메일의 입력은 실명·휴대전화 본인인증을 의미하지 않습니다. '
-        '홍보 수신에는 별도의 동의가 필요합니다.</p>')
+        ('<p>회원가입 본인확인은 이름·전화·이메일 입력값이 아니라 아래의 별도 휴대전화 본인확인 절차로 진행합니다. '
+         '홍보 수신에는 별도의 동의가 필요합니다.</p>'
+         if verification.enabled() else
+         '<p>전화·이메일의 입력은 실명·휴대전화 본인인증을 의미하지 않습니다. '
+         '홍보 수신에는 별도의 동의가 필요합니다.</p>'))
+    identity_rows = (
+        '<tr><td>필수 / 휴대전화 본인확인 성공 여부·CI(연계정보)</td>'
+        '<td>가입자 본인확인, 동일인의 중복 회원가입 방지 및 기존 회원 비교 식별</td></tr>'
+        '<tr><td>카카오 로그인 추가 동의항목 / CI(연계정보)</td>'
+        '<td>기존 회원 비교 및 서비스 본인확인 결과 CI와의 일치 확인</td></tr>'
+        if verification.enabled() else
+        '<tr><td>필수(카카오 회원가입 시) / CI(연계정보)</td>'
+        '<td>동일인의 중복 회원가입 방지 및 기존 회원 비교 식별</td></tr>')
     return f'''<details class="collection-notice"><summary>회원 관리와 상담에 필요한 정보를 수집합니다. <span>수집·이용 안내</span></summary>
 <table><caption>회원가입 개인정보 수집·이용 안내</caption><thead><tr><th>구분 / 항목</th><th>목적</th></tr></thead><tbody>
 <tr><td>필수 / 간편로그인 제공자·앱별 회원 식별정보</td><td>회원 식별 및 계정 관리</td></tr>
 <tr><td>필수 / 이름</td><td>회원 확인, 수강생 관리 및 상담 대상 확인</td></tr>
 <tr><td>필수 / 휴대전화번호</td><td>회원 서비스 안내 및 상담 연락</td></tr>
 <tr><td>필수 / 이메일</td><td>회원 서비스 안내 및 강의자료 발송</td></tr>
-<tr><td>필수(카카오 회원가입 시) / CI(연계정보)</td><td>동일인의 중복 회원가입 방지 및 기존 회원 비교 식별</td></tr>
+{identity_rows}
 <tr><td>선택 / 연령대·성별</td><td>생애주기와 주거 수요를 고려한 맞춤 상담 준비 및 상담 우선순위 설정</td></tr>
 <tr><td>필수 / 만 14세 이상 자기확인 여부, 동의 버전·시점</td><td>가입 대상 및 동의 내역 확인</td></tr>
 {marketing_row}</tbody></table>
@@ -31,7 +43,7 @@ def notice(settings):
 <p><a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> / <a href="{e(settings.privacy_url)}" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></p></details>'''
 
 
-def signup_form(settings, csrf, provider_profile=None):
+def signup_form(settings, csrf, provider_profile=None, identity=None):
     provider_profile = provider_profile or type('EmptyProfile', (), {
         'name':None,'phone':None,'email':None,'age_range':None,'gender':None,'ci_digest':None})()
     marketing_input = (
@@ -72,6 +84,22 @@ def signup_form(settings, csrf, provider_profile=None):
         for age in AGE_RANGES
     }
     gender_values = {'female':'여성','male':'남성'}
+    identity_block = ''
+    if identity is not None:
+        verified = identity.get('verified') is True
+        verification_id = e(identity.get('verification_id', ''))
+        identity_block = f'''<fieldset class="identity-verification" data-richon-identity
+ data-store-id="{e(identity.get('store_id',''))}"
+ data-channel-key="{e(identity.get('channel_key',''))}"
+ data-verification-id="{verification_id}"
+ data-redirect-url="{e(identity.get('redirect_url',''))}"
+ data-identity-verified="{'true' if verified else 'false'}">
+<legend>휴대전화 본인확인 [필수]</legend>
+<p>리치온 아카데미가 별도로 본인확인을 진행합니다. 카카오 CI만으로 본인확인을 대신하지 않습니다.</p>
+<input type="hidden" name="identity_verification_id" value="{verification_id if verified else ''}">
+<button type="button" data-richon-identity-start{' hidden' if verified else ''}>휴대전화 본인확인</button>
+<p data-richon-identity-status role="status">{'본인확인이 완료되었습니다. 가입을 계속해 주세요.' if verified else '본인확인 후 가입을 완료할 수 있습니다.'}</p>
+</fieldset>'''
 
     return f'''<p>회원정보를 확인해 주세요. 기존 계정은 그대로 유지됩니다.</p>{notice(settings)}
 <form method="post" action="/auth/signup" data-richon-signup>
@@ -81,7 +109,8 @@ def signup_form(settings, csrf, provider_profile=None):
 {field('name','이름',provider_profile.name,autocomplete='name',maxlength='80')}
 {field('phone','휴대전화번호',provider_profile.phone,kind='tel',autocomplete='tel',maxlength='32')}
 {field('email','이메일',provider_profile.email,kind='email',autocomplete='email',maxlength='254')}
-{('<p class="provider-locked-note"><strong>CI(연계정보) [필수]</strong> / 카카오에서 확인 완료 / 동일인 중복 가입 방지용으로만 사용합니다.</p>' if provider_profile.ci_digest else '')}
+{identity_block}
+{('<p class="provider-locked-note"><strong>카카오 CI(연계정보)</strong> / 카카오 제공값은 별도 본인확인 결과 CI와의 일치 확인 및 기존 회원 비교에만 사용합니다.</p>' if provider_profile.ci_digest and verification.enabled() else ('<p class="provider-locked-note"><strong>CI(연계정보) [필수]</strong> / 카카오에서 확인 완료 / 동일인 중복 가입 방지용으로만 사용합니다.</p>' if provider_profile.ci_digest else ''))}
 <label><input id="consent-all" type="checkbox" data-consent-all> <strong>전체 동의</strong> <small>(선택 항목 포함)</small></label>
 <fieldset><legend>상담정보 [선택]</legend>
 {optional_select('age_range','연령대',age_values,provider_profile.age_range)}
@@ -93,5 +122,5 @@ def signup_form(settings, csrf, provider_profile=None):
 <label><input type="checkbox" name="privacy" value="yes" required data-consent-item> [필수] 개인정보 수집·이용 동의</label>
 {marketing_input}
 <p><small>전체 동의를 선택해도 선택 항목은 개별적으로 해제할 수 있습니다.</small></p>
-<button type="submit">동의하고 가입 완료</button></form>'''
+<button type="submit" data-richon-signup-submit>동의하고 가입 완료</button></form>'''
 
