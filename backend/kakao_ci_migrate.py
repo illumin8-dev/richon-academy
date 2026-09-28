@@ -7,8 +7,8 @@ import db
 VERSION='014_kakao_ci_dedup'
 DIRECTORY=Path(__file__).parent/'migrations'
 DEPENDENCIES=('001_pending_orders','002_auth_foundation','007_oauth_handoff',
-              '008_login_return_paths','010_account_lifecycle',
-              '012_oauth_signup_provider_profile','013_oauth_signup_provider_demographics')
+              '008_login_return_paths','012_oauth_signup_provider_profile',
+              '013_oauth_signup_provider_demographics')
 
 
 def checksum(name):
