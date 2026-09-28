@@ -8,7 +8,8 @@ import marketing_consent as marketing
 
 ROLE = 'richon_portal_login'
 READ = ('members', 'auth_identities', 'member_sessions', 'oauth_attempts',
-        'oauth_signups', 'member_ci_claims', 'member_order_links', 'courses', 'orders')
+        'oauth_signups', 'member_order_links', 'courses', 'orders')
+PROVIDER_PROFILE_READ = ('member_ci_claims',)
 INSERT = {
     'members': ('member_id', 'display_name', 'terms_version', 'privacy_version'),
     'auth_identities': ('provider', 'app_id', 'subject', 'member_id'),
@@ -155,7 +156,7 @@ def check_role(cur):
     provider_profile_grants = profile_active or provider_profile_grants_prepared(cur)
     account_grants = account or account_grants_prepared(cur)
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
-    tables = READ + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
+    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
     if provider_profile_grants:
         inserts = merged_grants(inserts, PROVIDER_PROFILE_INSERT)
