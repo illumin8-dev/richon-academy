@@ -20,7 +20,7 @@ assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
 assert '대표 멘토' in index and '리치온 아카데미 대표 멘토' in index and '실전 멘토' in index
 assert '각 분야의 실전 관점은 강의별 커리큘럼 안에서 연결합니다.' not in index
-assert '대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.' in index
+assert '대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자입니다.' in index
 for mentor in ('가위남','이루민','인생곰부','재부스','키네스트','후니동산'):
     assert f'<b>{mentor}</b>' in index
 assert index.count('class="mentor-card"') == 6
