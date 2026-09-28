@@ -101,6 +101,15 @@ def main():
             expect(page.locator('#withdraw-account')).to_be_visible()
             expect(page.locator('#withdraw-inquiry')).to_be_hidden()
             assert page.locator('#withdraw-account').evaluate('e=>getComputedStyle(e).fontSize')=='12px'
+            assert page.locator('.site-footer-links a').first.evaluate('e=>getComputedStyle(e).color')=='rgb(84, 88, 95)'
+            if width==390:
+                page.locator('#burger').click()
+                expect(page.locator('#navMenu')).to_be_visible()
+                assert page.locator('#navMenu').evaluate("e=>getComputedStyle(e).position")=='fixed'
+                assert page.evaluate("document.documentElement.classList.contains('site-menu-open')")
+                page.keyboard.press('Escape')
+                expect(page.locator('#navMenu')).to_be_hidden()
+                assert not page.evaluate("document.documentElement.classList.contains('site-menu-open')")
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
         page.set_viewport_size({'width':1280,'height':900})
         page.goto(ORIGIN+'/portal/mypage')
