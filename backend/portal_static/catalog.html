@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
+<title>강의 관리 | 리치온아카데미</title>
+<link rel="stylesheet" href="/portal/assets/ops.css">
+<link rel="stylesheet" href="/portal/catalog-assets/catalog.css">
+<script defer src="/portal/catalog-assets/catalog.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로 이동</a>
+<header class="catalog-topbar"><a class="catalog-brand" href="https://richonacademy.com/">리치온아카데미</a><div><a href="/portal/mypage">마이페이지</a><button id="logout" class="quiet" hidden>로그아웃</button></div></header>
+<div class="catalog-layout">
+<aside class="catalog-sidebar">
+<p class="catalog-side-label">RICHON ADMIN</p>
+<nav aria-label="관리자 메뉴">
+<a href="/portal/admin">대시보드 / 회원 / 신청</a>
+<a href="/portal/courses" aria-current="page">강의 관리</a>
+<a href="/portal/enrollments">수강생 관리</a>
+<a href="/portal/manual">기존 수강생 기록</a>
+<a href="/portal/mypage">마이페이지 ↗</a>
+</nav>
+<p class="catalog-side-note">프로그램 → 기수 → 주차별 회차 순서로 관리합니다.</p>
+</aside>
+<main id="main" class="catalog-main">
+<div class="catalog-heading"><div><p class="eyebrow">COURSE OPERATIONS</p><h1>강의 관리</h1><p class="muted">프로그램, 실제 기수, 주차별 일정과 담당 멘토를 한곳에서 관리합니다.</p></div><span class="catalog-tag">관리자 전용</span></div>
+<section id="gate" class="catalog-panel" aria-live="polite"><h2 id="gate-title">관리자 권한을 확인하고 있습니다.</h2><p id="gate-note" class="muted">잠시만 기다려 주세요.</p><button id="retry" hidden>다시 확인</button></section>
+<div id="content" hidden>
+<div class="catalog-notice">결제 기능과 분리된 강의 정본입니다. 프로그램/기수/회차를 수정해도 결제나 기존 월별 수강기록은 자동 변경되지 않습니다.</div>
+<div class="catalog-columns">
+<section class="catalog-panel catalog-column">
+<div class="catalog-panel-head"><div><p class="eyebrow">PROGRAMS</p><h2>프로그램</h2></div><button id="new-program" class="primary">+ 프로그램</button></div>
+<div id="program-list" class="catalog-list"></div><p id="program-status" class="catalog-status" role="status"></p>
+</section>
+<section class="catalog-panel catalog-column">
+<div class="catalog-panel-head"><div><p class="eyebrow">RUNS</p><h2>기수 / 회차</h2><p id="run-context" class="catalog-context">프로그램을 선택하세요.</p></div><button id="new-run" class="primary" disabled>+ 기수</button></div>
+<div id="run-list" class="catalog-list"></div><p id="run-status" class="catalog-status" role="status"></p>
+</section>
+<section class="catalog-panel catalog-column catalog-sessions">
+<div class="catalog-panel-head"><div><p class="eyebrow">SESSIONS</p><h2>주차별 일정</h2><p id="session-context" class="catalog-context">기수를 선택하세요.</p></div><button id="new-session" class="primary" disabled>+ 회차</button></div>
+<div id="session-list" class="catalog-list"></div><p id="session-status" class="catalog-status" role="status"></p>
+</section>
+</div>
+<p id="page-status" class="catalog-status" role="status"></p>
+</div>
+</main>
+</div>
+
+<dialog id="program-dialog" class="catalog-dialog">
+<div class="catalog-dialog-head"><h2 id="program-dialog-title">프로그램 추가</h2><button type="button" data-close="program-dialog" aria-label="닫기">×</button></div>
+<form id="program-form">
+<label>프로그램명<input name="title" maxlength="200" required></label>
+<label>설명<textarea name="description" maxlength="1200" rows="3"></textarea></label>
+<div class="catalog-form-grid">
+<label>수강기간 방식<select name="access_kind"><option value="fixed_months">고정 개월형</option><option value="date_range">기간 지정형</option></select></label>
+<label id="fixed-months-field">고정 개월 수<input name="fixed_months" type="number" min="1" max="24" value="2"></label>
+</div>
+<label class="catalog-check" id="program-archive-field" hidden><input name="archived" type="checkbox"> 프로그램 보관</label>
+<label>변경 사유<input name="reason" minlength="2" maxlength="200" required placeholder="예: 2026년 운영 프로그램 등록"></label>
+<p id="program-error" class="catalog-status" role="status"></p>
+<div class="catalog-dialog-actions"><button type="button" data-close="program-dialog">취소</button><button class="primary" type="submit">저장</button></div>
+</form>
+</dialog>
+
+<dialog id="run-dialog" class="catalog-dialog">
+<div class="catalog-dialog-head"><h2 id="run-dialog-title">기수 추가</h2><button type="button" data-close="run-dialog" aria-label="닫기">×</button></div>
+<form id="run-form">
+<div class="catalog-form-grid">
+<label>기수 / 회차명<input name="cohort" maxlength="100" placeholder="예: 12기 / 2026-10"></label>
+<label>모집 상태<select name="status"><option value="UPCOMING">모집 예정</option><option value="OPEN">모집 중</option><option value="WAITLIST">대기 신청</option><option value="CLOSED">마감</option></select></label>
+<label>강의 시작일<input name="starts_on" type="date" required></label>
+<label>강의 종료일<input name="ends_on" type="date" required></label>
+<label>수강 시작일<input name="default_access_start" type="date" required></label>
+<label>수강 종료일<input name="default_access_end" type="date" required></label>
+<label>모집 시작<input name="recruitment_open_at" type="datetime-local"></label>
+<label>모집 종료<input name="recruitment_close_at" type="datetime-local"></label>
+<label>정원<input name="capacity" type="number" min="1" max="100000"></label>
+<label>참고 금액<input name="price_krw" type="number" min="0" max="100000000" value="0"></label>
+</div>
+<p id="run-access-help" class="catalog-help"></p>
+<label class="catalog-check" id="run-archive-field" hidden><input name="archived" type="checkbox"> 기수 보관</label>
+<label>변경 사유<input name="reason" minlength="2" maxlength="200" required placeholder="예: 12기 일정 등록"></label>
+<p id="run-error" class="catalog-status" role="status"></p>
+<div class="catalog-dialog-actions"><button type="button" data-close="run-dialog">취소</button><button class="primary" type="submit">저장</button></div>
+</form>
+</dialog>
+
+<dialog id="session-dialog" class="catalog-dialog">
+<div class="catalog-dialog-head"><h2 id="session-dialog-title">회차 추가</h2><button type="button" data-close="session-dialog" aria-label="닫기">×</button></div>
+<form id="session-form">
+<div class="catalog-form-grid">
+<label>주차 / 순서<input name="sequence_no" type="number" min="1" max="1000" required></label>
+<label>담당 멘토<input name="mentor_name" maxlength="80" placeholder="예: 이루민"></label>
+</div>
+<label>회차 제목<input name="title" maxlength="200" required placeholder="예: 시장 흐름 읽기"></label>
+<div class="catalog-form-grid">
+<label>시작 일시<input name="starts_at" type="datetime-local" required></label>
+<label>종료 일시<input name="ends_at" type="datetime-local"></label>
+</div>
+<label>강의 / 자료 링크<input name="content_url" type="url" maxlength="2048" placeholder="https://"></label>
+<label class="catalog-check" id="session-archive-field" hidden><input name="archived" type="checkbox"> 회차 보관</label>
+<label>변경 사유<input name="reason" minlength="2" maxlength="200" required placeholder="예: 1주차 담당 멘토 지정"></label>
+<p id="session-error" class="catalog-status" role="status"></p>
+<div class="catalog-dialog-actions"><button type="button" data-close="session-dialog">취소</button><button class="primary" type="submit">저장</button></div>
+</form>
+</dialog>
+</body></html>
