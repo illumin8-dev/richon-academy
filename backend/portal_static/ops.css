@@ -1,0 +1,21 @@
+/* Shared operational UI foundation. Admin pages keep their own layouts but use one brand/token/base contract. */
+:root{
+  --ops-orange:#f47920;--ops-ink:#24211f;--ops-muted:#77716a;--ops-line:#e7e3de;
+  --ops-bg:#faf9f6;--ops-soft:#fff1e5;--ops-dark:#25231f;--ops-radius:18px;
+  --ops-font:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --orange:var(--ops-orange);--accent:var(--ops-orange);--ink:var(--ops-ink);
+  --muted:var(--ops-muted);--line:var(--ops-line);--border:var(--ops-line);
+  --bg:var(--ops-bg);--paper:var(--ops-bg);--soft:var(--ops-soft);--dark:var(--ops-dark);
+  --radius:var(--ops-radius);font-family:var(--ops-font);color:var(--ops-ink);background:var(--ops-bg);font-synthesis:none
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;min-width:320px;background:var(--ops-bg);color:var(--ops-ink);font:14px/1.6 var(--ops-font)}
+button,input,select,summary{font:inherit}
+button,a,input,select,summary{-webkit-tap-highlight-color:transparent}
+button,a,summary{touch-action:manipulation}
+button,summary{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.48}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #9a4b10;outline-offset:4px}
