@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="데이터 분석과 투자 스터디를 상징하는 이미지">
+<defs><linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbfbfa"/><stop offset="1" stop-color="#f2eee8"/></linearGradient><pattern id="grid2" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#e6e2dc" stroke-width="1"/></pattern></defs>
+<rect width="1200" height="675" rx="28" fill="url(#bg2)"/><rect width="1200" height="675" rx="28" fill="url(#grid2)" opacity=".42"/>
+<g transform="translate(155 95)"><rect width="720" height="470" rx="24" fill="#fff" stroke="#d8d2c8" stroke-width="4"/><rect x="0" y="0" width="720" height="62" rx="24" fill="#faf7f2"/><circle cx="36" cy="31" r="8" fill="#f47920"/><circle cx="62" cy="31" r="8" fill="#d8d2c8"/>
+<g stroke="#dcd5cb" stroke-width="3"><path d="M70 120h580M70 185h580M70 250h580M70 315h580M70 380h580"/></g>
+<g fill="#f47920"><rect x="105" y="300" width="56" height="80" rx="6"/><rect x="190" y="250" width="56" height="130" rx="6"/><rect x="275" y="210" width="56" height="170" rx="6"/><rect x="360" y="150" width="56" height="230" rx="6"/></g>
+<path d="M95 285c90-22 140-48 205-95 65-48 135-70 242-85" fill="none" stroke="#2f3338" stroke-width="7" stroke-linecap="round"/><circle cx="300" cy="190" r="10" fill="#2f3338"/><circle cx="542" cy="105" r="10" fill="#2f3338"/>
+</g>
+<g transform="translate(800 390) rotate(-18)"><rect x="0" y="0" width="255" height="38" rx="19" fill="#2f3338"/><rect x="202" y="0" width="53" height="38" rx="19" fill="#f47920"/><path d="M255 8l68 11-68 11z" fill="#b6ada1"/></g>
+<circle cx="990" cy="160" r="100" fill="#f47920" opacity=".09"/>
+</svg>
