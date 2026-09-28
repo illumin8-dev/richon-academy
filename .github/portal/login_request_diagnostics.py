@@ -33,7 +33,6 @@ def read_logs(revision):
         filt=(
             'resource.type="cloud_run_revision" AND '
             f'resource.labels.service_name="{c.SERVICE}" AND '
-            f'resource.labels.revision_name="{revision}" AND '
             f'httpRequest.requestUrl:"{wanted}"'
         )
         raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
@@ -58,7 +57,10 @@ def read_logs(revision):
             stamp=row.get('timestamp','')
             if not isinstance(stamp,str) or len(stamp)>40:
                 stamp=''
-            result.append((stamp,path,method,status))
+            rev=(row.get('resource') or {}).get('labels',{}).get('revision_name','')
+            if not isinstance(rev,str) or not re.fullmatch(c.SERVICE+r'-[a-z0-9-]+',rev):
+                rev='unknown'
+            result.append((stamp,path,method,status,rev))
     return sorted(result)
 
 
@@ -87,24 +89,24 @@ def run():
     revision=candidate_revision(svc)
     c.inspect(svc,policy,boundary='edge')
     rows=read_logs(revision)
-    counts=Counter((path,method,status) for _,path,method,status in rows)
+    counts=Counter((path,method,status,rev) for _,path,method,status,rev in rows)
 
     print('LOGIN_REQUEST_DIAGNOSTICS=READ_ONLY')
     print('CANDIDATE_REVISION='+revision)
     print('WINDOW=15m')
     print('REQUEST_COUNT='+str(len(rows)))
-    for (path,method,status),count in sorted(counts.items()):
+    for (path,method,status,rev),count in sorted(counts.items()):
         labels={
             '/auth/login':'LOGIN_PAGE','/auth/start':'AUTH_START',
             '/auth/assets/handoff.js':'HANDOFF_ASSET',
             '/auth/kakao/callback':'KAKAO_CALLBACK',
             '/auth/naver/callback':'NAVER_CALLBACK',
         }
-        print(f'{labels[path]} {method} status={status} count={count}')
+        print(f'{labels[path]} {method} status={status} revision={rev} count={count}')
     starts=[row for row in rows if row[1]=='/auth/start']
     print('AUTH_START_TOTAL='+str(len(starts)))
-    for index,(stamp,_,method,status) in enumerate(starts[-20:],1):
-        print(f'AUTH_START_EVENT_{index} timestamp={stamp} method={method} status={status}')
+    for index,(stamp,_,method,status,rev) in enumerate(starts[-20:],1):
+        print(f'AUTH_START_EVENT_{index} timestamp={stamp} method={method} status={status} revision={rev}')
     print('OAUTH_FLOW_NOT_COMPLETED_WARNINGS='+str(warning_count(revision)))
     print('NO_BODIES_OR_QUERY_STRINGS_PRINTED=YES')
     return 0
