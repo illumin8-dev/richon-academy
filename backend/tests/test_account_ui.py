@@ -93,6 +93,11 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
         assert forbidden not in page.text+fallback.text
     assert '/auth/assets/site.css' in fallback.text and '/auth/assets/site.js' in fallback.text
     assert '/portal/assets/site.css' not in fallback.text
+    shared_css=(ROOT/'frontend/shared/site.css').read_text()
+    assert '.site-footer-links a{color:inherit;' in shared_css
+    assert 'html.site-menu-open{overflow:hidden}' in shared_css
+    shared_js=(ROOT/'frontend/shared/site.js').read_text()
+    assert "document.documentElement.classList.toggle('site-menu-open', open)" in shared_js
     assert '사이드바' not in page.text and 'class="sidebar"' not in page.text
     assert '회원탈퇴 문의' in page.text
     assert 'href="tel:0322368944"' in page.text
