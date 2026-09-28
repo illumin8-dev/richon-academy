@@ -32,6 +32,7 @@ class ProviderProfile:
     email: str | None = None
     age_range: str | None = None
     gender: str | None = None
+    ci_digest: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, repr=False)
@@ -150,6 +151,15 @@ def _profile_value(cleaner, value):
         return None
 
 
+def _provider_ci_digest(value):
+    """Return only a one-way digest of Kakao CI; never persist the raw CI."""
+    if not isinstance(value, str) or not 16 <= len(value) <= 1024:
+        return None
+    if value != value.strip() or any(unicodedata.category(c).startswith('C') for c in value):
+        return None
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+
 def _provider_gender(provider, value):
     if provider == 'kakao':
         return value if value in member_profile.GENDERS else None
@@ -206,7 +216,7 @@ def exchange_session(settings,name,code,state,browser):
                 or type(info.get('expires_in')) is not int or info['expires_in']<=0):
                 raise ProviderRejected()
             fields=(['kakao_account.name','kakao_account.email','kakao_account.phone_number',
-                     'kakao_account.age_range','kakao_account.gender']
+                     'kakao_account.age_range','kakao_account.gender','kakao_account.ci']
                     if member_profile.enabled(settings.terms_version, settings.privacy_version)
                     else ['kakao_account.profile'])
             profile=_json(client,'GET',ENDPOINTS[name][2],headers=headers,
@@ -231,6 +241,7 @@ def exchange_session(settings,name,code,state,browser):
                     _profile_value(member_profile.clean_email,account.get('email')),
                     _provider_age_range('kakao',account.get('age_range')),
                     _provider_gender('kakao',account.get('gender')),
+                    _provider_ci_digest(account.get('ci')),
                 )
             elif name=='naver':
                 provider_profile=ProviderProfile(
@@ -239,6 +250,7 @@ def exchange_session(settings,name,code,state,browser):
                     _profile_value(member_profile.clean_email,response.get('email')),
                     _provider_age_range('naver',response.get('age')),
                     _provider_gender('naver',response.get('gender')),
+                    None,
                 )
             nickname=provider_profile.name
         display=nickname if isinstance(nickname,str) else ''

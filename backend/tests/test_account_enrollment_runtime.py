@@ -26,7 +26,7 @@ def test_runtime_can_scrub_enrollment_contact_columns_without_reading_them(month
         with monthly_account_db() as conn:
             conn.execute('CREATE ROLE richon_portal_login NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT')
             conn.execute('GRANT USAGE ON SCHEMA richon TO richon_portal_login')
-            for table in (*ready.READ,'member_profiles',*ready.ACCOUNT_READ):
+            for table in (*ready.READ,*ready.PROVIDER_PROFILE_READ,'member_profiles',*ready.ACCOUNT_READ):
                 conn.execute(sql.SQL('GRANT SELECT ON richon.{} TO richon_portal_login').format(sql.Identifier(table)))
             conn.execute('GRANT SELECT (member_id) ON richon.enrollment_learners TO richon_portal_login')
             base_inserts=ready.merged_grants(ready.INSERT,ready.PROVIDER_PROFILE_INSERT)

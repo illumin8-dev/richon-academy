@@ -98,6 +98,7 @@ def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
     assert ' checked' not in r.text and '[선택] 상담정보' in r.text and '기본 회원 서비스를 이용' in r.text
     assert 'data-consent-all' in r.text and 'name="marketing"' in r.text
     assert '광고성 정보 수신 동의 (문자·이메일)' in r.text
+    assert 'CI(연계정보)' in r.text and '중복 회원가입 방지' in r.text
     assert r.text.index('선택 / 연령대·성별') < r.text.index('필수 / 만 14세 이상 자기확인')
     assert 'value="회원"' not in r.text and 'name="password"' not in r.text
 
@@ -147,7 +148,7 @@ def test_v1_collects_valid_provider_signup_profile_without_using_nickname(monkey
         if provider=='kakao':
             return httpx.Response(200,json={'id':42,'kakao_account':{
                 'name':'제공자 이름','email':'provider@example.invalid','phone_number':'+82 10-2222-3333',
-                'age_range':'30~39','gender':'female',
+                'age_range':'30~39','gender':'female','ci':'synthetic-ci-value-1234567890',
                 'profile':{'nickname':'NEVER_AS_NAME'}}})
         return httpx.Response(200,json={'resultcode':'00','response':{
             'id':'uid','name':'제공자 이름','mobile':'010-2222-3333',
@@ -156,14 +157,15 @@ def test_v1_collects_valid_provider_signup_profile_without_using_nickname(monkey
     monkeypatch.setattr(p,'_client',lambda:httpx.Client(transport=httpx.MockTransport(respond)))
     session=p.exchange_session(cfg(),provider,'code','S'*43,'B'*43)
     assert session.identity.display_name=='제공자 이름'
-    assert session.profile==p.ProviderProfile('제공자 이름','01022223333','provider@example.invalid','30-39','female')
+    expected_ci=p._provider_ci_digest('synthetic-ci-value-1234567890') if provider=='kakao' else None
+    assert session.profile==p.ProviderProfile('제공자 이름','01022223333','provider@example.invalid','30-39','female',expected_ci)
     assert 'NEVER_AS_NAME' not in repr(session.identity)
     if provider=='kakao':
         profile_url=next(url for url in seen if '/v2/user/me' in url)
         keys=parse_qs(urlsplit(profile_url).query)['property_keys'][0]
         assert all(field in keys for field in ('kakao_account.name','kakao_account.email',
                                                 'kakao_account.phone_number','kakao_account.age_range',
-                                                'kakao_account.gender'))
+                                                'kakao_account.gender','kakao_account.ci'))
 
 
 @pytest.mark.parametrize('provider',['kakao','naver'])
@@ -219,3 +221,11 @@ def test_provider_demographic_normalization_contract():
     assert p._provider_gender('naver','F')=='female'
     assert p._provider_gender('naver','M')=='male'
     assert p._provider_gender('naver','U') is None
+
+
+def test_ci_digest_contract():
+    value='synthetic-ci-value-1234567890'
+    digest=p._provider_ci_digest(value)
+    assert re.fullmatch(r'[a-f0-9]{64}',digest)
+    assert value not in digest
+    assert p._provider_ci_digest(' short ') is None
