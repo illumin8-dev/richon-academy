@@ -113,6 +113,39 @@ def classify_handoff_errors(revision):
     return result
 
 
+
+def route_error_summary(revision):
+    filt=(
+        'resource.type="cloud_run_revision" AND '
+        f'resource.labels.service_name="{c.SERVICE}" AND '
+        f'resource.labels.revision_name="{revision}" AND '
+        'severity>=ERROR'
+    )
+    raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
+                   '--freshness=30m','--limit=100','--order=asc','--format=json'],
+                  timeout=90)
+    try:
+        rows=json.loads(raw) if raw.strip() else []
+    except (ValueError,UnicodeError):
+        raise c.Stop('invalid_error_log_response') from None
+    c.need(isinstance(rows,list),'invalid_error_log_response')
+    counts=Counter()
+    for row in rows:
+        text=row.get('textPayload')
+        if not isinstance(text,str):
+            continue
+        # Fixed safe categories only. Never print arbitrary traceback lines or payloads.
+        category='other_error'
+        if 'File at path' in text and 'does not exist' in text:
+            category='missing_static_file'
+        elif 'RuntimeError' in text and 'FileResponse' in text:
+            category='file_response_runtime_error'
+        elif 'Traceback' in text:
+            category='python_traceback'
+        counts[category]+=1
+    for category,count in sorted(counts.items()):
+        print(f'ERROR_CATEGORY {category} count={count}')
+
 def run():
     c.source(live=True)
     req=c.read_request()
@@ -140,6 +173,7 @@ def run():
     for index,(stamp,_,method,status,rev) in enumerate(starts[-20:],1):
         print(f'AUTH_START_EVENT_{index} timestamp={stamp} method={method} status={status} revision={rev}')
     print('OAUTH_FLOW_NOT_COMPLETED_WARNINGS='+str(warning_count(revision)))
+    route_error_summary(revision)
     errors=classify_handoff_errors(revision)
     for key,count in sorted(errors.items()):
         print('HANDOFF_ERROR_CLASS='+key+' count='+str(count))
