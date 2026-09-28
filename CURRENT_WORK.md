@@ -8,13 +8,13 @@
 
 현재 확정 상태:
 - /portal/mypage 비로그인 gate → 간편 로그인 팝업 노출 정상
-- 만 14세 이상 체크 UI 정상
-- Cloud Run access log에서 POST /auth/start가 실제 발생하고 303을 반환하는 것 확인
-- Chromium 진단에서 provider GET 시도 직후 CSP 오류와 net::ERR_ABORTED 확인
-- 원인: form POST 뒤 cross-origin provider 303 redirect가 Chromium CSP form-action 처리에 걸림
-- 버튼 이벤트 / CSRF / backend start 실패가 원인이 아님
-- PR #44에서 same-origin handoff document + /auth/assets/handoff.js 방식으로 수정 완료 / 아직 protected candidate 재반영 전
-
+- 로그인 시 만14세 체크는 제거 / 신규 회원정보 완료(/auth/signup)에서만 필수
+- OAuth form POST 뒤 cross-origin redirect의 Chromium CSP 문제는 same-origin handoff 방식으로 해결
+- handoff fallback 문구/링크는 정상 자동이동 중 즉시 보이지 않도록 기본 숨김
+- provider 이동이 2초 이상 지연되거나 JS 자동이동에 문제가 있을 때만 "이동이 안 되면 계속" fallback 노출
+- 최신 protected candidate: richon-portal-handoff-36372938707-1
+- 기존 유일 회원은 member/auth identity 유지 / member_profiles 0 / 세션 0 상태로 의도적으로 대기
+- Kakao/Naver 이름·휴대전화·이메일 추가 정보 권한은 아직 신청/승인 전이므로 자동입력 검증은 보류
 완료:
 - [x] DB012 oauth_signups provider_name/provider_phone/provider_email 적용
 - [x] runtime 최소권한 / readback PASS
@@ -34,6 +34,7 @@
 - [x] PR #46 signup-only age gate + reliable OAuth handoff 병합/배포
 - [x] 로그인 화면에서 만14세 체크 제거 / 신규 가입 단계에서만 유지
 - [x] Kakao/Naver 1회 클릭으로 provider 로그인 화면 자동 이동 확인
+- [x] PR #51 handoff fallback UX 병합/배포 / 정상 이동 중 fallback 즉시 노출 제거
 - [x] Kakao 실제 로그인 E2E (사용자 확인 / 2026-09-28)
 - [x] Naver 실제 로그인 E2E (사용자 확인 / 2026-09-28)
 - [ ] Kakao↔Naver 계정 연결
@@ -43,8 +44,9 @@
 - [x] 기존 유일 회원 프로필 1회 초기화 / 현재 세션 전부 종료 / members·auth_identities 유지 (2026-09-28)
 - [ ] 다음 Kakao/Naver 로그인에서 기존 회원이 회원정보 완료 화면을 다시 타고 provider 제공 필드가 자동입력+잠금되는지 확인
 - [ ] 로그인 전체화면 / 팝업 CSS / 모바일 확인
-- [ ] OAuth handoff 중간 화면의 "로그인 페이지로 이동합니다 / 계속" 노출을 UX상 최소화 (자동이동 유지 / 실패 시 fallback만 노출)
-- [ ] Kakao/Naver 이름/휴대전화/이메일 실제 반환 및 동의 범위 확인 / 신규 가입 시 반환 필드는 자동입력+잠금, 미반환 필드만 직접입력
+- [ ] 최신 배포에서 handoff fallback이 정상 이동 중 체감상 보이지 않는지 사용자 최종 확인
+- [ ] Kakao/Naver 이름/휴대전화/이메일 추가 정보 동의항목 신청/승인
+- [ ] 승인 후 실제 반환값 확인 / 신규 가입 시 반환 필드는 자동입력+잠금, 미반환 필드만 직접입력
 - [ ] E2E 완료 후에만 공개 홈페이지 로그인 버튼 노출
 
 현재 운영 경계:
@@ -115,13 +117,15 @@
 
 ## 작업 순서
 
-1. PR #44 protected candidate 재반영
-2. Kakao / Naver 로그인 전체 E2E 완료
-3. Frontend/UI foundation cleanup + 누락된 멘토/성능 작업 회수
-4. course DB + admin
-5. 수강생 관리
-6. 내 강의
-7. 결제
+1. 최신 handoff UX 실브라우저 최종 확인
+2. Kakao/Naver 추가 정보 동의항목 신청/승인
+3. 기존 프로필 미완료 상태에서 provider 자동입력/잠금 검증
+4. 남은 계정 연결/해제/재가입 lifecycle 검증
+5. Frontend/UI foundation cleanup + 누락된 멘토/푸터/성능 작업 회수
+6. course DB + admin
+7. 수강생 관리
+8. 내 강의
+9. 결제
 
 ## 주의
 
