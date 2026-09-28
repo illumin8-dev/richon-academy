@@ -348,7 +348,7 @@ def make_router(settings):
         except Exception: return failed()
         if collect_profile:
             return page('회원가입 안내',
-                        signup_views.signup_form(settings, proof(browser,ticket), provider_profile))
+                        signup_views.signup_form(settings, proof(browser,ticket), provider_profile, identity.provider))
         e=html.escape
         body=f'''<p>처음 방문하셨습니다. 아래 문서를 확인한 뒤 가입해 주세요.</p>
 <form method="post" action="/auth/signup"><input type="hidden" name="csrf" value="{proof(browser,ticket)}">
