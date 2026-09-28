@@ -57,4 +57,4 @@ assert 'CI(연계정보)' in privacy and '중복 회원가입 방지' in privacy
 assert '원문 CI는 저장하지 않고 단방향 변환값' in privacy
 assert '비밀번호, 이름, 닉네임, 생년월일' not in privacy
 assert '본인확인값(CI,DI)' not in privacy
-assert '중복가입 방지 및 기존 회원 비교 식별' in terms
+assert '중복 회원가입 방지 및 기존 회원 비교 식별' in terms
