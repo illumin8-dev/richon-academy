@@ -7,6 +7,7 @@
     const setMenu = (open) => {
       burger?.classList.toggle('open', open); menu?.classList.toggle('show', open);
       burger?.setAttribute('aria-expanded', String(open));
+      document.documentElement.classList.toggle('site-menu-open', open);
     };
     burger?.addEventListener('click', () => setMenu(burger.getAttribute('aria-expanded') !== 'true'));
     menu?.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setMenu(false)));
