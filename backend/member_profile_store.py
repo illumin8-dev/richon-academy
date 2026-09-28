@@ -6,8 +6,13 @@ from uuid import uuid4
 import auth_core as core
 import member_profile as profile
 import marketing_consent as marketing
+import identity_verification as verification
 from oauth_providers import RETURNS
 from oauth_store import InvalidFlow
+
+
+class ExistingMemberMatch(InvalidFlow):
+    """A verified person already owns another RichOn member account."""
 
 
 def completed(member_id, settings):
@@ -20,7 +25,7 @@ def completed(member_id, settings):
         return cur.fetchone() == (1,)
 
 
-def finish(settings, ticket, browser, registration):
+def finish(settings, ticket, browser, registration, verified_person=None):
     """One commit for ticket consumption, identity, profile and consent evidence.
 
     Existing identities retain member_id and role. Concurrent first submissions
@@ -47,12 +52,28 @@ def finish(settings, ticket, browser, registration):
                 or settings.providers[row[0]].identity_scope != row[1] or row[10] not in RETURNS):
             raise InvalidFlow()
         identity = core.VerifiedIdentity(*row[:4])
-        ci_digest = row[9]
-        if identity.provider == 'kakao' and (
-                not isinstance(ci_digest, str) or not re.fullmatch(r'[a-f0-9]{64}', ci_digest)):
+        provider_ci_digest = row[9]
+        if (provider_ci_digest is not None
+                and (not isinstance(provider_ci_digest, str)
+                     or not re.fullmatch(r'[a-f0-9]{64}', provider_ci_digest))):
             raise InvalidFlow()
-        if identity.provider != 'kakao' and ci_digest is not None:
+        if identity.provider != 'kakao' and provider_ci_digest is not None:
             raise InvalidFlow()
+        verification_required = verification.enabled()
+        if verification_required:
+            if not isinstance(verified_person, verification.VerifiedPerson):
+                raise InvalidFlow()
+            ci_digest = verified_person.ci_digest
+            # Kakao CI is only a reference. When Kakao provides it, it must agree
+            # with the CI obtained by RichOn's own identity-verification flow.
+            if provider_ci_digest is not None and provider_ci_digest != ci_digest:
+                raise InvalidFlow()
+        else:
+            if verified_person is not None:
+                raise InvalidFlow()
+            ci_digest = provider_ci_digest
+            if identity.provider == 'kakao' and ci_digest is None:
+                raise InvalidFlow()
         age_range = (row[7] or registration.age_range) if registration.consultation_consent else None
         gender = (row[8] or registration.gender) if registration.consultation_consent else None
         effective = profile.Registration(
@@ -75,24 +96,40 @@ def finish(settings, ticket, browser, registration):
         member = cur.fetchone()
         if member and member[1] != 'active':
             raise core.MemberUnavailable()
-        member_id = member[0] if member else uuid4()
+        member_id = member[0] if member else None
         if ci_digest is not None:
             cur.execute('''SELECT c.member_id,m.status
                            FROM richon.member_ci_claims c JOIN richon.members m USING(member_id)
                            WHERE c.ci_digest=%s FOR SHARE OF m''',(ci_digest,))
             claim=cur.fetchone()
-            if claim and (claim[1] != 'active' or claim[0] != member_id):
+            if claim and claim[1] != 'active':
+                raise core.MemberUnavailable()
+            if member_id is not None and claim and claim[0] != member_id:
                 raise InvalidFlow()
-        if not member:
+            if member_id is None and claim:
+                # Do not silently map social accounts. Kakao's mapping guidance
+                # requires an explicit user decision; the member can log in with
+                # the existing method and add this provider from My Page.
+                if verification_required:
+                    raise ExistingMemberMatch()
+                raise InvalidFlow()
+            if member_id is not None:
+                cur.execute('SELECT ci_digest FROM richon.member_ci_claims WHERE member_id=%s',(member_id,))
+                owned=cur.fetchone()
+                if owned and owned[0] != ci_digest:
+                    raise InvalidFlow()
+        if member_id is None:
+            member_id = uuid4()
             cur.execute('''INSERT INTO richon.members(member_id,display_name,terms_version,privacy_version)
                 VALUES(%s,%s,%s,%s)''',
                 (member_id, effective.name, settings.terms_version, settings.privacy_version))
             cur.execute('''INSERT INTO richon.auth_identities(provider,app_id,subject,member_id)
                 VALUES(%s,%s,%s,%s)''', (identity.provider, identity.app_id, identity.subject, member_id))
         if ci_digest is not None:
+            source = 'verified' if verification_required else 'kakao'
             cur.execute('''INSERT INTO richon.member_ci_claims(ci_digest,member_id,provider)
-                           VALUES(%s,%s,'kakao') ON CONFLICT (ci_digest) DO NOTHING''',
-                        (ci_digest,member_id))
+                           VALUES(%s,%s,%s) ON CONFLICT (ci_digest) DO NOTHING''',
+                        (ci_digest,member_id,source))
             if cur.rowcount == 0:
                 cur.execute('SELECT member_id FROM richon.member_ci_claims WHERE ci_digest=%s',(ci_digest,))
                 if cur.fetchone() != (member_id,):
