@@ -108,6 +108,8 @@ def provider_profile_schema_ready(cur):
         WHERE attrelid='richon.oauth_signups'::regclass AND attnum>0 AND NOT attisdropped
           AND attname=ANY(ARRAY['provider_name','provider_phone','provider_email',
                                 'provider_age_range','provider_gender','provider_ci_digest'])""")
+    if cur.fetchone()!=(6,):
+        return False
     cur.execute("SELECT to_regclass('richon.member_ci_claims') IS NOT NULL")
     return cur.fetchone()==(True,)
 
