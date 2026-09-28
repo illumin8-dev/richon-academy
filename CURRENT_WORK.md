@@ -17,7 +17,8 @@
 - Kakao 개인정보 동의항목 추가 기능 신청 진행 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정 필요
 - Naver API 제공정보는 이름·이메일·휴대전화 필수 / 성별·연령대 추가로 설정
 - Naver 개인정보 국외이전 2건 등록 완료
-- 기존 유일 회원은 프로필 미완료 상태로 유지하고 Naver 검수 캡처용 실제 provider 반환 검증 대기
+- 운영 DB 현재 확인: active member 0 / auth identity 0 / profile 0 / session 0 / withdrawn member 2
+- 따라서 다음 Naver 로그인은 기존 회원 보완이 아니라 신규 회원가입 흐름으로 진행되며, 검수용 provider 자동입력 확인에 적합
 완료:
 - [x] DB012 oauth_signups provider_name/provider_phone/provider_email 적용
 - [x] runtime 최소권한 / readback PASS
@@ -54,7 +55,7 @@
 - [x] Naver 국외이전 정보 2건 등록
 - [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정
 - [ ] Naver 사전 검수 제출/승인
-- [ ] Naver 테스트 로그인으로 이름/휴대전화/이메일/연령대/성별 실제 반환 확인
+- [ ] Naver 테스트 로그인으로 신규가입 진행 / 이름·휴대전화·이메일·연령대·성별 실제 반환 확인
 - [ ] 회원정보 완료 후 마이페이지 5개 정보 + 활용목적 문구 캡처 / Naver 제공정보 활용처 자료로 제출
 - [ ] Kakao 승인 후 동일 자동입력/잠금 검증
 - [ ] E2E 완료 후에만 공개 홈페이지 로그인 버튼 노출
