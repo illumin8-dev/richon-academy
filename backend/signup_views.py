@@ -21,6 +21,7 @@ def notice(settings):
 <tr><td>필수 / 이름</td><td>회원 확인, 수강생 관리 및 상담 대상 확인</td></tr>
 <tr><td>필수 / 휴대전화번호</td><td>회원 서비스 안내 및 상담 연락</td></tr>
 <tr><td>필수 / 이메일</td><td>회원 서비스 안내 및 강의자료 발송</td></tr>
+<tr><td>필수(카카오 회원가입 시) / CI(연계정보)</td><td>동일인의 중복 회원가입 방지 및 기존 회원 비교 식별</td></tr>
 <tr><td>선택 / 연령대·성별</td><td>생애주기와 주거 수요를 고려한 맞춤 상담 준비 및 상담 우선순위 설정</td></tr>
 <tr><td>필수 / 만 14세 이상 자기확인 여부, 동의 버전·시점</td><td>가입 대상 및 동의 내역 확인</td></tr>
 {marketing_row}</tbody></table>
@@ -32,7 +33,7 @@ def notice(settings):
 
 def signup_form(settings, csrf, provider_profile=None):
     provider_profile = provider_profile or type('EmptyProfile', (), {
-        'name':None,'phone':None,'email':None,'age_range':None,'gender':None})()
+        'name':None,'phone':None,'email':None,'age_range':None,'gender':None,'ci_digest':None})()
     marketing_input = (
         '<label><input type="checkbox" name="marketing" value="yes" data-consent-item> '
         '[선택] 광고성 정보 수신 동의 (문자·이메일)</label>'
@@ -80,6 +81,7 @@ def signup_form(settings, csrf, provider_profile=None):
 {field('name','이름',provider_profile.name,autocomplete='name',maxlength='80')}
 {field('phone','휴대전화번호',provider_profile.phone,kind='tel',autocomplete='tel',maxlength='32')}
 {field('email','이메일',provider_profile.email,kind='email',autocomplete='email',maxlength='254')}
+{('<p class="provider-locked-note"><strong>CI(연계정보) [필수]</strong> / 카카오에서 확인 완료 / 동일인 중복 가입 방지용으로만 사용합니다.</p>' if provider_profile.ci_digest else '')}
 <label><input id="consent-all" type="checkbox" data-consent-all> <strong>전체 동의</strong> <small>(선택 항목 포함)</small></label>
 <fieldset><legend>상담정보 [선택]</legend>
 {optional_select('age_range','연령대',age_values,provider_profile.age_range)}
