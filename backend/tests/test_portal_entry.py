@@ -44,7 +44,7 @@ def test_login_html_cookies_and_private_route_denial(enabled):
         assert SECRET not in response.text and 'synthetic' not in response.text
         assert 'Domain=' not in response.headers['set-cookie']
         assert 'Secure' in response.headers['set-cookie'] and 'HttpOnly' in response.headers['set-cookie']
-        for asset in ('site.css','site.js','login.js','signup.js','handoff.js'):
+        for asset in ('site.css','site.js','login.js','signup.js','identity.js','handoff.js'):
             assert c.get('/auth/assets/'+asset).status_code==200
         for path in ['/health/db','/orders','/auth/fake-login','/auth/assets/unknown.css','/auth/%6cogin','/portal//mypage']:
             assert c.get(path).status_code==404
