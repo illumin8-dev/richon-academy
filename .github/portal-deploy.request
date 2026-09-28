@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-login-requests",
-  "request_id": "login-request-diagnostics-20260928-i"
+  "operation": "rollout-login-handoff",
+  "request_id": "signup-only-age-and-handoff-20260928-a"
 }
