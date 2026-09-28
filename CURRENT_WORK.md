@@ -14,7 +14,9 @@
 - provider 이동이 2초 이상 지연되거나 JS 자동이동에 문제가 있을 때만 "이동이 안 되면 계속" fallback 노출
 - 최신 protected candidate: richon-portal-handoff-36381388633-1
 - 기존 유일 회원은 member/auth identity 유지 / member_profiles 0 / 세션 0 상태로 의도적으로 대기
-- Kakao 개인정보 동의항목 추가 기능 승인 요청 제출 완료 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정 필요
+- Kakao 개인정보 동의항목 1차 신청 반려: 회원가입 절차 확인자료 부족 / CI 실제 미수집
+- 반려 대응: 공개 signup-guide 추가 / 필수·선택 수집조건 명시 / privacy·terms 실제 소셜 가입 방식으로 정합 / CI·DI 미수집 명시
+- Kakao 재신청 시 CI 제외 / 이름·전화번호 필수, 성별·연령대 선택 / 이메일은 일반 카카오 로그인 동의항목에서 별도 설정
 - Naver API 제공정보는 이름·이메일·휴대전화 필수 / 성별·연령대 추가로 설정
 - Naver 개인정보 국외이전 2건 등록 완료 / 사전 검수 승인 요청 제출 완료
 - 운영 DB 현재 확인: active member 0 / auth identity 0 / profile 0 / session 0 / withdrawn member 2
@@ -53,7 +55,9 @@
 - [x] DB013 oauth_signups provider_age_range/provider_gender + 최소 INSERT grant 적용/readback PASS
 - [x] PR #53 protected candidate 배포 / default 100% traffic unchanged
 - [x] Naver 국외이전 정보 2건 등록
-- [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정 (승인 요청 제출 완료)
+- [x] Kakao 1차 반려 사유 분석 / 회원가입 안내·정책 정합 수정 (fork main PR #60)
+- [ ] Kakao 재신청: CI 제외 + 회원가입 경로/전체 절차 화면 첨부
+- [ ] Kakao 개인정보 추가 기능 심사 승인 + 이메일 동의항목 설정
 - [ ] Naver 사전 검수 승인 (승인 요청 제출 완료)
 - [ ] Naver 테스트 로그인으로 신규가입 진행 / 이름·휴대전화·이메일·연령대·성별 실제 반환 확인
 - [ ] 회원정보 완료 후 마이페이지 5개 정보 + 활용목적 문구 캡처 / Naver 제공정보 활용처 자료로 제출
@@ -85,6 +89,7 @@
 - [x] index.html 약 550KB → 약 34KB 축소
 - [x] public UI 정적 계약 CI 추가
 - [x] PR #56 회원 공통 shell 마감 병합 + protected candidate 배포
+- [x] PR #61 회원 푸터 링크/모바일 메뉴 공통화 후 protected candidate richon-portal-handoff-36387697145-1 배포
 - [x] PR #57 public UI foundation 병합 (fork main)
 
 남은 항목 / 경계:
@@ -93,7 +98,7 @@
 - [ ] apply.html은 fork/original 모두 현재 0 byte / 신청 페이지 요구사항 확정 후 재구성 필요
 - [ ] admin은 공개/회원과 다른 운영 UI family이므로 동일 header 강제 대신 course/admin 구현 단계에서 brand token·간격·타이포 정합
 - [ ] OAuth HTML/CSS embedded refactor는 인증 provider 승인/실 E2E 종료 후 별도
-- [ ] 원본 marururu00/richon-academy에 public UI foundation 반영: 현재 GitHub App write가 실제 API에서 403이라 미반영
+- [ ] 원본 marururu00/richon-academy에 public UI foundation + Kakao signup-guide/policy 반영: repo metadata는 push=true로 보이지만 branch/PR API는 여전히 403 Resource not accessible by integration
 - [ ] 원본 public 배포 전 {{구글폼URL}} / {{결제링크URL}} / {{입금계좌}} 등 launch placeholder 재점검
 
 현재 public 배포 경계:
@@ -137,7 +142,7 @@
 
 - [x] Kakao 비즈니스 앱 승인 완료 (사용자 확인 / 2026-09-28)
 - [ ] Naver production review/승인 상태 실제 콘솔 확인
-- [ ] 공개 terms/privacy 최신 정본 통합
+- [x] fork main 공개 terms/privacy를 현재 passwordless 소셜 회원가입 방식에 맞게 정합
 - [ ] member-info-v1 시행일/문구/기능 일치
 - [ ] 개인정보 파기/탈퇴 운영 절차 최종 확인
 - [ ] 광고수신동의 문자/이메일 실제 발송 기능은 별도
