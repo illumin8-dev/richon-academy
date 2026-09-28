@@ -30,6 +30,53 @@ def notice(settings):
 <p><a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> / <a href="{e(settings.privacy_url)}" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></p></details>'''
 
 
+
+def signup_guide(settings):
+    """Public, read-only membership flow evidence for provider review."""
+    marketing_row = (
+        '<li><strong>선택</strong> 광고성 정보 수신 동의 (문자·이메일) / 강의·특강·이벤트 안내</li>'
+        if marketing.enabled() else '')
+    return f'''<div class="signup-guide">
+<p class="signup-guide-lead">리치온아카데미는 카카오 또는 네이버 간편로그인으로 본인 계정을 확인한 뒤, 아래 회원정보 확인과 필수 동의를 거쳐 회원가입을 완료합니다. 별도 비밀번호는 만들지 않습니다.</p>
+
+<ol class="signup-steps" aria-label="회원가입 절차">
+<li><strong>1. 간편로그인 선택</strong><span>카카오 또는 네이버 로그인을 선택합니다.</span></li>
+<li><strong>2. 소셜 정보 제공 동의</strong><span>각 제공자의 정보 제공 동의 화면에서 승인한 항목만 전달받습니다.</span></li>
+<li><strong>3. 회원정보 확인</strong><span>제공자가 전달한 값은 자동입력되며, 전달되지 않은 필수 항목만 직접 입력합니다.</span></li>
+<li><strong>4. 필수 동의 후 가입 완료</strong><span>만 14세 이상 확인 / 이용약관 / 개인정보 수집·이용에 동의하면 가입이 완료됩니다.</span></li>
+</ol>
+
+<section class="signup-guide-card" aria-labelledby="signup-required-title">
+<h2 id="signup-required-title">회원가입 시 수집 항목과 조건</h2>
+<ul class="signup-data-list">
+<li><strong>필수</strong> 간편로그인 제공자·앱별 회원 식별정보 / 회원 식별 및 계정 관리</li>
+<li><strong>필수</strong> 이름 / 회원 확인, 수강생 관리 및 상담 대상 확인</li>
+<li><strong>필수</strong> 휴대전화번호 / 회원 서비스 안내 및 상담 연락</li>
+<li><strong>필수</strong> 이메일 / 회원 서비스 안내 및 강의자료 발송</li>
+<li><strong>선택</strong> 연령대·성별 / <em>상담정보 수집·이용에 별도 동의한 경우에만</em> 맞춤 상담 준비 및 상담 분석에 저장</li>
+<li><strong>필수</strong> 만 14세 이상 자기확인 여부, 이용약관·개인정보 동의 버전과 시점 / 가입 대상 및 동의 내역 확인</li>
+{marketing_row}
+</ul>
+<p class="signup-guide-note"><strong>CI(연계정보)는 수집하거나 저장하지 않습니다.</strong> 리치온아카데미 회원가입에서는 별도 본인인증 또는 CI 기반 회원 비교 식별을 사용하지 않습니다.</p>
+<p class="signup-guide-note">성별·연령대는 선택정보이며, 소셜 계정에서 제공되더라도 상담정보 수집·이용에 동의하지 않으면 저장하지 않습니다.</p>
+</section>
+
+<section class="signup-guide-card" aria-labelledby="signup-screen-title">
+<h2 id="signup-screen-title">회원정보 확인 화면 예시</h2>
+<div class="signup-review-fields" aria-label="회원정보 확인 화면 구성">
+<div><span>이름</span><b>[필수] 소셜 제공 시 자동입력</b></div>
+<div><span>휴대전화번호</span><b>[필수] 소셜 제공 시 자동입력</b></div>
+<div><span>이메일</span><b>[필수] 소셜 미제공 시 직접입력</b></div>
+<div><span>연령대</span><b>[선택] 상담정보 동의 시 저장</b></div>
+<div><span>성별</span><b>[선택] 상담정보 동의 시 저장</b></div>
+</div>
+</section>
+
+<p class="signup-guide-actions"><a class="site-btn site-btn-o" href="/auth/login?return_to=%2Fportal%2Fmypage">간편 회원가입 시작</a></p>
+<p><a href="{e(settings.privacy_url)}" target="_blank" rel="noopener noreferrer">개인정보처리방침</a> / <a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a></p>
+</div>'''
+
+
 def signup_form(settings, csrf, provider_profile=None):
     provider_profile = provider_profile or type('EmptyProfile', (), {
         'name':None,'phone':None,'email':None,'age_range':None,'gender':None})()
