@@ -111,7 +111,7 @@ def run_locked_provider_case(browser):
     context.add_cookies([{'name':name,'value':value,'url':ORIGIN,'secure':True,'httpOnly':True,'sameSite':'Lax'}
                         for name,value in [(h.BROWSER,'B'*43),(h.TICKET,'T'*43)]])
     identity=core.VerifiedIdentity('naver','test-naver','synthetic-uid','제공자 이름')
-    profile=providers.ProviderProfile('제공자 이름','01022223333',None)
+    profile=providers.ProviderProfile('제공자 이름','01022223333',None,'30-39','female')
     with patch.object(store,'pending',return_value=(identity,'/portal/mypage')), \
          patch.object(store,'signup_profile',return_value=profile):
         page=context.new_page()
@@ -130,6 +130,12 @@ def run_locked_provider_case(browser):
         assert page.locator('[name=email]').is_editable() is True
         assert page.locator('[name=name]').input_value()=='제공자 이름'
         assert page.locator('[name=phone]').input_value()=='01022223333'
+        assert page.locator('#signup-age_range').is_enabled() is False
+        assert page.locator('#signup-gender').is_enabled() is False
+        assert page.locator('#signup-age_range').input_value()=='30-39'
+        assert page.locator('#signup-gender').input_value()=='female'
+        assert page.locator('input[type=hidden][name=age_range]').input_value()=='30-39'
+        assert page.locator('input[type=hidden][name=gender]').input_value()=='female'
     context.close()
 
 

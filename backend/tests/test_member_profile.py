@@ -147,19 +147,23 @@ def test_v1_collects_valid_provider_signup_profile_without_using_nickname(monkey
         if provider=='kakao':
             return httpx.Response(200,json={'id':42,'kakao_account':{
                 'name':'제공자 이름','email':'provider@example.invalid','phone_number':'+82 10-2222-3333',
+                'age_range':'30~39','gender':'female',
                 'profile':{'nickname':'NEVER_AS_NAME'}}})
         return httpx.Response(200,json={'resultcode':'00','response':{
             'id':'uid','name':'제공자 이름','mobile':'010-2222-3333',
-            'email':'provider@example.invalid','nickname':'NEVER_AS_NAME'}})
+            'email':'provider@example.invalid','age':'30-39','gender':'F',
+            'nickname':'NEVER_AS_NAME'}})
     monkeypatch.setattr(p,'_client',lambda:httpx.Client(transport=httpx.MockTransport(respond)))
     session=p.exchange_session(cfg(),provider,'code','S'*43,'B'*43)
     assert session.identity.display_name=='제공자 이름'
-    assert session.profile==p.ProviderProfile('제공자 이름','01022223333','provider@example.invalid')
+    assert session.profile==p.ProviderProfile('제공자 이름','01022223333','provider@example.invalid','30-39','female')
     assert 'NEVER_AS_NAME' not in repr(session.identity)
     if provider=='kakao':
         profile_url=next(url for url in seen if '/v2/user/me' in url)
         keys=parse_qs(urlsplit(profile_url).query)['property_keys'][0]
-        assert 'kakao_account.name' in keys and 'kakao_account.email' in keys and 'kakao_account.phone_number' in keys
+        assert all(field in keys for field in ('kakao_account.name','kakao_account.email',
+                                                'kakao_account.phone_number','kakao_account.age_range',
+                                                'kakao_account.gender'))
 
 
 @pytest.mark.parametrize('provider',['kakao','naver'])
@@ -171,25 +175,47 @@ def test_v1_missing_or_invalid_provider_profile_fields_fall_back_to_signup_input
             return httpx.Response(200,json={'id':42,'app_id':1585992,'expires_in':100})
         if provider=='kakao':
             return httpx.Response(200,json={'id':42,'kakao_account':{
-                'name':'제공자 이름','email':'not-an-email','phone_number':'not-a-phone'}})
+                'name':'제공자 이름','email':'not-an-email','phone_number':'not-a-phone',
+                'age_range':'10~14','gender':'unknown'}})
         return httpx.Response(200,json={'resultcode':'00','response':{
-            'id':'uid','name':'제공자 이름','mobile':'not-a-phone','email':'not-an-email'}})
+            'id':'uid','name':'제공자 이름','mobile':'not-a-phone','email':'not-an-email',
+            'age':'10-19','gender':'U'}})
     monkeypatch.setattr(p,'_client',lambda:httpx.Client(transport=httpx.MockTransport(respond)))
     session=p.exchange_session(cfg(),provider,'code','S'*43,'B'*43)
     assert session.profile.name=='제공자 이름'
     assert session.profile.phone is None and session.profile.email is None
+    assert session.profile.age_range is None and session.profile.gender is None
 
 
 def test_signup_form_locks_only_provider_supplied_fields(monkeypatch):
     monkeypatch.setattr(s,'pending',Mock(return_value=(core.VerifiedIdentity('naver','test-naver','subject','제공자 이름'),'/')))
     monkeypatch.setattr(s,'signup_profile',Mock(return_value=p.ProviderProfile(
-        name='제공자 이름',phone='01022223333',email=None)))
+        name='제공자 이름',phone='01022223333',email=None,age_range='30-39',gender='female')))
     c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
     r=c.get('/auth/signup')
     assert r.status_code==200
     assert 'name="name"' in r.text and 'value="제공자 이름"' in r.text
-    assert r.text.count('data-provider-locked="true"')==2
+    assert r.text.count('data-provider-locked="true"')==4
     assert 'value="01022223333"' in r.text
     email=re.search(r'<input[^>]*name="email"[^>]*>',r.text)[0]
     assert 'readonly' not in email
+    assert 'id="signup-age_range"' in r.text and 'id="signup-gender"' in r.text
+    assert 'name="age_range" value="30-39"' in r.text
+    assert 'name="gender" value="female"' in r.text
+    assert r.text.count('aria-disabled="true"')==2
 
+
+
+def test_provider_demographic_normalization_contract():
+    assert p._provider_age_range('kakao','15~19')=='14-19'
+    assert p._provider_age_range('kakao','20~29')=='20-29'
+    assert p._provider_age_range('kakao','70~79')=='70+'
+    assert p._provider_age_range('kakao','10~14') is None
+    assert p._provider_age_range('naver','20-29')=='20-29'
+    assert p._provider_age_range('naver','80-89')=='70+'
+    assert p._provider_age_range('naver','10-19') is None
+    assert p._provider_gender('kakao','female')=='female'
+    assert p._provider_gender('kakao','male')=='male'
+    assert p._provider_gender('naver','F')=='female'
+    assert p._provider_gender('naver','M')=='male'
+    assert p._provider_gender('naver','U') is None

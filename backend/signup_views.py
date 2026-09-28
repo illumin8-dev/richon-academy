@@ -31,9 +31,8 @@ def notice(settings):
 
 
 def signup_form(settings, csrf, provider_profile=None):
-    options = '<option value="">선택하지 않음</option>' + ''.join(
-        f'<option value="{age}">{"14~19세" if age == "14-19" else age.replace("-", "~") + "세"}</option>' for age in AGE_RANGES)
-    provider_profile = provider_profile or type('EmptyProfile', (), {'name':None,'phone':None,'email':None})()
+    provider_profile = provider_profile or type('EmptyProfile', (), {
+        'name':None,'phone':None,'email':None,'age_range':None,'gender':None})()
     marketing_input = (
         '<label><input type="checkbox" name="marketing" value="yes" data-consent-item> '
         '[선택] 광고성 정보 수신 동의 (문자·이메일)</label>'
@@ -52,6 +51,27 @@ def signup_form(settings, csrf, provider_profile=None):
         suffix = '<span class="provider-locked-note">소셜 계정에서 확인된 정보 / 가입 단계에서 수정할 수 없습니다.</span>' if locked else ''
         return f'<label>{label} [필수]<input {" ".join(attrs)}>{suffix}</label>'
 
+    def optional_select(name, label, values, selected):
+        locked = selected in values
+        options = ['<option value="">선택하지 않음</option>']
+        for value, text in values.items():
+            mark = ' selected' if value == selected else ''
+            options.append(f'<option value="{e(value)}"{mark}>{e(text)}</option>')
+        attrs = [f'id="signup-{name}"']
+        if locked:
+            attrs.extend(['disabled', 'aria-disabled="true"', 'data-provider-locked="true"'])
+        else:
+            attrs.append(f'name="{name}"')
+        hidden = f'<input type="hidden" name="{name}" value="{e(selected)}">' if locked else ''
+        suffix = '<span class="provider-locked-note">소셜 계정에서 제공된 정보 / 선택 동의 시 상담정보로 저장됩니다.</span>' if locked else ''
+        return f'<label>{label}<select {" ".join(attrs)}>{"".join(options)}</select>{hidden}{suffix}</label>'
+
+    age_values = {
+        age: ('14~19세' if age == '14-19' else ('70세 이상' if age == '70+' else age.replace('-', '~') + '세'))
+        for age in AGE_RANGES
+    }
+    gender_values = {'female':'여성','male':'남성'}
+
     return f'''<p>회원정보를 확인해 주세요. 기존 계정은 그대로 유지됩니다.</p>{notice(settings)}
 <form method="post" action="/auth/signup" data-richon-signup>
 <input type="hidden" name="csrf" value="{e(csrf)}">
@@ -62,10 +82,10 @@ def signup_form(settings, csrf, provider_profile=None):
 {field('email','이메일',provider_profile.email,kind='email',autocomplete='email',maxlength='254')}
 <label><input id="consent-all" type="checkbox" data-consent-all> <strong>전체 동의</strong> <small>(선택 항목 포함)</small></label>
 <fieldset><legend>상담정보 [선택]</legend>
-<label>연령대<select name="age_range">{options}</select></label>
-<label>성별<select name="gender"><option value="">선택하지 않음</option><option value="female">여성</option><option value="male">남성</option></select></label>
+{optional_select('age_range','연령대',age_values,provider_profile.age_range)}
+{optional_select('gender','성별',gender_values,provider_profile.gender)}
 <label><input type="checkbox" name="consultation" value="yes" data-consent-item> [선택] 상담정보 수집·이용 동의</label>
-<p>선택 동의가 없으면 입력한 연령대·성별은 저장하지 않습니다.</p></fieldset>
+<p>소셜 계정에서 제공된 연령대·성별도 선택 동의한 경우에만 상담정보로 저장합니다. 동의하지 않으면 저장하지 않습니다.</p></fieldset>
 <label><input type="checkbox" name="over14" value="yes" required data-consent-item> [필수] 만 14세 이상입니다.</label>
 <label><input type="checkbox" name="terms" value="yes" required data-consent-item> [필수] <a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> 동의</label>
 <label><input type="checkbox" name="privacy" value="yes" required data-consent-item> [필수] 개인정보 수집·이용 동의</label>

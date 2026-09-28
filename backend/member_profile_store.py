@@ -38,18 +38,21 @@ def finish(settings, ticket, browser, registration):
         cur.execute('''DELETE FROM richon.oauth_signups WHERE ticket_hash=%s AND browser_hash=%s
             AND expires_at>CURRENT_TIMESTAMP AND terms_version=%s AND privacy_version=%s
             RETURNING provider,app_id,subject,display_name,
-                      provider_name,provider_phone,provider_email,return_to''',
+                      provider_name,provider_phone,provider_email,
+                      provider_age_range,provider_gender,return_to''',
             (digest, browser_digest, settings.terms_version, settings.privacy_version))
         row = cur.fetchone()
         if (not row or row[0] not in settings.providers
-                or settings.providers[row[0]].identity_scope != row[1] or row[7] not in RETURNS):
+                or settings.providers[row[0]].identity_scope != row[1] or row[9] not in RETURNS):
             raise InvalidFlow()
         identity = core.VerifiedIdentity(*row[:4])
+        age_range = (row[7] or registration.age_range) if registration.consultation_consent else None
+        gender = (row[8] or registration.gender) if registration.consultation_consent else None
         effective = profile.Registration(
             row[4] or registration.name,
             row[5] or registration.phone,
             row[6] or registration.email,
-            registration.age_range, registration.gender,
+            age_range, gender,
             registration.consultation_consent, True)
         scope = json.dumps([identity.provider, identity.app_id, identity.subject], separators=(',', ':'))
         lock = int.from_bytes(hashlib.sha256(scope.encode()).digest()[:8], 'big', signed=True)
@@ -87,4 +90,4 @@ def finish(settings, ticket, browser, registration):
                 VALUES(%s,%s,%s,%s,CASE WHEN %s THEN CURRENT_TIMESTAMP END)
                 ON CONFLICT (member_id) DO NOTHING''',
                 (member_id,granted,granted,marketing.VERSION,granted))
-    return member_id, row[7]
+    return member_id, row[9]

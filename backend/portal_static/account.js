@@ -54,7 +54,7 @@
     $('content').hidden=true;$('gate').hidden=false;$('logout').hidden=true;$('site-account-me').hidden=true;$('admin-link').hidden=true;
     $('list').replaceChildren();$('providers').replaceChildren();text('joined','');text('action-status','');text('list-status','');
     for(const field of fields){text('profile-'+field,'');$('profile-'+field+'-row').hidden=true;}
-    $('edit-profile').hidden=true;$('manage-logins').hidden=true;$('manage-marketing').hidden=true;$('profile-marketing-row').hidden=true;$('withdraw-account').hidden=true;$('withdraw-inquiry').hidden=false;
+    $('edit-profile').hidden=true;$('manage-logins').hidden=true;$('manage-marketing').hidden=true;$('profile-marketing-row').hidden=true;$('profile-use-note').hidden=true;$('withdraw-account').hidden=true;$('withdraw-inquiry').hidden=false;
     text('gate-title',title);text('gate-text',message);$('retry-gate').hidden=!retry;$('gate-login').hidden=!login;
   }
 
@@ -69,6 +69,7 @@
     const data=me.registration;
     const registered=data&&typeof data.name==='string'&&typeof data.phone==='string'&&typeof data.email==='string';
     if(registered){
+      $('profile-use-note').hidden=false;
       for(const field of ['name','phone','email']){text('profile-'+field,data[field]);$('profile-'+field+'-row').hidden=false;}
       if(data.consultation_consent===true){
         for(const [field,dict,key] of [['age',ages,'age_range'],['gender',genders,'gender']]){
