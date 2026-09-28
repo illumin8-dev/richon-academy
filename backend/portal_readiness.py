@@ -8,7 +8,7 @@ import marketing_consent as marketing
 
 ROLE = 'richon_portal_login'
 READ = ('members', 'auth_identities', 'member_sessions', 'oauth_attempts',
-        'oauth_signups', 'member_order_links', 'courses', 'orders')
+        'oauth_signups', 'member_ci_claims', 'member_order_links', 'courses', 'orders')
 INSERT = {
     'members': ('member_id', 'display_name', 'terms_version', 'privacy_version'),
     'auth_identities': ('provider', 'app_id', 'subject', 'member_id'),
@@ -19,7 +19,8 @@ INSERT = {
 }
 PROVIDER_PROFILE_INSERT = {
     'oauth_signups': ('provider_name','provider_phone','provider_email',
-                      'provider_age_range','provider_gender'),
+                      'provider_age_range','provider_gender','provider_ci_digest'),
+    'member_ci_claims': ('ci_digest','member_id','provider'),
 }
 UPDATE = {'members': ('auth_version',),
           'member_sessions': ('last_seen_at', 'idle_expires_at', 'revoked_at'),
@@ -48,7 +49,7 @@ ACCOUNT_UPDATE = {
     'oauth_account_attempts': ('consumed_at',),
     'orders': ('request_fingerprint','customer_name','customer_phone','customer_email'),
 }
-ACCOUNT_DELETE = ('auth_identities','member_sessions','member_profiles','member_order_links',
+ACCOUNT_DELETE = ('auth_identities','member_sessions','member_profiles','member_ci_claims','member_order_links',
                   'oauth_account_attempts','oauth_link_confirmations','account_withdrawals',
                   'provider_unlink_failures')
 MARKETING_READ = ('member_marketing_consents',)
@@ -106,8 +107,9 @@ def provider_profile_schema_ready(cur):
     cur.execute("""SELECT count(*) FROM pg_attribute
         WHERE attrelid='richon.oauth_signups'::regclass AND attnum>0 AND NOT attisdropped
           AND attname=ANY(ARRAY['provider_name','provider_phone','provider_email',
-                                'provider_age_range','provider_gender'])""")
-    return cur.fetchone()==(5,)
+                                'provider_age_range','provider_gender','provider_ci_digest'])""")
+    cur.execute("SELECT to_regclass('richon.member_ci_claims') IS NOT NULL")
+    return cur.fetchone()==(True,)
 
 
 def provider_profile_grants_prepared(cur):
@@ -118,9 +120,13 @@ def provider_profile_grants_prepared(cur):
         has_column_privilege(%s,'richon.oauth_signups','provider_phone','INSERT'),
         has_column_privilege(%s,'richon.oauth_signups','provider_email','INSERT'),
         has_column_privilege(%s,'richon.oauth_signups','provider_age_range','INSERT'),
-        has_column_privilege(%s,'richon.oauth_signups','provider_gender','INSERT')""",
-        (ROLE,ROLE,ROLE,ROLE,ROLE))
-    return cur.fetchone()==(True,True,True,True,True)
+        has_column_privilege(%s,'richon.oauth_signups','provider_gender','INSERT'),
+        has_column_privilege(%s,'richon.oauth_signups','provider_ci_digest','INSERT'),
+        has_column_privilege(%s,'richon.member_ci_claims','ci_digest','INSERT'),
+        has_column_privilege(%s,'richon.member_ci_claims','member_id','INSERT'),
+        has_column_privilege(%s,'richon.member_ci_claims','provider','INSERT')""",
+        (ROLE,ROLE,ROLE,ROLE,ROLE,ROLE,ROLE,ROLE,ROLE))
+    return cur.fetchone()==(True,True,True,True,True,True,True,True,True)
 
 
 def check_role(cur):
