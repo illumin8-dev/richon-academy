@@ -18,7 +18,8 @@ INSERT = {
                       'return_to', 'terms_version', 'privacy_version', 'expires_at'),
 }
 PROVIDER_PROFILE_INSERT = {
-    'oauth_signups': ('provider_name','provider_phone','provider_email'),
+    'oauth_signups': ('provider_name','provider_phone','provider_email',
+                      'provider_age_range','provider_gender'),
 }
 UPDATE = {'members': ('auth_version',),
           'member_sessions': ('last_seen_at', 'idle_expires_at', 'revoked_at'),
@@ -104,8 +105,9 @@ def marketing_grants_prepared(cur):
 def provider_profile_schema_ready(cur):
     cur.execute("""SELECT count(*) FROM pg_attribute
         WHERE attrelid='richon.oauth_signups'::regclass AND attnum>0 AND NOT attisdropped
-          AND attname=ANY(ARRAY['provider_name','provider_phone','provider_email'])""")
-    return cur.fetchone()==(3,)
+          AND attname=ANY(ARRAY['provider_name','provider_phone','provider_email',
+                                'provider_age_range','provider_gender'])""")
+    return cur.fetchone()==(5,)
 
 
 def provider_profile_grants_prepared(cur):
@@ -114,9 +116,11 @@ def provider_profile_grants_prepared(cur):
     cur.execute("""SELECT
         has_column_privilege(%s,'richon.oauth_signups','provider_name','INSERT'),
         has_column_privilege(%s,'richon.oauth_signups','provider_phone','INSERT'),
-        has_column_privilege(%s,'richon.oauth_signups','provider_email','INSERT')""",
-        (ROLE,ROLE,ROLE))
-    return cur.fetchone()==(True,True,True)
+        has_column_privilege(%s,'richon.oauth_signups','provider_email','INSERT'),
+        has_column_privilege(%s,'richon.oauth_signups','provider_age_range','INSERT'),
+        has_column_privilege(%s,'richon.oauth_signups','provider_gender','INSERT')""",
+        (ROLE,ROLE,ROLE,ROLE,ROLE))
+    return cur.fetchone()==(True,True,True,True,True)
 
 
 def check_role(cur):
