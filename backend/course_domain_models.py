@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 RunStatus=Literal['OPEN','WAITLIST','UPCOMING','CLOSED']
 
 class Input(BaseModel):
-    model_config=ConfigDict(extra='forbid',strict=True,hide_input_in_errors=True)
+    model_config=ConfigDict(extra='forbid',hide_input_in_errors=True)
 
     @field_validator(
         'reason','program_id','title','description','access_mode','cohort_label','status',
