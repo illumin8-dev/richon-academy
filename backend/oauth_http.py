@@ -117,7 +117,8 @@ def provider_handoff(target):
 
 
 def page(title,body):
-    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title></head><body class="richon-page auth-page"><main class="auth-main"><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
+    kind = 'signup' if title == '회원가입 안내' else ('login' if title == '간편 로그인' else 'message')
+    content='''<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>리치온아카데미 / '''+html.escape(title)+'''</title></head><body class="richon-page auth-page"><main class="auth-main auth-main-'''+kind+'''"><h1>'''+html.escape(title)+'''</h1>'''+body+'''</main></body></html>'''
     static = Path(__file__).parent / 'portal_static'
     header = (static / 'site-header.html').read_text()
     footer = (static / 'site-footer.html').read_text()
