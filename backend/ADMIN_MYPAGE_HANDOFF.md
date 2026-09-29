@@ -177,3 +177,16 @@
 - confirmation phrase: `APPLY_LEGACY_ADMIN_RUNTIME`.
 - 고객 row 변경 없음. schema change는 DB017 function replacement만.
 - 실제 production DB017/ACL 적용 및 feature ON은 아직 하지 않음.
+
+
+### 체크포인트 5 / PR #91 병합 완료
+- PR #91 최신 head `13555f4e61386a0fbd9f1aa29e69738c4ce7496a`에서 5개 CI 전부 PASS.
+  - Login flow regression PASS
+  - Same-domain login edge/image PASS
+  - Portal UI synthetic PASS
+  - Backend + disposable PostgreSQL PASS
+  - Standalone admin preview PASS
+- draft 해제 후 `feat/backend-portal-deploy`에 병합 완료.
+- merge commit: `1752850e03a449550b343f755bae8a7de2dcf750`.
+- production DB017 / legacy runtime ACL / monthly/manual feature는 아직 미적용.
+- 다음 작업 단위: feature OFF 상태로 최신 merged code를 protected candidate에 code-only rollout.
