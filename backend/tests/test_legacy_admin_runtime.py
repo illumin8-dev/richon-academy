@@ -30,6 +30,9 @@ def legacy_runtime(prepared):
     with prepared() as conn:
         with conn.cursor() as cur:
             prep.verify_schema(cur)
+            assert prep.hardening_state(cur)=='ABSENT'
+            assert prep.apply_hardening(cur) is True
+            assert prep.apply_hardening(cur) is False
             prep.grant_legacy(cur)
     yield prepared
 
@@ -135,10 +138,11 @@ def test_legacy_runtime_cannot_broaden_privileges(legacy_runtime,exact_env,state
 
 def test_helper_source_cannot_deploy_or_mutate_customer_rows():
     source=(Path(__file__).resolve().parents[2]/'ops'/'prepare_legacy_admin.py').read_text()
-    assert prep.CONFIRM=='APPLY_LEGACY_ADMIN_GRANTS'
+    assert prep.CONFIRM=='APPLY_LEGACY_ADMIN_RUNTIME'
     assert '--set-env-vars' not in source
     assert 'run","deploy' not in source
     assert 'UPDATE richon.' not in source
     assert 'DELETE FROM richon.' not in source
     assert 'MONTHLY_MANUAL_FEATURES=OFF' in source
+    assert '017_monthly_runtime_hardening' in source
     assert 'CUSTOMER_ROWS_CHANGED=NO' in source
