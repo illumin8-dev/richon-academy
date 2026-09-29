@@ -10,7 +10,11 @@ RunStatus=Literal['OPEN','WAITLIST','UPCOMING','CLOSED']
 
 class Input(BaseModel):
     model_config=ConfigDict(extra='forbid',strict=True,hide_input_in_errors=True)
-    @field_validator('*',mode='before')
+
+    @field_validator(
+        'reason','program_id','title','description','access_mode','cohort_label','status',
+        'mentor_name','video_url','material_url','name','email','phone','note',
+        mode='before',check_fields=False)
     @classmethod
     def clean_text(cls,value):
         if isinstance(value,str):
