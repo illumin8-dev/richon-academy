@@ -7,7 +7,7 @@
   const names={kakao:'카카오',naver:'네이버'};
   const ages={'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
   const genders={female:'여성',male:'남성'};
-  const allowed=new Set(['/portal/api/me','/portal/api/me/orders','/portal/api/me/security','/portal/api/me/profile',
+  const allowed=new Set(['/portal/api/me','/portal/api/me/orders','/portal/api/me/courses','/portal/api/me/security','/portal/api/me/profile',
     '/portal/api/me/marketing','/portal/api/me/logins/link/pending','/portal/api/me/logins/link/confirm','/portal/api/me/logins/link/cancel',
     '/portal/api/me/withdraw/prepare','/portal/api/me/withdraw/status','/portal/api/me/withdraw/cancel',
     '/auth/csrf','/auth/logout']);
@@ -94,10 +94,10 @@
     $('withdraw-inquiry').hidden=enabled;
   }
 
-  function render(items){
+  function renderOrders(items){
     $('list').replaceChildren();
     if(!items.length){
-      const box=element('div',undefined,'account-empty');box.append(element('p','신청한 강의가 없습니다.'));
+      const box=element('div',undefined,'account-empty');box.append(element('p','신청·주문 내역이 없습니다.'));
       const a=element('a','강의 둘러보기','site-btn site-btn-line');a.href='/#programs';box.append(a);$('list').append(box);return;
     }
     for(const row of items){
@@ -108,18 +108,54 @@
     }
   }
 
+  function renderCourses(items){
+    $('list').replaceChildren();
+    if(!items.length){
+      const box=element('div',undefined,'account-empty');box.append(element('p','현재 수강권이 없습니다.'));
+      const a=element('a','강의 둘러보기','site-btn site-btn-line');a.href='/#programs';box.append(a);$('list').append(box);return;
+    }
+    const statusLabels={SCHEDULED:'시작 예정',ACTIVE:'수강 중',COMPLETED:'수강 종료',SUSPENDED:'일시 중지'};
+    for(const row of items){
+      const card=element('article',undefined,'account-course');const top=element('div',undefined,'account-course-top');const desc=element('div');
+      desc.append(element('h3',row.program_title),element('div',(row.cohort_label?row.cohort_label+' / ':'')+date(row.access_start)+' ~ '+date(row.access_end),'account-meta'));
+      top.append(desc,element('span',statusLabels[row.status]||'상태 확인','account-badge'));card.append(top);
+      if(row.description)card.append(element('p',row.description,'account-course-copy'));
+      if(Array.isArray(row.sessions)&&row.sessions.length){
+        const detail=element('details');detail.append(element('summary','회차 / 학습 자료'));
+        const list=element('div',undefined,'account-session-list');
+        for(const session of row.sessions){
+          const item=element('div',undefined,'account-session');const info=element('div');
+          info.append(element('strong',String(session.sequence_no)+'회 · '+session.title));
+          const meta=[session.mentor_name,date(session.starts_at)].filter(Boolean).join(' / ');
+          if(meta)info.append(element('span',meta,'account-meta'));
+          const links=element('div',undefined,'account-session-links');
+          for(const [key,label] of [['video_url','영상 보기'],['material_url','자료 보기']]){
+            if(!session[key])continue;
+            const link=element('a',label);link.href=session[key];link.target='_blank';link.rel='noopener noreferrer';links.append(link);
+          }
+          item.append(info,links);list.append(item);
+        }
+        detail.append(list);card.append(detail);
+      }
+      $('list').append(card);
+    }
+  }
+
   async function list(){
     if(!state.ready)return;const epoch=state.epoch;const serial=++state.request;
     $('pager').hidden=true;$('retry-list').hidden=true;$('list').replaceChildren();text('list-status','불러오는 중입니다.');
     try{
-      const rows=await api('/portal/api/me/orders?'+new URLSearchParams({limit:String(state.limit),offset:String(state.offset)}));
+      const query=new URLSearchParams({limit:String(state.limit),offset:String(state.offset)});
+      let rows,courseMode=true;
+      try{rows=await api('/portal/api/me/courses?'+query);}
+      catch(error){if(error.status!==404)throw error;courseMode=false;rows=await api('/portal/api/me/orders?'+query);}
       if(epoch!==state.epoch||!state.ready||serial!==state.request)return;
-      render(rows.items);text('list-status','');state.more=rows.has_more;$('pager').hidden=state.offset===0&&!state.more;
+      (courseMode?renderCourses:renderOrders)(rows.items);text('list-status','');state.more=rows.has_more;$('pager').hidden=state.offset===0&&!state.more;
       $('prev').disabled=state.offset===0;$('next').disabled=!state.more||state.offset+state.limit>10000;
       text('page-info',rows.items.length?(String(state.offset+1)+'–'+String(state.offset+rows.items.length)):'');
     }catch(error){
       if(epoch!==state.epoch)return;if(authError(error))return;if(serial!==state.request)return;
-      text('list-status','내역을 불러오지 못했습니다. 다시 시도해 주세요.');$('retry-list').hidden=false;
+      text('list-status','내 강의를 불러오지 못했습니다. 다시 시도해 주세요.');$('retry-list').hidden=false;
     }
   }
 
