@@ -21,6 +21,9 @@ backend/*
 !backend/manual_models.py
 !backend/manual_store.py
 !backend/manual_portal.py
+!backend/course_domain_models.py
+!backend/course_domain_store.py
+!backend/course_domain_portal.py
 !backend/portal_entry.py
 !backend/portal_readiness.py
 !backend/portal_static/
@@ -46,5 +49,8 @@ backend/portal_static/*
 !backend/portal_static/ops.css
 !backend/portal_static/account.css
 !backend/portal_static/account.js
+!backend/portal_static/courses.html
+!backend/portal_static/courses.css
+!backend/portal_static/courses.js
 !backend/portal_static/site-header.html
 !backend/portal_static/site-footer.html

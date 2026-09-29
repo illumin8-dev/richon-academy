@@ -16,6 +16,9 @@
 !manual_models.py
 !manual_store.py
 !manual_portal.py
+!course_domain_models.py
+!course_domain_store.py
+!course_domain_portal.py
 !migrations/
 migrations/*
 !migrations/001_pending_orders.sql
@@ -33,5 +36,10 @@ portal_static/*
 !portal_static/manual.js
 !portal_static/auth.css
 !portal_static/ops.css
+!portal_static/courses.html
+!portal_static/courses.css
+!portal_static/courses.js
+!portal_static/account.css
+!portal_static/account.js
 !.dockerignore
 !.gcloudignore
