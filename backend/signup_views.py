@@ -108,7 +108,7 @@ def signup_form(settings, csrf, provider_profile=None, provider=None):
         klass = 'auth-ci-card' if ci_ready else 'auth-ci-card pending'
         ci_block = (
             f'<div class="{klass}"><div><strong>CI(연계정보) <span class="auth-required">필수 / 카카오</span></strong>'
-            '<small>동일인의 중복가입 방지 및 기존 회원 비교에만 사용합니다.</small></div>'
+            '<small>동일인의 중복 회원가입 방지 및 기존 회원 비교 식별에만 사용합니다.</small></div>'
             f'<span class="provider-lock-badge">{state}</span></div>'
         )
         if not ci_ready:
