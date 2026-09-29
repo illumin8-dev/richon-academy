@@ -11,8 +11,10 @@ import oauth_signup_profile_migrate,oauth_signup_demographics_migrate,kakao_ci_m
 import course_domain_migrate,course_entitlement_migrate
 import course_domain_models as model
 import course_domain_store as store
+from test_orders_postgres import postgres
+from test_auth_postgres import guarded_target, auth_postgres, CONSENT
+from test_monthly_postgres import monthly_db
 from test_manual_postgres import registry_db
-from test_auth_postgres import CONSENT
 
 pytestmark=pytest.mark.skipif(
     os.getenv('RICHON_EMPTY_TEST_DB')!='YES' or not os.getenv('RICHON_TEST_DATABASE_URL'),
