@@ -11,8 +11,8 @@ import monthly_migrate
 import manual_migrate
 import portal_readiness as ready
 
-from test_portal_bootstrap_postgres import prepared, restricted
-from test_auth_postgres import guarded_target
+from test_portal_bootstrap_postgres import prepared, restricted, runtime_password
+from test_auth_postgres import auth_postgres, guarded_target
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'ops'))
 import prepare_legacy_admin as prep
