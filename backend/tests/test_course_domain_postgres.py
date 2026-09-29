@@ -84,16 +84,16 @@ def test_pre_richon_fixed_two_month_entitlement_and_idempotency(course_db,actors
     start=date.today().replace(day=min(date.today().day,28))
     end=add_months(start,2)-timedelta(days=1)
     r=run(admin,pid,start,end)
-    body=model.EnrollmentGrant(request_id=req(),reason='가상 수강권',run_id=r['run_id'],member_id=member)
+    body=model.EnrollmentGrant(request_id=req(),reason='가상 수강권',run_id=UUID(r['run_id']),member_id=member)
     first=store.mutate(admin,'enrollment.grant',body)
     assert store.mutate(admin,'enrollment.grant',body)==first
     with course_db() as c:
         row=c.execute('SELECT access_start,access_end,source FROM richon.course_enrollments WHERE enrollment_id=%s',(first['enrollment_id'],)).fetchone()
         assert row==(start,end,'ADMIN')
-    custom=model.EnrollmentGrant(request_id=req(),reason='가상 임의 기간',run_id=r['run_id'],member_id=uuid4(),
+    custom=model.EnrollmentGrant(request_id=req(),reason='가상 임의 기간',run_id=UUID(r['run_id']),member_id=member,
                                  access_start=start,access_end=end-timedelta(days=1))
     with pytest.raises(store.Rejected) as exc:store.mutate(admin,'enrollment.grant',custom)
-    assert exc.value.code in ('member_not_found','fixed_access_window')
+    assert exc.value.code=='fixed_access_window'
 
 
 def test_date_range_run_allows_admin_selected_period(course_db,actors):
@@ -103,7 +103,7 @@ def test_date_range_run_allows_admin_selected_period(course_db,actors):
     r=run(admin,pid,start,end)
     access_start=date.today();access_end=date.today()+timedelta(days=30)
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
-        request_id=req(),reason='가상 기간제',run_id=r['run_id'],member_id=member,
+        request_id=req(),reason='가상 기간제',run_id=UUID(r['run_id']),member_id=member,
         access_start=access_start,access_end=access_end,note='수기 등록'))
     with course_db() as c:
         assert c.execute('SELECT access_start,access_end,source,note FROM richon.course_enrollments WHERE enrollment_id=%s',
@@ -119,7 +119,7 @@ def test_member_grant_never_auto_merges_same_name_guest(course_db,actors):
     pid='nomerge-'+uuid4().hex[:8];program(admin,pid)
     start=date.today();end=start+timedelta(days=20);r=run(admin,pid,start,end)
     out=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
-        request_id=req(),reason='가상 명시 회원',run_id=r['run_id'],member_id=member))
+        request_id=req(),reason='가상 명시 회원',run_id=UUID(r['run_id']),member_id=member))
     assert out['learner_id']!=str(guest)
     with course_db() as c:
         assert c.execute('SELECT member_id FROM richon.enrollment_learners WHERE learner_id=%s',(out['learner_id'],)).fetchone()==(member,)
@@ -131,11 +131,11 @@ def test_my_courses_exposes_optional_resources_only_during_access(course_db,acto
     pid='content-'+uuid4().hex[:8];program(admin,pid)
     start=date.today()-timedelta(days=1);end=date.today()+timedelta(days=30);r=run(admin,pid,start,end)
     store.mutate(admin,'session.create',model.SessionCreate(
-        request_id=req(),reason='가상 회차',run_id=r['run_id'],sequence_no=1,title='첫 회차',
+        request_id=req(),reason='가상 회차',run_id=UUID(r['run_id']),sequence_no=1,title='첫 회차',
         mentor_name='가상 멘토',starts_at=datetime.now(timezone.utc),
         video_url='https://example.invalid/video',material_url='https://example.invalid/material'))
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
-        request_id=req(),reason='가상 활성 수강',run_id=r['run_id'],member_id=member))
+        request_id=req(),reason='가상 활성 수강',run_id=UUID(r['run_id']),member_id=member))
     own=store.my_courses(member,20,0)
     row=next(x for x in own['items'] if x['enrollment_id']==grant['enrollment_id'])
     assert row['status']=='ACTIVE'
@@ -155,8 +155,8 @@ def test_admin_cancel_is_audited_and_does_not_delete_history(course_db,actors):
     pid='cancel-'+uuid4().hex[:8];program(admin,pid)
     start=date.today();end=start+timedelta(days=10);r=run(admin,pid,start,end)
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
-        request_id=req(),reason='가상 지급',run_id=r['run_id'],member_id=member))
-    cancel=model.EnrollmentCancel(request_id=req(),reason='가상 취소',enrollment_id=grant['enrollment_id'],version=grant['version'])
+        request_id=req(),reason='가상 지급',run_id=UUID(r['run_id']),member_id=member))
+    cancel=model.EnrollmentCancel(request_id=req(),reason='가상 취소',enrollment_id=UUID(grant['enrollment_id']),version=grant['version'])
     result=store.mutate(admin,'enrollment.cancel',cancel)
     assert result['status']=='CANCELLED'
     with course_db() as c:
