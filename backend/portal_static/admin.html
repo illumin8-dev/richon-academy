@@ -17,4 +17,18 @@
 <div id="list-status" class="status-message" role="status"></div><button class="button" id="retry-list" hidden>목록 다시 불러오기</button><div class="pager" id="pager" hidden><span class="small" id="page-info"></span><div class="pager-actions"><button class="button" id="prev">이전</button><button class="button" id="next">다음</button></div></div></section>
 <div class="info-note">기존 수강생 등록·수정은 ‘수강생 수동 등록 / 수정’ 메뉴를 사용합니다. 실제 PG 결제 / 환불 / 알림은 아직 연결하지 않았습니다. 연락처는 목록에서 일부 가려 표시합니다.</div>
 </div><p class="status-message" id="action-status" role="status"></p><p class="footer-note">RICHON ACADEMY · 회원 수와 주문 수는 별도 집계입니다. 미연결 주문을 특정 회원에게 자동 귀속하지 않습니다.</p>
-</main></div></body></html>
+</main></div><dialog id="member-detail-dialog" class="admin-dialog" aria-labelledby="member-detail-title">
+<button class="admin-dialog-close" type="button" data-member-detail-close aria-label="닫기">×</button>
+<div class="admin-dialog-head">
+  <p class="eyebrow">MEMBER DETAIL</p>
+  <h2 id="member-detail-title">회원 상세</h2>
+  <p id="member-detail-sub" class="small"></p>
+</div>
+<div id="member-detail-loading" class="status-message" role="status"></div>
+<div id="member-detail-content" hidden>
+  <dl id="member-detail-info" class="member-detail-info"></dl>
+  <section class="member-detail-section"><h3>수강권 / 강의</h3><div id="member-detail-learning" class="member-detail-list"></div></section>
+  <section class="member-detail-section"><h3>신청 / 주문</h3><div id="member-detail-orders" class="member-detail-list"></div></section>
+</div>
+</dialog>
+</body></html>

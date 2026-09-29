@@ -72,3 +72,108 @@
   2. 나타난다면 인증/동의 뒤 어느 URL로 이동하는지
   3. Kakao 화면 자체에서 오류가 나는지
   를 사용자 개인정보/코드 없이 관찰하고, 필요 시 provider console redirect URI/consent 상태와 대조.
+
+
+## 작업 체크포인트 / admin-mypage-operations-unification
+
+### 완료된 코드 변경
+- 404 원인 확정:
+  - `/portal/enrollments`, `/portal/manual` route/code/Worker allowlist/static file 모두 존재.
+  - 실제 원인은 `RICHON_MONTHLY_ENABLED=false`, `RICHON_MANUAL_ENABLED=false`로 route가 설치되지 않은 상태.
+- `monthly_store.py`가 runtime에서 `schema_migrations`를 읽던 경로 제거.
+  - manual feature가 ON일 때 실제 `manual_enrollments` table 존재 여부로 fail-closed.
+- `portal_readiness.py`에 monthly/manual feature flag와 DB004/005 runtime ACL 계약 초안 추가.
+- 관리자 UI shell:
+  - `courses`와 동일한 topbar/sidebar/page heading family로 `enrollments`, `manual` 외형 통합 초안 적용.
+- 회원 count:
+  - `members_total`은 withdrawn 제외하도록 수정.
+  - 회원 목록 기본 전체도 withdrawn 제외, `status=withdrawn` 명시 필터일 때만 탈퇴회원 조회.
+- 회원 상세:
+  - `GET /portal/api/admin/members/{member_id}` endpoint 골격 추가.
+  - canonical course enrollment / legacy monthly enrollment / linked orders를 한 응답으로 보는 store query 추가.
+  - 관리자 회원 이름 클릭 시 상세 dialog를 여는 UI 초안 추가.
+- 마이페이지:
+  - 내 정보 2열 compact grid로 재구성.
+  - 긴 활용 목적 문구 제거.
+  - 연결된 로그인과 `관리` action을 같은 블록으로 통합.
+  - 이름 수정 field는 설명문 대신 회색 잠금 field + lock mark.
+  - phone/email placeholder 보강.
+- shared source와 portal_static의 mypage/account 파일 동기화 완료.
+
+### 아직 하지 않은 것
+- monthly/manual 운영 ACL 실제 적용 helper는 아직 생성되지 않음.
+- `RICHON_MONTHLY_ENABLED=true`, `RICHON_MANUAL_ENABLED=true`는 아직 적용하지 않음.
+- protected candidate에 이 branch 코드는 아직 배포하지 않음.
+- current branch 전체 CI/브라우저 테스트는 아직 실행 전.
+- 회원 상세 response model / SQL / UI 회귀 테스트 추가 필요.
+- enrollments/manual 공통 shell의 CSS 충돌 및 모바일 확인 필요.
+- production API readback으로 실제 데이터 0건/synthetic 여부 확인 필요.
+- Kakao callback 미도착 문제는 별도 미해결:
+  - current candidate /auth/start는 200 성공.
+  - /auth/kakao/callback 요청은 0건.
+  - callback stage failure도 0건.
+
+### 다음 작업 단위
+1. 현재 branch CI가 깨지지 않도록 테스트/타입 정리.
+2. DB004/005 legacy admin runtime ACL 전용 owner helper 작성 + disposable PostgreSQL 검증.
+3. PR 생성/CI.
+4. ACL owner 적용 후 protected candidate에서 monthly/manual feature ON.
+5. 실제 /portal/enrollments, /portal/manual route/API readback.
+6. production data 경계 확인 후 UI 세부 마감.
+
+
+### 체크포인트 1 / PR #91 1차 CI
+- Draft PR #91 생성: `fix(admin): unify operations, member detail and account UX`.
+- 첫 CI에서 Same-domain edge/image PASS, standalone admin preview PASS.
+- Portal UI failure는 기능 오류가 아니라 shared shell drift:
+  - `frontend/shared/mypage.html` 수정 후 `backend/portal_static/mypage.html`을 단순 복사해 build 규칙과 달라짐.
+  - `tools/build_site_shell.py` 규칙대로 shared header/footer를 삽입해 generated mypage를 재생성.
+- 수정 후 PR은 mergeable=true.
+- 다음: 최신 head CI 재확인 후 legacy admin runtime ACL helper 작성.
+
+
+### 체크포인트 2 / legacy admin ACL helper
+- `ops/prepare_legacy_admin.py` 생성.
+- 목적: 이미 적용된 DB004/005에 `richon_portal_login`의 월별/수동관리 최소권한만 추가.
+- helper가 하지 않는 것:
+  - 고객 row 변경 없음
+  - DDL/schema 변경 없음
+  - Cloud Run feature flag 변경 없음
+  - IAM/Secret/provider 변경 없음
+- DB004/005 checksum이 정확히 일치해야만 진행.
+- 적용 후 restricted runtime readback + `portal_readiness.check_role` 검증.
+- confirmation phrase: `APPLY_LEGACY_ADMIN_GRANTS`.
+- `manual_store._enrollment`은 실제 수정하지 않는 `monthly_enrollments`까지 FOR UPDATE하던 불필요 lock을 제거하고 `manual_enrollments`만 lock.
+- 실제 운영 ACL 적용은 아직 하지 않음.
+
+
+### 체크포인트 3 / exact legacy runtime test
+- `backend/tests/test_legacy_admin_runtime.py` 추가.
+- disposable PostgreSQL에서:
+  - DB004/005 exact schema
+  - `richon_portal_login` ACL 준비
+  - readiness exact contract
+  - 수동 과정/수강생/수강/term/audit INSERT
+  - 허용된 profile/term/manual archive UPDATE
+  - monthly trigger 실행
+  을 실제 제한 역할로 검증.
+- 금지 검증:
+  - DELETE
+  - TRUNCATE
+  - monthly_enrollments 직접 UPDATE
+  - schema_migrations SELECT
+- helper source가 Cloud Run deploy/env enable/customer row mutation을 포함하지 않는 계약도 검증.
+- 다음: PR #91 최신 CI 확인 및 회귀 수정.
+
+
+### 체크포인트 4 / DB017 restricted-runtime hardening
+- exact ACL 테스트에서 DB004 trigger 함수의 `FOR UPDATE / FOR SHARE`가 runtime에 불필요한 UPDATE 권한을 요구하는 문제 발견.
+- 권한을 넓히지 않고 새 migration `017_monthly_runtime_hardening` 추가:
+  - `validate_monthly_term()`의 row-lock clause 제거.
+  - 기존 검증 로직 / confirmed immutability / order snapshot checks 유지.
+  - PUBLIC EXECUTE revoke 유지.
+- `monthly_runtime_hardening_migrate.py` 추가. 앱 startup 자동 migration 아님.
+- `prepare_legacy_admin.py`는 DB004/005 exact 확인 → DB017 적용/재진입 확인 → legacy runtime ACL → restricted readback 순서로 변경.
+- confirmation phrase: `APPLY_LEGACY_ADMIN_RUNTIME`.
+- 고객 row 변경 없음. schema change는 DB017 function replacement만.
+- 실제 production DB017/ACL 적용 및 feature ON은 아직 하지 않음.

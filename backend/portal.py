@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Read-only member/admin portal. Default OFF; no social-login bypass."""
 from datetime import datetime
 import logging
@@ -96,6 +97,39 @@ class MemberItem(Profile):
     status: Literal["active", "disabled", "withdrawn"]
 
 
+class AdminLearningItem(BaseModel):
+    enrollment_id: UUID
+    program_title: str
+    cohort_label: str | None
+    status: str
+    access_start: str
+    access_end: str
+    source: str
+
+
+class AdminLegacyLearningItem(BaseModel):
+    enrollment_id: UUID
+    course_title: str
+    cohort: str | None
+    start_month: str
+    confirmed_months: int
+    archived: bool
+
+
+class AdminMemberDetail(BaseModel):
+    member_id: UUID
+    display_name: str
+    role: Literal["member", "admin"]
+    status: Literal["active", "disabled", "withdrawn"]
+    created_at: datetime
+    providers: list[Literal["kakao", "naver"]]
+    registration: RegistrationView | None = None
+    marketing_consent: bool | None = None
+    learning: list[AdminLearningItem]
+    legacy_learning: list[AdminLegacyLearningItem]
+    orders: list[OrderItem]
+
+
 class OrderItem(BaseModel):
     order_id: str
     course_id: str
@@ -175,6 +209,12 @@ def make_router() -> APIRouter:
     def admin_members(response: Response, admin: Annotated[Principal, Depends(require_admin)],
                       params: Annotated[MemberQuery, Query()]):
         return read(response, store.members, params.limit, params.offset, params.q, params.status)
+
+    @router.get("/admin/members/{member_id}", response_model=AdminMemberDetail, response_model_exclude_none=True)
+    def admin_member_detail(member_id: UUID, response: Response,
+                            admin: Annotated[Principal, Depends(require_admin)],
+                            params: Annotated[EmptyQuery, Query()]):
+        return read(response, store.member_detail, member_id)
 
     @router.get("/admin/courses", response_model=PageResult[CourseItem])
     def admin_courses(response: Response, admin: Annotated[Principal, Depends(require_admin)],

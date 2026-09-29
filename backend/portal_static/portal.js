@@ -9,6 +9,12 @@
   const genderLabels = {female:'여성', male:'남성'};
   const labels = {kakao: '카카오', naver: '네이버', member: '일반 회원', admin: '관리자', active: '이용 중', disabled: '이용 정지', withdrawn: '탈퇴'};
   const date = (v) => new Intl.DateTimeFormat('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Asia/Seoul'}).format(new Date(v));
+  const phone = (value) => {
+    const digits=String(value||'').replace(/\D/g,'');
+    if(digits.length===11&&digits.startsWith('01'))return digits.slice(0,3)+'-'+digits.slice(3,7)+'-'+digits.slice(7);
+    if(digits.length===10&&digits.startsWith('01'))return digits.slice(0,3)+'-'+digits.slice(3,6)+'-'+digits.slice(6);
+    return String(value||'');
+  };
   const money = (v) => new Intl.NumberFormat('ko-KR').format(v) + '원';
   const text = (id, v) => { if ($(id)) $(id).textContent = String(v); };
   function element(tag, value, cls) { const el = document.createElement(tag); if (value !== undefined) el.textContent = String(value); if (cls) el.className = cls; return el; }
@@ -85,6 +91,64 @@
     courses: {title:'강의 목록', description:'서버에 등록된 강의와 가격입니다. 수강기간과 수강 확정은 아직 관리하지 않습니다.', search:'강의명 / 기수 검색', placeholder:'강의명, 기수 또는 정확한 강의 ID', filter:'신청 가능', key:'enabled', options:[['','전체'],['true','가능'],['false','중지']], heads:['강의 / 기수','수강료','신청 상태','등록일']}
   };
   function primary(main, sub) { const box=element('div'); box.append(element('div',main,'primary-text')); if (sub) box.append(element('div',sub,'secondary')); return box; }
+  function memberPrimary(row) {
+    const box=element('div');
+    const button=element('button',row.display_name,'member-detail-trigger');
+    button.type='button';button.addEventListener('click',()=>openMemberDetail(row.member_id));
+    box.append(button,element('div',row.member_id,'secondary'));
+    return box;
+  }
+  function detailPair(label,value){
+    const wrap=element('div');wrap.append(element('dt',label),element('dd',value||'—'));return wrap;
+  }
+  function detailEmpty(textValue){
+    const empty=element('div',textValue,'member-detail-empty');return empty;
+  }
+  async function openMemberDetail(memberId){
+    const dialog=$('member-detail-dialog');
+    if(!dialog||typeof dialog.showModal!=='function')return;
+    text('member-detail-title','회원 상세');text('member-detail-sub','불러오는 중입니다.');
+    text('member-detail-loading','');$('member-detail-content').hidden=true;dialog.showModal();
+    try{
+      const data=await api('/portal/api/admin/members/'+encodeURIComponent(memberId));
+      const registration=data.registration||{};
+      text('member-detail-title',registration.name||data.display_name);
+      text('member-detail-sub',(labels[data.role]||data.role)+' / '+(labels[data.status]||data.status)+' / 가입 '+date(data.created_at));
+      const info=$('member-detail-info');info.replaceChildren(
+        detailPair('휴대전화',registration.phone?phone(registration.phone):'—'),
+        detailPair('이메일',registration.email||'—'),
+        detailPair('연결 로그인',(data.providers||[]).map(x=>labels[x]||x).join(' / ')||'없음'),
+        detailPair('광고성 정보',data.marketing_consent===true?'동의':data.marketing_consent===false?'미동의':'확인 없음')
+      );
+      const learning=$('member-detail-learning');learning.replaceChildren();
+      const allLearning=[...(data.learning||[]),...(data.legacy_learning||[])];
+      if(!allLearning.length)learning.append(detailEmpty('등록된 수강권이 없습니다.'));
+      for(const row of data.learning||[]){
+        const card=element('article',undefined,'member-detail-card');
+        card.append(element('strong',row.program_title+(row.cohort_label?' / '+row.cohort_label:'')),
+          element('span',row.access_start+' ~ '+row.access_end+' / '+row.status+' / '+row.source,'small'));
+        learning.append(card);
+      }
+      for(const row of data.legacy_learning||[]){
+        const card=element('article',undefined,'member-detail-card legacy');
+        const months=row.confirmed_months?row.confirmed_months+'개월 확정':'미확정';
+        card.append(element('strong',row.course_title+(row.cohort?' / '+row.cohort:'')),
+          element('span',row.start_month+' 시작 / '+months+(row.archived?' / 보관됨':''),'small'));
+        learning.append(card);
+      }
+      const orders=$('member-detail-orders');orders.replaceChildren();
+      if(!(data.orders||[]).length)orders.append(detailEmpty('연결된 신청·주문이 없습니다.'));
+      for(const row of data.orders||[]){
+        const card=element('article',undefined,'member-detail-card');
+        card.append(element('strong',row.course_title+(row.cohort?' / '+row.cohort:'')),
+          element('span',date(row.created_at)+' / '+money(row.amount_krw)+' / '+row.status,'small'));
+        orders.append(card);
+      }
+      $('member-detail-content').hidden=false;text('member-detail-sub',(labels[data.role]||data.role)+' / '+(labels[data.status]||data.status)+' / 가입 '+date(data.created_at));
+    }catch(error){
+      text('member-detail-loading',error.status===404?'회원을 찾을 수 없습니다.':'회원 상세를 불러오지 못했습니다.');
+    }
+  }
   function renderTable(items) {
     const cfg = configs[state.tab]; const header=element('tr'); cfg.heads.forEach(h => {const th=element('th',h); th.scope='col'; header.append(th);}); $('table-head').replaceChildren(header);
     const body=$('table-body'); body.replaceChildren();
@@ -92,7 +156,7 @@
     for(const row of items) {
       let cells;
       if(state.tab==='orders') cells=[primary(row.customer_name, row.phone_masked+' / '+row.email_masked),primary(row.course_title,(row.cohort||'기수 없음')+' / '+row.order_id),element('span',money(row.amount_krw),'nowrap mono'),primary(row.status==='pending_payment'?'결제 대기':'상태 확인 필요',row.member_linked?'회원 연결됨':'회원 미연결'),element('span',date(row.created_at),'nowrap')];
-      else if(state.tab==='members') cells=[primary(row.display_name,row.member_id),providerBadges(row.providers),primary(labels[row.role]||'확인 필요',labels[row.status]||'확인 필요'),element('span',row.linked_order_count+'건','mono'),element('span',date(row.created_at),'nowrap')];
+      else if(state.tab==='members') cells=[memberPrimary(row),providerBadges(row.providers),primary(labels[row.role]||'확인 필요',labels[row.status]||'확인 필요'),element('span',row.linked_order_count+'건','mono'),element('span',date(row.created_at),'nowrap')];
       else cells=[primary(row.title,(row.cohort||'기수 없음')+' / '+row.course_id),element('span',money(row.price_krw),'nowrap mono'),pill(row.enabled?'신청 가능':'신청 중지',row.enabled?'green':'dark'),element('span',date(row.created_at),'nowrap')];
       const tr=element('tr'); cells.forEach(child=>{const td=element('td'); td.append(child); tr.append(td);});body.append(tr);
     }
@@ -136,7 +200,8 @@
       if(admin)await Promise.all([summary(),list()]);else{showProfile(me);await list();}
     }catch(error){if(serial !== state.request)return;if(!authError(error))gate('지금 정보를 불러올 수 없습니다.','연결 상태를 확인한 후 다시 시도해 주세요. 데이터가 없다는 의미는 아닙니다.',true);}
   }
-  $('retry-gate').addEventListener('click',boot);$('retry-list').addEventListener('click',list);
+  document.querySelectorAll('[data-member-detail-close]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
+    $('retry-gate').addEventListener('click',boot);$('retry-list').addEventListener('click',list);
   $('refresh').addEventListener('click',()=>{list();if(admin)summary();});
   $('prev').addEventListener('click',()=>{if(state.offset>0){state.offset-=state.limit;list();}});
   $('next').addEventListener('click',()=>{if(state.hasMore){state.offset+=state.limit;list();}});

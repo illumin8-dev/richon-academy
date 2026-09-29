@@ -91,6 +91,35 @@ COURSE_UPDATE = {
     'course_enrollments': ('status','cancelled_at','suspended_at','version','updated_at'),
 }
 
+LEGACY_READ = ('course_month_rules','monthly_enrollments','monthly_enrollment_terms',
+               'manual_learners','manual_enrollments','manual_terms')
+LEGACY_WRITE_ONLY = ('manual_audit',)
+LEGACY_SELECT_COLUMNS = {
+    'manual_audit': ('actor_id','request_id','fingerprint','result'),
+    'enrollment_learners': ('learner_id','member_id','name','nickname','phone','email','created_at'),
+}
+LEGACY_INSERT = {
+    'courses': ('course_id','title','cohort','price_krw','enabled'),
+    'course_month_rules': ('course_id','start_month','duration_kind','fixed_months'),
+    'enrollment_learners': ('learner_id','name','nickname','email','phone'),
+    'monthly_enrollments': ('enrollment_id','learner_id','course_id'),
+    'monthly_enrollment_terms': ('term_id','enrollment_id','sequence_no','months','grant_state',
+        'confirmed_at','confirmation_ref','quoted_amount_krw','payment_state','paid_amount_krw',
+        'paid_at','payment_record_ref','receipt_state','receipt_record_ref','applied_at'),
+    'manual_learners': ('learner_id','original_joined_on','created_by'),
+    'manual_enrollments': ('enrollment_id','created_by'),
+    'manual_terms': ('term_id','created_by'),
+    'manual_audit': ('event_id','actor_id','request_id','fingerprint','operation','entity_id','reason','result'),
+}
+LEGACY_UPDATE = {
+    'enrollment_learners': ('name','nickname','email','phone'),
+    'monthly_enrollment_terms': ('months','grant_state','confirmed_at','confirmation_ref',
+        'quoted_amount_krw','payment_state','paid_amount_krw','paid_at','payment_record_ref',
+        'receipt_state','receipt_record_ref','applied_at'),
+    'manual_learners': ('original_joined_on','version','updated_at'),
+    'manual_enrollments': ('version','updated_at','archived_at'),
+}
+
 
 def account_enabled():
     return os.getenv('RICHON_ACCOUNT_ENABLED','false') == 'true'
@@ -102,6 +131,14 @@ def marketing_enabled():
 
 def course_enabled():
     return os.getenv('RICHON_COURSE_DOMAIN_ENABLED','false') == 'true'
+
+
+def monthly_enabled():
+    return os.getenv('RICHON_MONTHLY_ENABLED','false') == 'true'
+
+
+def manual_enabled():
+    return os.getenv('RICHON_MANUAL_ENABLED','false') == 'true'
 
 
 def merged_grants(base, extra):
@@ -144,6 +181,20 @@ def course_grants_prepared(cur):
         has_column_privilege(%s,'richon.course_domain_audit','event_id','INSERT')""",
         (ROLE,ROLE))
     return cur.fetchone()==(True,True)
+
+
+def legacy_grants_prepared(cur):
+    cur.execute("""SELECT
+        to_regclass('richon.monthly_enrollments') IS NOT NULL,
+        to_regclass('richon.manual_audit') IS NOT NULL""")
+    if cur.fetchone() != (True,True):
+        return False
+    cur.execute("""SELECT
+        has_table_privilege(%s,'richon.monthly_enrollments','SELECT'),
+        has_column_privilege(%s,'richon.manual_audit','event_id','INSERT'),
+        has_column_privilege(%s,'richon.enrollment_learners','nickname','SELECT')""",
+        (ROLE,ROLE,ROLE))
+    return cur.fetchone()==(True,True,True)
 
 
 def provider_profile_schema_ready(cur):
@@ -190,19 +241,24 @@ def check_role(cur):
     profile_active = member_profile.enabled()
     marketing_active = marketing_enabled()
     course_active = course_enabled()
+    monthly_active = monthly_enabled()
+    manual_active = manual_enabled()
     if account and not profile_active:
         raise ValueError('account_requires_member_profile_policy')
     if marketing_active and not profile_active:
         raise ValueError('marketing_requires_member_profile_policy')
     if course_active and not account:
         raise ValueError('course_requires_account_feature')
+    if manual_active and not monthly_active:
+        raise ValueError('manual_requires_monthly_feature')
     if profile_active and not provider_profile_schema_ready(cur):
         raise ValueError('provider_profile_schema_required')
     provider_profile_grants = profile_active or provider_profile_grants_prepared(cur)
     account_grants = account or account_grants_prepared(cur)
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
     course_grants = course_active or course_grants_prepared(cur)
-    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ()) + ((COURSE_READ + COURSE_WRITE_ONLY) if course_grants else ())
+    legacy_grants = monthly_active or manual_active or legacy_grants_prepared(cur)
+    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ()) + ((COURSE_READ + COURSE_WRITE_ONLY) if course_grants else ()) + ((LEGACY_READ + LEGACY_WRITE_ONLY) if legacy_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
     select_columns = {table: tuple(columns) for table,columns in ACCOUNT_SELECT_COLUMNS.items()}
     if provider_profile_grants:
@@ -230,6 +286,14 @@ def check_role(cur):
         write_only.update(COURSE_WRITE_ONLY)
         write_only.add('enrollment_learners')
         for table,columns in COURSE_SELECT_COLUMNS.items():
+            select_columns[table] = tuple(dict.fromkeys((*select_columns.get(table,()), *columns)))
+    if legacy_grants:
+        inserts = merged_grants(inserts, LEGACY_INSERT)
+        updates = merged_grants(updates, LEGACY_UPDATE)
+        tables = tuple(dict.fromkeys((*tables, 'enrollment_learners')))
+        write_only.update(LEGACY_WRITE_ONLY)
+        write_only.add('enrollment_learners')
+        for table,columns in LEGACY_SELECT_COLUMNS.items():
             select_columns[table] = tuple(dict.fromkeys((*select_columns.get(table,()), *columns)))
     for table in tables:
         relation = 'richon.' + table

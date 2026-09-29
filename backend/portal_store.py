@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from uuid import UUID
 
 import db
+import os
 import member_profile
 import marketing_consent as marketing
 
@@ -96,7 +97,7 @@ def own_orders(member_id: UUID, limit: int, offset: int):
 def summary():
     with read_cursor() as cur:
         cur.execute("""
-            SELECT (SELECT count(*) FROM richon.members) AS members_total,
+            SELECT (SELECT count(*) FROM richon.members WHERE status<>'withdrawn') AS members_total,
                 (SELECT count(*) FROM richon.members WHERE status='active') AS members_active,
                 (SELECT count(*) FROM richon.courses) AS courses_total,
                 (SELECT count(*) FROM richon.courses WHERE enabled) AS courses_enabled,
@@ -118,11 +119,73 @@ def members(limit: int, offset: int, q: str, status: str | None):
                  WHERE l.member_id=m.member_id) AS linked_order_count
             FROM richon.members m
             WHERE (m.display_name ILIKE %s ESCAPE E'\\\\' OR m.member_id::text=%s)
-              AND (%s::text IS NULL OR m.status=%s)
+              AND ((%s::text IS NULL AND m.status<>'withdrawn') OR m.status=%s)
             ORDER BY m.created_at DESC, m.member_id DESC LIMIT %s OFFSET %s
         """, (_literal_search(q), q, status, status, limit + 1, offset))
         return _page(cur, limit, offset)
 
+
+
+def member_detail(member_id: UUID):
+    with read_cursor() as cur:
+        cur.execute("""
+            SELECT m.member_id,m.display_name,m.role,m.status,m.created_at,
+                ARRAY(SELECT DISTINCT i.provider FROM richon.auth_identities i
+                      WHERE i.member_id=m.member_id ORDER BY i.provider) AS providers
+            FROM richon.members m WHERE m.member_id=%s
+        """,(member_id,))
+        result=_row(cur)
+
+        if member_profile.enabled():
+            cur.execute("""SELECT name,phone,email,age_range,gender,consultation_consent,consented_at
+                FROM richon.member_profiles
+                WHERE member_id=%s AND terms_version=%s AND privacy_version=%s""",
+                (member_id,member_profile.VERSION,member_profile.VERSION))
+            row=cur.fetchone()
+            if row is not None:
+                result['registration']=dict(zip([x.name for x in cur.description],row,strict=True))
+
+        if marketing.enabled():
+            cur.execute("""SELECT email_enabled,sms_enabled
+                FROM richon.member_marketing_consents WHERE member_id=%s""",(member_id,))
+            row=cur.fetchone()
+            result['marketing_consent']=bool(row and row[0] and row[1])
+
+        cur.execute("""SELECT e.enrollment_id,p.title AS program_title,r.cohort_label,e.status,
+                    e.access_start::text,e.access_end::text,e.source
+            FROM richon.course_enrollments e
+            JOIN richon.course_runs r USING(run_id)
+            JOIN richon.course_programs p USING(program_id)
+            JOIN richon.enrollment_learners l USING(learner_id)
+            WHERE l.member_id=%s
+            ORDER BY e.access_end DESC,e.created_at DESC
+            LIMIT 100""",(member_id,))
+        result['learning']=_rows(cur)
+
+        result['legacy_learning']=[]
+        if os.getenv('RICHON_MONTHLY_ENABLED','false')=='true':
+            cur.execute("""SELECT e.enrollment_id,c.title AS course_title,c.cohort,
+                    to_char(r.start_month,'YYYY-MM') AS start_month,
+                    coalesce(sum(t.months) FILTER(WHERE t.grant_state='confirmed'),0)::integer AS confirmed_months,
+                    (x.archived_at IS NOT NULL) AS archived
+                FROM richon.monthly_enrollments e
+                JOIN richon.enrollment_learners l USING(learner_id)
+                JOIN richon.courses c USING(course_id)
+                JOIN richon.course_month_rules r USING(course_id)
+                LEFT JOIN richon.monthly_enrollment_terms t USING(enrollment_id)
+                LEFT JOIN richon.manual_enrollments x USING(enrollment_id)
+                WHERE l.member_id=%s
+                GROUP BY e.enrollment_id,c.title,c.cohort,r.start_month,x.archived_at
+                ORDER BY r.start_month DESC,e.enrollment_id DESC
+                LIMIT 100""",(member_id,))
+            result['legacy_learning']=_rows(cur)
+
+        cur.execute(f"""SELECT {ORDER_FIELDS}
+            FROM richon.orders o JOIN richon.member_order_links l ON l.order_id=o.order_id
+            WHERE l.member_id=%s
+            ORDER BY o.created_at DESC,o.order_id DESC LIMIT 100""",(member_id,))
+        result['orders']=_rows(cur)
+        return result
 
 def courses(limit: int, offset: int, q: str, enabled: bool | None):
     with read_cursor() as cur:
