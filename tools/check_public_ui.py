@@ -33,15 +33,18 @@ assert "redev:{name:'재개발 중급반'" in apply and "status:'waitlist'" in a
 assert "interior:{name:'리치온 인테리어'" in apply and "status:'upcoming'" in apply
 assert "subscription:{name:'청약 실전반'" in apply and "status:'upcoming'" in apply
 assert 'href="apply.html?course=redev">대기 신청 →' in index
-assert 'href="apply.html?course=interior"' not in index
+assert index.count('href="apply.html?course=pre">신청하기 →') == 1
+assert index.count('href="apply.html?course=study">신청하기 →') == 1
+assert 'href="apply.html?course=interior">소개 →' in index
+assert 'href="apply.html?course=subscription">소개 →' in index
 assert 'href="apply.html?course=welcome"' not in index
-assert index.count('aria-disabled="true">모집 예정</span>') >= 2
+assert index.count('aria-disabled="true">모집 예정</span>') == 2
 assert index.count('class="pcard') >= 6
-assert 'class="pcard placeholder reveal"' in index
-assert 'aria-label="추후 추가될 강의 자리"' in index
-assert 'class="placeholder-plus" aria-hidden="true">+</span>' in index
-assert 'placeholder-label' not in index
-assert index.count('소개 ↗') >= 4 and '소식 보기 ↗' in index
+assert 'class="pcard coming-soon reveal"' in index
+assert 'aria-label="새로운 과정 준비 중"' in index
+assert 'COMING SOON' in index and '새로운 과정 준비 중' in index
+assert 'placeholder-plus' not in index
+assert '소개 ↗' not in index and '소식 보기 ↗' not in index
 assert index.count('class="course-cta') >= 5
 assert '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.' in index
 assert '정밀한 입지 분석과 인프라 변화 예측으로 수도권 주요 재개발/재건축 단지를 공략하는 심화 과정.' in index
