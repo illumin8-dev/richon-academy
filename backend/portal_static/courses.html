@@ -5,24 +5,27 @@
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>강의 / 수강권 | 리치온아카데미</title>
 <link rel="stylesheet" href="/portal/assets/ops.css">
+<link rel="stylesheet" href="/portal/assets/portal.css">
 <link rel="stylesheet" href="/portal/course-assets/courses.css">
 <script defer src="/portal/course-assets/courses.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">본문으로 이동</a>
-<header class="topbar"><a class="brand" href="https://richonacademy.com/">리치온아카데미</a><div class="top-actions"><a href="/portal/admin">운영 홈</a><a href="/portal/mypage">마이페이지</a><button id="logout" type="button">로그아웃</button></div></header>
+<header class="topbar"><a class="brand" href="https://richonacademy.com/"><span class="brand-mark" aria-hidden="true"></span>리치온아카데미</a><div class="top-actions"><a class="home-link" href="/portal/admin">운영 홈</a><a href="/portal/mypage">마이페이지</a><button class="plain" id="logout" type="button">로그아웃</button></div></header>
 <div class="layout">
 <aside class="sidebar">
 <p class="side-label">RICHON ADMIN</p>
 <nav class="nav" aria-label="관리자 메뉴">
-<a class="nav-item active" href="/portal/courses">강의 / 수강권</a>
-<a class="nav-item" href="/portal/enrollments">월별 수강관리</a>
-<a class="nav-item" href="/portal/manual">기존 수강생 명단</a>
-<a class="nav-item" href="/portal/admin">회원 / 신청·주문</a>
+<a class="nav-item" aria-current="page" href="/portal/courses"><span class="nav-glyph" aria-hidden="true">▣</span>강의 / 수강권</a>
+<a class="nav-item" href="/portal/enrollments"><span class="nav-glyph" aria-hidden="true">▤</span>월별 수강관리</a>
+<a class="nav-item" href="/portal/manual"><span class="nav-glyph" aria-hidden="true">＋</span>수강생 수동 등록 / 수정</a>
+<a class="nav-item" href="/portal/admin"><span class="nav-glyph" aria-hidden="true">◉</span>회원 / 신청·주문</a>
+<a class="nav-item" href="/portal/mypage"><span class="nav-glyph" aria-hidden="true">↗</span>마이페이지</a>
 </nav>
+<div class="side-bottom"><strong>강의 운영의 기준</strong>프로그램부터 실제 수강권까지<br>한 화면에서 관리합니다.</div>
 </aside>
 <main class="main" id="main">
-<div class="page-heading"><div><p class="eyebrow">LEARNING OPERATIONS</p><h1>강의 / 수강권</h1><p class="small">결제 없이도 관리자가 수강권을 직접 지급할 수 있습니다.</p></div><span class="pill">관리자 전용</span></div>
+<div class="page-heading"><div><p class="eyebrow">LEARNING OPERATIONS</p><h1>강의 / 수강권</h1><p class="small">결제 없이도 관리자가 수강권을 직접 지급할 수 있습니다.</p></div><span class="pill dark admin-heading-tag">관리자 전용</span></div>
 <section id="gate" class="panel gate"><h2>관리자 권한을 확인하고 있습니다.</h2><p id="gate-text">잠시만 기다려 주세요.</p><button id="retry" type="button" hidden>다시 확인</button></section>
 <div id="content" hidden>
 <section class="grid two">
