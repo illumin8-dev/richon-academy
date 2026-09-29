@@ -93,7 +93,7 @@ def test_admin_write_requires_origin_and_csrf(app,monkeypatch):
     body={'request_id':str(uuid4()),'reason':'가상 생성','program_id':'pre-richon','title':'Pre리치온','access_mode':'fixed_months','fixed_months':2}
     assert c.post('/portal/api/admin/learning/programs',json=body).status_code==403
     r=c.post('/portal/api/admin/learning/programs',headers={'Origin':ORIGIN,'X-CSRF-Token':auth_core.csrf_token(TOKEN)},json=body)
-    assert r.status_code==200
+    assert r.status_code==200,r.text
     blocked.assert_called_once()
 
 
