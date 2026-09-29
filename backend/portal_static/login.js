@@ -1,7 +1,7 @@
 /* Progressive same-origin login selector. Provider authentication remains a native POST/redirect. */
 'use strict';
 (() => {
-  const returnPaths = new Set(['/','/index.html','/apply.html','/portal/mypage','/portal/admin','/portal/enrollments','/portal/manual']);
+  const returnPaths = new Set(['/','/index.html','/apply.html','/portal/mypage','/portal/admin','/portal/enrollments','/portal/manual','/portal/courses']);
   const providers = {kakao:{label:'카카오 로그인',width:896,height:92},naver:{label:'네이버 로그인',width:1472,height:192}};
   let dialog, content, previousFocus, controller, generation = 0;
   const node = (tag, text, cls) => {const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;};
