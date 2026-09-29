@@ -14,6 +14,30 @@ def checksum(name):
     return hashlib.sha256((DIRECTORY/(name+'.sql')).read_bytes()).hexdigest()
 
 
+def checksum_variant(name, recorded):
+    """Classify only known byte-level representations; never expose raw hashes."""
+    if not isinstance(recorded,str):
+        return 'MISSING'
+    raw=(DIRECTORY/(name+'.sql')).read_bytes()
+    lf=raw.replace(b'\r\n',b'\n')
+    base=lf[:-1] if lf.endswith(b'\n') else lf
+    crlf=lf.replace(b'\n',b'\r\n')
+    crlf_base=crlf[:-2] if crlf.endswith(b'\r\n') else crlf
+    variants=[
+        ('EXACT',raw),
+        ('LF',lf),
+        ('LF_NO_FINAL_NEWLINE',base),
+        ('CRLF',crlf),
+        ('CRLF_NO_FINAL_NEWLINE',crlf_base),
+        ('UTF8_BOM',b'\xef\xbb\xbf'+lf),
+        ('UTF8_BOM_CRLF',b'\xef\xbb\xbf'+crlf),
+    ]
+    for label,data in variants:
+        if hashlib.sha256(data).hexdigest()==recorded:
+            return label
+    return 'UNKNOWN'
+
+
 def legacy_monthly_compatible(cur):
     """Accept only the known operational DB004 lineage when DB005 is exact.
 
