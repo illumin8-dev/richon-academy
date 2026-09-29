@@ -1,5 +1,6 @@
 """Monthly read models. No registrations, merging, payments or entitlement writes."""
 from datetime import date
+import os
 import re
 from uuid import UUID
 from portal_store import read_cursor, _literal_search
@@ -93,16 +94,14 @@ ROW_FIELDS = '''enrollment_id,learner_id,course_id,course_title,cohort,name,nick
 def _base_for_schema(cur):
     """Honor persisted archives independently of the manual-write feature flag.
 
-    Migration 004 remains readable before optional migration 005 is applied.
-    After 005 is recorded, a missing archive table is an error, not permission
-    to silently count archived records again. Do not catch DB access failures.
-    This check and all three reads share read_cursor's repeatable-read snapshot.
+    Migration 004 remains readable while manual tools are disabled.
+    When the manual feature is explicitly enabled, its archive table is required.
+    The restricted runtime never reads schema_migrations. Do not catch DB access
+    failures. This check and all reads share the repeatable-read snapshot.
     """
-    cur.execute("""SELECT to_regclass('richon.manual_enrollments') IS NOT NULL,
-        EXISTS (SELECT 1 FROM richon.schema_migrations
-                WHERE version='005_manual_registry')""")
-    archive_exists, migration_applied = cur.fetchone()
-    if not archive_exists and migration_applied:
+    cur.execute("SELECT to_regclass('richon.manual_enrollments') IS NOT NULL")
+    archive_exists = cur.fetchone()[0]
+    if not archive_exists and os.getenv('RICHON_MANUAL_ENABLED','false') == 'true':
         raise RuntimeError('manual_archive_store_unavailable')
     # Only fixed SQL is selected here; every search value remains a bind value.
     clause = """AND NOT EXISTS (
