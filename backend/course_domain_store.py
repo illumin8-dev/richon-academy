@@ -58,7 +58,7 @@ def mutate(actor,operation,payload):
                 handler={
                     'program.create':_program_create,'program.update':_program_update,
                     'run.create':_run_create,'run.update':_run_update,
-                    'session.create':_session_create,
+                    'session.create':_session_create,'session.update':_session_update,
                     'enrollment.grant':_enrollment_grant,'enrollment.cancel':_enrollment_cancel,
                 }.get(operation)
                 if handler is None: raise Rejected('unsupported_operation',404)
@@ -138,6 +138,21 @@ def _session_create(cur,actor,body):
       (sid,body.run_id,body.sequence_no,body.title,body.mentor_name,body.starts_at,body.ends_at,
        body.video_url,body.material_url))
     return {'session_id':str(sid),'run_id':str(body.run_id),'version':cur.fetchone()[0]}
+
+
+def _session_update(cur,actor,body):
+    cur.execute('SELECT version FROM richon.course_sessions WHERE session_id=%s FOR UPDATE',(body.session_id,))
+    row=cur.fetchone()
+    if row is None: raise Rejected('session_not_found',404)
+    if row[0]!=body.version: raise Rejected('stale_record')
+    cur.execute('''UPDATE richon.course_sessions
+      SET title=%s,mentor_name=%s,starts_at=%s,ends_at=%s,video_url=%s,material_url=%s,
+          cancelled_at=%s,version=version+1,updated_at=CURRENT_TIMESTAMP
+      WHERE session_id=%s RETURNING run_id,version''',
+      (body.title,body.mentor_name,body.starts_at,body.ends_at,body.video_url,body.material_url,
+       datetime.now(timezone.utc) if body.cancelled else None,body.session_id))
+    run_id,version=cur.fetchone()
+    return {'session_id':str(body.session_id),'run_id':str(run_id),'version':version,'cancelled':body.cancelled}
 
 
 def _resolve_learner(cur,body):
@@ -233,6 +248,16 @@ def runs(program_id=None,limit=100,offset=0,include_archived=False):
           (program_id,program_id,include_archived,limit+1,offset))
         rows=_rows(cur)
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}
+
+
+def sessions(run_id,include_cancelled=False):
+    with read_cursor() as cur:
+        cur.execute('''SELECT session_id,run_id,sequence_no,title,mentor_name,starts_at,ends_at,
+              video_url,material_url,content_url,(cancelled_at IS NOT NULL) AS cancelled,version
+          FROM richon.course_sessions
+          WHERE run_id=%s AND (%s OR cancelled_at IS NULL)
+          ORDER BY sequence_no,starts_at,session_id''',(run_id,include_cancelled))
+        return _rows(cur)
 
 
 def enrollments(run_id=None,limit=50,offset=0):
