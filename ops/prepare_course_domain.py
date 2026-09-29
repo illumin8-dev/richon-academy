@@ -24,7 +24,7 @@ import portal_readiness as ready
 import prepare_account_lifecycle as base
 
 MINIMUM_SOURCE='185128166d439eb36ed1b8ea993bb4e531e6bde8'
-CONFIRM='APPLY_DB015_016'
+CONFIRM='APPLY_DB004_005_015_016'
 
 
 class Stop(Exception):
@@ -56,12 +56,70 @@ def env_value(service,name):
     return values[0] if values else ''
 
 
+PREDECESSOR_DEPENDENCIES={
+    '004_monthly_enrollments':('001_pending_orders','002_auth_foundation','003_portal_read_models'),
+    '005_manual_registry':('001_pending_orders','002_auth_foundation','003_portal_read_models','004_monthly_enrollments'),
+}
+PREDECESSOR_OBJECTS={
+    '004_monthly_enrollments':(
+        ('class','richon.course_month_rules'),
+        ('class','richon.enrollment_learners'),
+        ('class','richon.monthly_enrollments'),
+        ('class','richon.monthly_enrollment_terms'),
+        ('procedure','richon.validate_monthly_term()'),
+        ('procedure','richon.freeze_monthly_course_rule()'),
+    ),
+    '005_manual_registry':(
+        ('class','richon.manual_learners'),
+        ('class','richon.manual_enrollments'),
+        ('class','richon.manual_terms'),
+        ('class','richon.manual_audit'),
+    ),
+}
+
+
+def predecessor_state(cur,version):
+    need(version in PREDECESSOR_OBJECTS,'unknown_predecessor')
+    cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
+    row=cur.fetchone()
+    expected=domain.checksum(version)
+    if row is not None:
+        return 'EXACT' if row==(expected,) else 'MISMATCH'
+    present=[]
+    for kind,name in PREDECESSOR_OBJECTS[version]:
+        if kind=='class':
+            cur.execute('SELECT to_regclass(%s) IS NOT NULL',(name,))
+        else:
+            cur.execute('SELECT to_regprocedure(%s) IS NOT NULL',(name,))
+        present.append(cur.fetchone()==(True,))
+    return 'UNTRACKED_PRESENT' if any(present) else 'ABSENT'
+
+
+def apply_predecessor(cur,version):
+    state=predecessor_state(cur,version)
+    if state=='EXACT':
+        return False
+    need(state=='ABSENT','predecessor_'+version+'_'+state.lower())
+    for dependency in PREDECESSOR_DEPENDENCIES[version]:
+        cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(dependency,))
+        need(cur.fetchone()==(domain.checksum(dependency),),
+             'dependency_mismatch_'+dependency)
+    path=domain.DIRECTORY/(version+'.sql')
+    checksum=hashlib.sha256(path.read_bytes()).hexdigest()
+    cur.execute(path.read_text())
+    cur.execute('INSERT INTO richon.schema_migrations(version,checksum) VALUES(%s,%s)',
+                (version,checksum))
+    need(predecessor_state(cur,version)=='EXACT',
+         'predecessor_'+version+'_postcheck_failed')
+    return True
+
+
 def grant_course(cur):
     from psycopg import sql
     role=sql.Identifier(ready.ROLE)
 
     # New course tables have no legacy runtime contract, so normalize them first.
-    for table in (*ready.COURSE_READ,*ready.COURSE_WRITE_ONLY):
+    for table in (*ready.COURSE_READ,*ready.COURSE_WRITE_ONLY,'enrollment_learners'):
         relation=sql.SQL('richon.{}').format(sql.Identifier(table))
         cur.execute(sql.SQL('REVOKE ALL ON {} FROM {}').format(relation,role))
 
@@ -84,6 +142,11 @@ def grant_course(cur):
             sql.SQL(',').join(map(sql.Identifier,columns)),
             sql.Identifier(table),role))
 
+    for table,columns in ready.ACCOUNT_OPTIONAL_UPDATE.items():
+        cur.execute(sql.SQL('GRANT UPDATE ({}) ON richon.{} TO {}').format(
+            sql.SQL(',').join(map(sql.Identifier,columns)),
+            sql.Identifier(table),role))
+
     # No course-domain route requires destructive table operations.
     for table in (*ready.COURSE_READ,*ready.COURSE_WRITE_ONLY,'enrollment_learners'):
         cur.execute(sql.SQL('REVOKE DELETE,TRUNCATE,TRIGGER,REFERENCES ON richon.{} FROM {}').format(
@@ -97,12 +160,9 @@ def migration_checksum(migration):
 
 def apply_one(cur,migration):
     for version in migration.DEPENDENCIES:
-        if migration is domain:
-            need(domain.dependency_ok(cur,version),'dependency_mismatch_'+version)
-        else:
-            cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
-            need(cur.fetchone()==(migration.checksum(version),),
-                 'dependency_mismatch_'+version)
+        cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
+        need(cur.fetchone()==(migration.checksum(version),),
+             'dependency_mismatch_'+version)
     checksum=migration_checksum(migration)
     cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',
                 (migration.VERSION,))
@@ -120,6 +180,8 @@ def apply(owner_url,runtime_url):
     base.diagnose_connection(owner_url,base.OWNER_ROLE,'owner')
     base.diagnose_connection(runtime_url,ready.ROLE,'runtime')
 
+    changed004=False
+    changed005=False
     changed015=False
     changed016=False
     try:
@@ -128,6 +190,8 @@ def apply(owner_url,runtime_url):
                 cur.execute("SET LOCAL statement_timeout='45s'")
                 cur.execute("SET LOCAL lock_timeout='10s'")
                 cur.execute('SELECT pg_advisory_xact_lock(726426,3)')
+                changed004=apply_predecessor(cur,'004_monthly_enrollments')
+                changed005=apply_predecessor(cur,'005_manual_registry')
                 changed015=apply_one(cur,domain)
                 changed016=apply_one(cur,entitlements)
                 grant_course(cur)
@@ -154,6 +218,10 @@ def apply(owner_url,runtime_url):
         with db._connect(owner_url) as conn:
             conn.read_only=True
             with conn.cursor() as cur:
+                for version in ('004_monthly_enrollments','005_manual_registry'):
+                    cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
+                    need(cur.fetchone()==(domain.checksum(version),),
+                         version+'_readback_failed')
                 for migration in (domain,entitlements):
                     cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',
                                 (migration.VERSION,))
@@ -171,7 +239,7 @@ def apply(owner_url,runtime_url):
         raise
     except Exception:
         raise Stop('course_owner_final_readback_failed') from None
-    return changed015,changed016
+    return changed004,changed005,changed015,changed016
 
 
 def main():
@@ -196,7 +264,7 @@ def main():
              'course_feature_already_enabled')
 
         print('TARGET=richon-academy / production Neon / protected portal candidate')
-        print('SCOPE=DB015+DB016 + exact richon_portal_login course grants + readback')
+        print('SCOPE=missing DB004/DB005 predecessors + DB015/DB016 + exact richon_portal_login grants + readback')
         print('NO_DEPLOY=YES / COURSE_FEATURE_REMAINS_OFF=YES / NO_CUSTOMER_ROW_PRINTS=YES')
 
         stage='secret-access'
@@ -211,23 +279,21 @@ def main():
             with db._connect(owner_url) as conn:
                 conn.read_only=True
                 with conn.cursor() as cur:
-                    states=[]
-                    variants=[]
+                    predecessor_states=[
+                        version+':' + predecessor_state(cur,version)
+                        for version in ('004_monthly_enrollments','005_manual_registry')
+                    ]
+                    dependency_states=[]
                     for version in domain.DEPENDENCIES:
-                        cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
-                        row=cur.fetchone()
-                        recorded=row[0] if row else None
-                        exact=row==(domain.checksum(version),)
-                        compatible=exact or (
-                            version=='004_monthly_enrollments'
-                            and row is not None
-                            and domain.legacy_monthly_compatible(cur)
-                        )
-                        states.append(version+':' + ('EXACT' if exact else ('LEGACY_COMPATIBLE' if compatible else 'MISMATCH')))
-                        if version in ('004_monthly_enrollments','005_manual_registry'):
-                            variants.append(version+':' + domain.checksum_variant(version,recorded))
-                    print('DEPENDENCIES=' + ','.join(states))
-                    print('CHECKSUM_VARIANTS=' + ','.join(variants))
+                        if version in PREDECESSOR_OBJECTS:
+                            dependency_states.append(version+':' + predecessor_state(cur,version))
+                        else:
+                            cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
+                            dependency_states.append(
+                                version+':' + ('EXACT' if cur.fetchone()==(domain.checksum(version),) else 'MISMATCH')
+                            )
+                    print('PREDECESSORS=' + ','.join(predecessor_states))
+                    print('DEPENDENCIES=' + ','.join(dependency_states))
             print('DIAGNOSE_ONLY=PASS / NO_DATABASE_CHANGES=YES')
             return 0
 
@@ -244,7 +310,9 @@ def main():
         os.environ.pop('RICHON_COURSE_DOMAIN_ENABLED',None)
 
         stage='database'
-        changed015,changed016=apply(owner_url,runtime_url)
+        changed004,changed005,changed015,changed016=apply(owner_url,runtime_url)
+        print('DB004='+('APPLIED' if changed004 else 'ALREADY_APPLIED'))
+        print('DB005='+('APPLIED' if changed005 else 'ALREADY_APPLIED'))
         print('DB015='+('APPLIED' if changed015 else 'ALREADY_APPLIED'))
         print('DB016='+('APPLIED' if changed016 else 'ALREADY_APPLIED'))
         print('RUNTIME_MINIMUM_PRIVILEGES=PASS')
