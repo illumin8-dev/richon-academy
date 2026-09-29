@@ -4,7 +4,7 @@ const LIMIT = 65536;
 // Owner-approved internal test target. No wildcard tag or arbitrary origin.
 const TEST_CANDIDATE_HOST = 'portal-candidate---richon-portal-amjmgyepbq-as.a.run.app';
 const PUBLIC_RETURNS = new Set(['/', '/index.html', '/apply.html']);
-const PORTAL_RETURNS = new Set(['/portal/mypage', '/portal/admin', '/portal/enrollments', '/portal/manual']);
+const PORTAL_RETURNS = new Set(['/portal/mypage', '/portal/admin', '/portal/enrollments', '/portal/manual', '/portal/courses']);
 const COMPLETIONS = new Set(['/auth/kakao/callback', '/auth/naver/callback', '/auth/signup']);
 const ACCOUNT_STARTS = new Set(['/portal/api/me/logins/link/start', '/portal/api/me/reauth/start',
   '/portal/api/me/logins/unlink/start', '/portal/api/me/withdraw/provider/start']);
@@ -14,7 +14,7 @@ const AUTH = new Map([
   ['/auth/kakao/callback', ['GET']], ['/auth/naver/callback', ['GET']],
   ['/auth/assets/kakao-login.png', ['GET']],
   ['/auth/assets/naver-login.png', ['GET']],
-  ['/auth/assets/site.css', ['GET']], ['/auth/assets/site.js', ['GET']],
+  ['/auth/assets/site.css', ['GET']], ['/auth/assets/auth.css', ['GET']], ['/auth/assets/site.js', ['GET']],
   ['/auth/assets/login.js', ['GET']], ['/auth/assets/signup.js', ['GET']],
   ['/auth/assets/handoff.js', ['GET']],
   ['/auth/me', ['GET']], ['/auth/csrf', ['GET']], ['/auth/logout', ['POST']], ['/auth/logout-all', ['POST']],
