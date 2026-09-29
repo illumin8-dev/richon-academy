@@ -36,6 +36,13 @@ assert 'href="apply.html?course=redev">대기 신청 →' in index
 assert 'href="apply.html?course=interior"' not in index
 assert 'href="apply.html?course=welcome"' not in index
 assert index.count('aria-disabled="true">모집 예정</span>') >= 2
+assert index.count('class="pcard') >= 6
+assert 'class="pcard placeholder reveal"' in index
+assert 'aria-label="다음 강의 자리"' in index
+assert '<span class="placeholder-label">다음 강의</span>' in index
+assert '소개 ↗' not in index and '소식 보기 ↗' not in index
+assert '처음 시작하는 투자자가 시장 흐름과 투자 기준을 익히는 입문 과정입니다.' in index
+assert '사업성과 입지, 진행 단계를 분석해 재개발 투자 판단력을 높이는 과정입니다.' in index
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
 assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
