@@ -134,7 +134,6 @@ def main():
         context.clear_cookies()
         page.goto(ORIGIN+'/portal/mypage')
         expect(page.locator('#gate-login')).to_be_visible()
-        page.locator('#gate-login').click()
         expect(page.locator('#richon-login-dialog')).to_be_visible()
         expect(page.locator('#richon-login-dialog .provider-login')).to_have_count(2)
         expect(page.locator('#richon-login-dialog input[name=over14]')).to_have_count(0)
