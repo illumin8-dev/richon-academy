@@ -130,3 +130,18 @@
   - `tools/build_site_shell.py` 규칙대로 shared header/footer를 삽입해 generated mypage를 재생성.
 - 수정 후 PR은 mergeable=true.
 - 다음: 최신 head CI 재확인 후 legacy admin runtime ACL helper 작성.
+
+
+### 체크포인트 2 / legacy admin ACL helper
+- `ops/prepare_legacy_admin.py` 생성.
+- 목적: 이미 적용된 DB004/005에 `richon_portal_login`의 월별/수동관리 최소권한만 추가.
+- helper가 하지 않는 것:
+  - 고객 row 변경 없음
+  - DDL/schema 변경 없음
+  - Cloud Run feature flag 변경 없음
+  - IAM/Secret/provider 변경 없음
+- DB004/005 checksum이 정확히 일치해야만 진행.
+- 적용 후 restricted runtime readback + `portal_readiness.check_role` 검증.
+- confirmation phrase: `APPLY_LEGACY_ADMIN_GRANTS`.
+- `manual_store._enrollment`은 실제 수정하지 않는 `monthly_enrollments`까지 FOR UPDATE하던 불필요 lock을 제거하고 `manual_enrollments`만 lock.
+- 실제 운영 ACL 적용은 아직 하지 않음.
