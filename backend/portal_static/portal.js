@@ -3,7 +3,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const admin = document.body.dataset.page === 'admin';
-  const state = {tab: 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false};
+  const state = {tab: 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false, loginPrompted: false};
   const profileFields = ['phone', 'email', 'age', 'gender', 'consultation', 'consented'];
   const ageLabels = {'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
   const genderLabels = {female:'여성', male:'남성'};
@@ -22,10 +22,14 @@
     for (const id of ['welcome-name','profile-name','joined','order-count','members-total','courses-total','pending-total']) text(id, '');
     for (const key of profileFields) { text('profile-'+key, ''); if ($('profile-'+key+'-row')) $('profile-'+key+'-row').hidden = true; }
     text('avatar', ''); text('profile-name-label', '표시 이름');
-    text('gate-title', title); text('gate-text', message); $('retry-gate').hidden = !retry;
+    text('gate-title', title); text('gate-text', message); $('retry-gate').hidden = !retry; if($('gate-login'))$('gate-login').hidden=true;
   }
   function authError(error) {
-    if (error.status === 401) { gate('로그인이 필요합니다.', '간편 로그인 연동 후 이용할 수 있습니다. 로그인 상태가 만료되었다면 다시 로그인해 주세요.'); return true; }
+    if (error.status === 401) {
+      gate('로그인이 필요합니다.', '로그인 후 관리자 권한을 확인합니다.');
+      if($('gate-login')){$('gate-login').hidden=false;if(!state.loginPrompted){state.loginPrompted=true;setTimeout(()=>$('gate-login').click(),0);}}
+      return true;
+    }
     if (error.status === 403) { gate('관리자만 이용할 수 있습니다.', '관리자 권한이 있는 계정으로 로그인해 주세요. 일반 회원에게는 고객 정보를 제공하지 않습니다.'); return true; }
     return false;
   }
