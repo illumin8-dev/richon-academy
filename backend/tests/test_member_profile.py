@@ -94,9 +94,10 @@ def test_kakao_signup_form_always_discloses_required_ci_before_permission(monkey
     c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
     r=c.get('/auth/signup')
     assert r.status_code==200
-    assert 'CI(연계정보) [필수 / 카카오]' in r.text
+    assert 'CI(연계정보)' in r.text and '필수 / 카카오' in r.text
     assert '동일인의 중복 회원가입 방지 및 기존 회원 비교 식별에만 사용합니다.' in r.text
-    assert '카카오에서 확인 완료' not in r.text
+    assert '확인 필요' in r.text and '카카오 CI 확인 후 가입을 완료할 수 있습니다.' in r.text
+    assert '<button type="submit" disabled aria-disabled="true">' in r.text
 
 
 def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
@@ -106,13 +107,16 @@ def test_signup_form_is_unchecked_and_has_required_real_fields(monkeypatch):
     c=client();c.cookies.set(h.BROWSER,'B'*43);c.cookies.set(h.TICKET,'T'*43)
     r=c.get('/auth/signup')
     assert r.status_code==200 and 'name="name"' in r.text and 'name="phone"' in r.text and 'name="email"' in r.text
-    assert ' checked' not in r.text and '[선택] 상담정보' in r.text and '기본 회원 서비스를 이용' in r.text
+    assert ' checked' not in r.text and '상담정보' in r.text and '기본 회원 서비스를 이용' in r.text
     assert 'data-consent-all' in r.text and 'name="marketing"' in r.text
-    assert '광고성 정보 수신 동의 (문자·이메일)' in r.text
+    assert '광고성 정보 수신' in r.text
     assert 'CI(연계정보)' in r.text and '중복 회원가입 방지' in r.text
     assert '필수 / 카카오' not in r.text
     assert r.text.index('선택 / 연령대·성별') < r.text.index('필수 / 만 14세 이상 자기확인')
     assert 'value="회원"' not in r.text and 'name="password"' not in r.text
+    assert 'placeholder="리치온"' in r.text
+    assert 'placeholder="010-0000-0000"' in r.text
+    assert 'placeholder="richon@academy.com"' in r.text
 
 
 def test_signup_validates_before_save_and_does_not_echo_fields(monkeypatch):
@@ -210,7 +214,7 @@ def test_signup_form_locks_only_provider_supplied_fields(monkeypatch):
     assert r.status_code==200
     assert 'name="name"' in r.text and 'value="제공자 이름"' in r.text
     assert r.text.count('data-provider-locked="true"')==4
-    assert 'value="01022223333"' in r.text
+    assert 'value="010-2222-3333"' in r.text
     email=re.search(r'<input[^>]*name="email"[^>]*>',r.text)[0]
     assert 'readonly' not in email
     assert 'id="signup-age_range"' in r.text and 'id="signup-gender"' in r.text
