@@ -1,5 +1,6 @@
 """Shared short notice and explicit first-registration form; no tracking scripts."""
 from html import escape as e
+import re
 from member_profile import AGE_RANGES, VERSION
 import marketing_consent as marketing
 
@@ -31,26 +32,48 @@ def notice(settings):
 <p><a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> / <a href="{e(settings.privacy_url)}" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></p></details>'''
 
 
+def _display_phone(value):
+    if not isinstance(value, str):
+        return value
+    if re.fullmatch(r'01[016789][0-9]{8}', value):
+        return value[:3] + '-' + value[3:7] + '-' + value[7:]
+    if re.fullmatch(r'01[016789][0-9]{7}', value):
+        return value[:3] + '-' + value[3:6] + '-' + value[6:]
+    return value
+
+
 def signup_form(settings, csrf, provider_profile=None, provider=None):
     provider_profile = provider_profile or type('EmptyProfile', (), {
         'name':None,'phone':None,'email':None,'age_range':None,'gender':None,'ci_digest':None})()
+
     marketing_input = (
-        '<label><input type="checkbox" name="marketing" value="yes" data-consent-item> '
-        '[선택] 광고성 정보 수신 동의 (문자·이메일)</label>'
+        '<label class="auth-check-row"><input type="checkbox" name="marketing" value="yes" data-consent-item> '
+        '<span><strong>광고성 정보 수신</strong> <span class="auth-optional">선택</span><br><small>문자·이메일로 강의 / 특강 / 이벤트 소식을 받습니다.</small></span></label>'
         if marketing.enabled() else '')
+
+    placeholders = {
+        'name':'리치온',
+        'phone':'010-0000-0000',
+        'email':'richon@academy.com',
+    }
 
     def field(name, label, value, *, kind='text', autocomplete='', maxlength=''):
         locked = isinstance(value, str) and bool(value)
+        display = _display_phone(value) if name == 'phone' else (value or '')
         attrs = [
             f'name="{name}"', f'type="{kind}"', f'autocomplete="{autocomplete}"',
-            f'value="{e(value or "")}"', 'required'
+            f'value="{e(display)}"', f'placeholder="{e(placeholders[name])}"', 'required'
         ]
         if maxlength:
             attrs.append(f'maxlength="{maxlength}"')
         if locked:
             attrs.extend(['readonly', 'aria-readonly="true"', 'data-provider-locked="true"'])
-        suffix = '<span class="provider-locked-note">소셜 계정에서 확인된 정보 / 가입 단계에서 수정할 수 없습니다.</span>' if locked else ''
-        return f'<label>{label} [필수]<input {" ".join(attrs)}>{suffix}</label>'
+        badge = '<span class="provider-lock-badge">확인됨</span>' if locked else ''
+        return (
+            '<label class="auth-field"><span class="auth-field-head">'
+            f'<span class="auth-field-meta">{e(label)} <span class="auth-required">필수</span></span>{badge}'
+            f'</span><input {" ".join(attrs)}></label>'
+        )
 
     def optional_select(name, label, values, selected):
         locked = selected in values
@@ -58,14 +81,18 @@ def signup_form(settings, csrf, provider_profile=None, provider=None):
         for value, text in values.items():
             mark = ' selected' if value == selected else ''
             options.append(f'<option value="{e(value)}"{mark}>{e(text)}</option>')
-        attrs = [f'id="signup-{name}"']
+        attrs = [f'id="signup-{name}"', 'data-optional-profile="true"']
         if locked:
             attrs.extend(['disabled', 'aria-disabled="true"', 'data-provider-locked="true"'])
         else:
             attrs.append(f'name="{name}"')
         hidden = f'<input type="hidden" name="{name}" value="{e(selected)}">' if locked else ''
-        suffix = '<span class="provider-locked-note">소셜 계정에서 제공된 정보 / 선택 동의 시 상담정보로 저장됩니다.</span>' if locked else ''
-        return f'<label>{label}<select {" ".join(attrs)}>{"".join(options)}</select>{hidden}{suffix}</label>'
+        badge = '<span class="provider-lock-badge">확인됨</span>' if locked else ''
+        return (
+            '<label class="auth-field"><span class="auth-field-head">'
+            f'<span class="auth-field-meta">{e(label)} <span class="auth-optional">선택</span></span>{badge}'
+            f'</span><select {" ".join(attrs)}>{"".join(options)}</select>{hidden}</label>'
+        )
 
     age_values = {
         age: ('14~19세' if age == '14-19' else ('70세 이상' if age == '70+' else age.replace('-', '~') + '세'))
@@ -73,25 +100,46 @@ def signup_form(settings, csrf, provider_profile=None, provider=None):
     }
     gender_values = {'female':'여성','male':'남성'}
 
-    return f'''<p>회원정보를 확인해 주세요. 기존 계정은 그대로 유지됩니다.</p>{notice(settings)}
+    ci_block = ''
+    ci_ready = True
+    if provider == 'kakao':
+        ci_ready = isinstance(provider_profile.ci_digest, str) and bool(provider_profile.ci_digest)
+        state = '확인됨' if ci_ready else '확인 필요'
+        klass = 'auth-ci-card' if ci_ready else 'auth-ci-card pending'
+        ci_block = (
+            f'<div class="{klass}"><div><strong>CI(연계정보) <span class="auth-required">필수 / 카카오</span></strong>'
+            '<small>동일인의 중복가입 방지 및 기존 회원 비교에만 사용합니다.</small></div>'
+            f'<span class="provider-lock-badge">{state}</span></div>'
+        )
+        if not ci_ready:
+            ci_block += '<p class="auth-ci-warning" role="alert">카카오 CI 확인 후 가입을 완료할 수 있습니다.</p>'
+
+    disabled = ' disabled aria-disabled="true"' if not ci_ready else ''
+
+    return f'''<p class="auth-intro">회원정보를 확인해 주세요.</p>{notice(settings)}
 <form method="post" action="/auth/signup" data-richon-signup>
 <input type="hidden" name="csrf" value="{e(csrf)}">
 <input type="hidden" name="terms_version" value="{VERSION}">
 <input type="hidden" name="privacy_version" value="{VERSION}">
+<div class="auth-profile-grid">
 {field('name','이름',provider_profile.name,autocomplete='name',maxlength='80')}
 {field('phone','휴대전화번호',provider_profile.phone,kind='tel',autocomplete='tel',maxlength='32')}
 {field('email','이메일',provider_profile.email,kind='email',autocomplete='email',maxlength='254')}
-{('<p class="provider-locked-note"><strong>CI(연계정보) [필수 / 카카오]</strong> / 동일인의 중복 회원가입 방지 및 기존 회원 비교 식별에만 사용합니다.' + (' / 카카오에서 확인 완료' if provider_profile.ci_digest else '') + '</p>' if provider == 'kakao' else '')}
-<label><input id="consent-all" type="checkbox" data-consent-all> <strong>전체 동의</strong> <small>(선택 항목 포함)</small></label>
-<fieldset><legend>상담정보 [선택]</legend>
+</div>
+{ci_block}
+<div class="auth-consent-all"><label class="auth-check-row"><input id="consent-all" type="checkbox" data-consent-all> <span><strong>전체 동의</strong> <small>(선택 항목 포함)</small></span></label></div>
+<fieldset class="auth-consultation"><legend>상담정보 <span class="auth-optional">선택</span></legend>
+<div class="auth-consultation-grid">
 {optional_select('age_range','연령대',age_values,provider_profile.age_range)}
 {optional_select('gender','성별',gender_values,provider_profile.gender)}
-<label><input type="checkbox" name="consultation" value="yes" data-consent-item> [선택] 상담정보 수집·이용 동의</label>
-<p>소셜 계정에서 제공된 연령대·성별도 선택 동의한 경우에만 상담정보로 저장합니다. 동의하지 않으면 저장하지 않습니다.</p></fieldset>
-<label><input type="checkbox" name="over14" value="yes" required data-consent-item> [필수] 만 14세 이상입니다.</label>
-<label><input type="checkbox" name="terms" value="yes" required data-consent-item> [필수] <a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> 동의</label>
-<label><input type="checkbox" name="privacy" value="yes" required data-consent-item> [필수] 개인정보 수집·이용 동의</label>
+</div>
+<label class="auth-check-row"><input type="checkbox" name="consultation" value="yes" data-consent-item> <span>상담정보 수집·이용 동의</span></label>
+<p class="auth-field-help">연령대·성별은 동의한 경우에만 상담정보로 저장합니다.</p></fieldset>
+<div class="auth-consent-list">
+<label class="auth-check-row"><input type="checkbox" name="over14" value="yes" required data-consent-item> <span><strong>만 14세 이상</strong> <span class="auth-required">필수</span></span></label>
+<label class="auth-check-row"><input type="checkbox" name="terms" value="yes" required data-consent-item> <span><a href="{e(settings.terms_url)}" target="_blank" rel="noopener noreferrer">이용약관</a> 동의 <span class="auth-required">필수</span></span></label>
+<label class="auth-check-row"><input type="checkbox" name="privacy" value="yes" required data-consent-item> <span>개인정보 수집·이용 동의 <span class="auth-required">필수</span></span></label>
 {marketing_input}
-<p><small>전체 동의를 선택해도 선택 항목은 개별적으로 해제할 수 있습니다.</small></p>
-<button type="submit">동의하고 가입 완료</button></form>'''
-
+</div>
+<p class="auth-consent-help">전체 동의 후에도 선택 항목은 개별 해제할 수 있습니다.</p>
+<button type="submit"{disabled}>동의하고 가입 완료</button></form>'''
