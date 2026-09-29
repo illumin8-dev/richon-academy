@@ -19,14 +19,16 @@ EXPECTED_CANDIDATE = 'richon-portal-handoff-36597611986-1'
 
 def validate_before_rows(svc):
     rows = svc.get('status', {}).get('traffic', [])
-    c.need(len(rows) == 3, 'recovery_unexpected_traffic_rows')
-
-    serving = [row for row in rows if not row.get('tag') and int(row.get('percent', 0)) == 100]
+    untagged = [row for row in rows if not row.get('tag')]
     candidate = [row for row in rows if row.get('tag') == c.TAG]
     check = [row for row in rows if row.get('tag') == h.CHECK_TAG]
 
-    c.need(len(serving) == len(candidate) == len(check) == 1,
+    # Other pre-existing 0% tags are allowed, but they must remain byte-for-byte
+    # equivalent in tag/revision/percent/url after this recovery.
+    c.need(len(untagged) == len(candidate) == len(check) == 1,
            'recovery_expected_rows_missing')
+    c.need(int(untagged[0].get('percent', 0)) == 100,
+           'recovery_default_100_required')
     c.need(candidate[0].get('revisionName') == EXPECTED_CANDIDATE
            and int(candidate[0].get('percent', 0)) == 0
            and candidate[0].get('url') == e.CANDIDATE,
@@ -35,10 +37,7 @@ def validate_before_rows(svc):
            and int(check[0].get('percent', 0)) == 0
            and check[0].get('url') == h.CHECK_URL,
            'recovery_orphan_check_mismatch')
-    c.need(all((not row.get('tag')) or row.get('tag') in (c.TAG, h.CHECK_TAG)
-               for row in rows),
-           'recovery_unknown_tag_present')
-    return serving[0].get('revisionName')
+    return untagged[0].get('revisionName')
 
 
 def rows_without_check(svc):
