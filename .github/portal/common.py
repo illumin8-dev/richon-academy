@@ -73,6 +73,7 @@ ACCOUNT = {'RICHON_ACCOUNT_ENABLED': 'true',
            'RICHON_TERMS_VERSION': 'member-info-v1',
            'RICHON_PRIVACY_VERSION': 'member-info-v1'}
 MARKETING = {'RICHON_MARKETING_CONSENT_ENABLED': 'true'}
+COURSE = {'RICHON_COURSE_DOMAIN_ENABLED': 'true'}
 PLAIN = {'RICHON_BOOTSTRAP_VERIFY': 'true', 'KAKAO_APP_ID': '1585992',
          'RICHON_OAUTH_ORIGIN': 'https://richonacademy.com',
          'RICHON_AUTH_ALLOWED_ORIGINS': 'https://richonacademy.com',
@@ -145,7 +146,7 @@ def read_request(value=None):
         need(REQUEST.stat().st_size <= 2048, 'request_too_large')
         value = json.loads(REQUEST.read_text())
     need(isinstance(value, dict) and set(value) == {'operation', 'request_id'}, 'invalid_request')
-    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code', 'stage-account-enabled', 'inspect-account-enabled', 'stage-marketing-enabled', 'inspect-marketing-enabled', 'inspect-login-requests', 'rollout-login-handoff'), 'unsupported_operation')
+    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code', 'stage-account-enabled', 'inspect-account-enabled', 'stage-marketing-enabled', 'inspect-marketing-enabled', 'stage-course-enabled', 'inspect-course-enabled', 'inspect-login-requests', 'rollout-login-handoff'), 'unsupported_operation')
     need(isinstance(value['request_id'], str) and re.fullmatch('[A-Za-z0-9_.-]{1,80}', value['request_id']), 'invalid_request_id')
     return value
 
@@ -213,7 +214,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     env = environment(c)
     naver_references(env, boundary=boundary)
     need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(INTERNAL) |
-         set(ACCOUNT) | set(MARKETING) | (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
+         set(ACCOUNT) | set(MARKETING) | set(COURSE) | (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
     for name, secret in SECRET_NAMES.items():
         item = env.get(name, {})
         ref = item.get('valueFrom', {}).get('secretKeyRef', {})
@@ -226,9 +227,13 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     account_enabled = env.get('RICHON_ACCOUNT_ENABLED', {}).get('value') == 'true'
     marketing_present = 'RICHON_MARKETING_CONSENT_ENABLED' in env
     marketing_enabled = env.get('RICHON_MARKETING_CONSENT_ENABLED', {}).get('value') == 'true'
+    course_present = 'RICHON_COURSE_DOMAIN_ENABLED' in env
+    course_enabled = env.get('RICHON_COURSE_DOMAIN_ENABLED', {}).get('value') == 'true'
     need(not account_present or account_enabled, 'unreviewed_account_setting')
     need(not marketing_present or marketing_enabled, 'unreviewed_marketing_setting')
+    need(not course_present or course_enabled, 'unreviewed_course_setting')
     need(not marketing_enabled or account_enabled, 'marketing_requires_account_enabled')
+    need(not course_enabled or account_enabled, 'course_requires_account_enabled')
     if modes == {'false'}:
         need(not account_present, 'account_requires_login_enabled')
         for key in set(INTERNAL) - set(FLAGS):
@@ -252,7 +257,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
     if boundary == 'edge':
         need(modes == {'true'}, 'edge_login_must_remain_enabled')
     return {'enabled': modes == {'true'}, 'account_enabled': account_enabled,
-            'marketing_enabled': marketing_enabled,
+            'marketing_enabled': marketing_enabled, 'course_enabled': course_enabled,
             'revision': status['latestReadyRevisionName'], 'image': c['image']}
 
 
