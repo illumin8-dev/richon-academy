@@ -212,9 +212,11 @@ def main():
                 conn.read_only=True
                 with conn.cursor() as cur:
                     states=[]
+                    variants=[]
                     for version in domain.DEPENDENCIES:
                         cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
                         row=cur.fetchone()
+                        recorded=row[0] if row else None
                         exact=row==(domain.checksum(version),)
                         compatible=exact or (
                             version=='004_monthly_enrollments'
@@ -222,7 +224,10 @@ def main():
                             and domain.legacy_monthly_compatible(cur)
                         )
                         states.append(version+':' + ('EXACT' if exact else ('LEGACY_COMPATIBLE' if compatible else 'MISMATCH')))
+                        if version in ('004_monthly_enrollments','005_manual_registry'):
+                            variants.append(version+':' + domain.checksum_variant(version,recorded))
                     print('DEPENDENCIES=' + ','.join(states))
+                    print('CHECKSUM_VARIANTS=' + ','.join(variants))
             print('DIAGNOSE_ONLY=PASS / NO_DATABASE_CHANGES=YES')
             return 0
 
