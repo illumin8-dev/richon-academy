@@ -42,6 +42,9 @@ def validate_source():
     need(subprocess.run(['git','diff','--quiet'],cwd=ROOT).returncode==0
          and subprocess.run(['git','diff','--cached','--quiet'],cwd=ROOT).returncode==0,
          'tracked_checkout_not_clean')
+    for version in ('004_monthly_enrollments','005_manual_registry'):
+        need((domain.DIRECTORY/(version+'.sql')).is_file(),
+             'course_predecessor_migration_missing')
     for migration in (domain,entitlements):
         need((migration.DIRECTORY/(migration.VERSION+'.sql')).is_file(),
              'course_migration_missing')
