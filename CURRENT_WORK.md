@@ -120,6 +120,7 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] 실전 멘토 카드는 이름 / 분야 / 짧은 실전 소개를 함께 표시
 - [ ] 외부화한 본문 JPEG의 WebP 변환은 후속 성능 최적화 항목
 - [x] fork main apply.html은 기존 승인 신청/결제 UI를 복구하고 현재 5개 과정/모집상태에 맞게 정합
+- [x] apply.html은 과정별 기존 강의 소개를 유지하고 운영 설명/공통 안내 문구/`신청 흐름` 섹션은 제거 (2026-09-29 재확정)
 - [x] 원본 marururu00/richon-academy main에 공개 UI/apply.html 반영 및 GitHub Pages 배포 확인 (PR #11 / 2026-09-29)
 - [ ] admin은 공개/회원과 다른 운영 UI family이므로 동일 header 강제 대신 course/admin 구현 단계에서 brand token·간격·타이포 정합
 - [ ] OAuth HTML/CSS embedded refactor는 다음 UI closeout PR에서 shared token/asset 기준으로 분리
