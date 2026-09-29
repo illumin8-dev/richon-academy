@@ -19,7 +19,11 @@ for page in (index,apply):
 assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
+assert 'RICHON MENTORS' in index and '리치온 멘토진' in index
+assert '대표 멘토 1명과 분야별 실전 멘토 6명이 함께합니다.' in index
 assert '대표 멘토' in index and '리치온 아카데미 대표 멘토' in index and '실전 멘토' in index
+assert index.count('class="mentor-feature-card"') == 1
+assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
 
@@ -55,6 +59,7 @@ assert '<p>대중과 반대로 가는 길에서 기회를 찾아온 실전 투�
 assert '<p>부동산 동향 / 경매 / 재개발 / 인테리어를 아우르는 통합적 관점으로 시장의 불확실성을 기회로 바꾸는 인사이트를 전합니다.</p>' in index
 assert '<p>강의에서는 시장 흐름을 먼저 읽고, 그 흐름에 맞는 투자 방식과 물건을 고르는 판단 기준을 중심으로 설명합니다.</p>' in index
 assert index.count('class="mentor-card"') == 6 and index.count('class="mentor-field"') == 6
+assert 'aria-label="리치온 실전 멘토 6명"' in index
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert '신청 흐름' not in apply
 assert 'class="apply-flow"' not in apply
