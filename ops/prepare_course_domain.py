@@ -97,9 +97,12 @@ def migration_checksum(migration):
 
 def apply_one(cur,migration):
     for version in migration.DEPENDENCIES:
-        cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
-        need(cur.fetchone()==(migration.checksum(version),),
-             'dependency_mismatch_'+version)
+        if migration is domain:
+            need(domain.dependency_ok(cur,version),'dependency_mismatch_'+version)
+        else:
+            cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
+            need(cur.fetchone()==(migration.checksum(version),),
+                 'dependency_mismatch_'+version)
     checksum=migration_checksum(migration)
     cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',
                 (migration.VERSION,))
@@ -205,6 +208,21 @@ def main():
         if args.diagnose:
             base.diagnose_connection(owner_url,base.OWNER_ROLE,'owner')
             base.diagnose_connection(runtime_url,ready.ROLE,'runtime')
+            with db._connect(owner_url) as conn:
+                conn.read_only=True
+                with conn.cursor() as cur:
+                    states=[]
+                    for version in domain.DEPENDENCIES:
+                        cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
+                        row=cur.fetchone()
+                        exact=row==(domain.checksum(version),)
+                        compatible=exact or (
+                            version=='004_monthly_enrollments'
+                            and row is not None
+                            and domain.legacy_monthly_compatible(cur)
+                        )
+                        states.append(version+':' + ('EXACT' if exact else ('LEGACY_COMPATIBLE' if compatible else 'MISMATCH')))
+                    print('DEPENDENCIES=' + ','.join(states))
             print('DIAGNOSE_ONLY=PASS / NO_DATABASE_CHANGES=YES')
             return 0
 
