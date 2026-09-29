@@ -70,7 +70,7 @@ def _learner(cur, learner_id, version=None):
 def _enrollment(cur, enrollment_id, version, allow_archived=False):
     cur.execute('''SELECT x.version,x.archived_at,e.learner_id,e.course_id,r.duration_kind
       FROM richon.manual_enrollments x JOIN richon.monthly_enrollments e USING(enrollment_id)
-      JOIN richon.course_month_rules r USING(course_id) WHERE enrollment_id=%s FOR UPDATE OF x,e''',(enrollment_id,))
+      JOIN richon.course_month_rules r USING(course_id) WHERE enrollment_id=%s FOR UPDATE OF x''',(enrollment_id,))
     row=cur.fetchone()
     if row is None: raise Rejected('manual_enrollment_not_found',404)
     if row[0] != version: raise Rejected('stale_record')
