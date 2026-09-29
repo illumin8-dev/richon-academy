@@ -8,7 +8,7 @@
   const grantText = {pending:'확정 대기',confirmed:'수강 확정',cancelled:'취소'};
   const requests = new Set();
   let epoch = 0, searchSeq = 0, historySeq = 0, csrf = '', offset = 0, current = null;
-  let selected = null, historyOffset = 0;
+  let selected = null, historyOffset = 0, loginPrompted = false;
   function node(tag,text,className) { const e=document.createElement(tag); if(text!==undefined)e.textContent=String(text); if(className)e.className=className; return e; }
   function seoulMonth() { const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).formatToParts(new Date()); return p.find(x=>x.type==='year').value+'-'+p.find(x=>x.type==='month').value; }
   function monthText(s) { if(!s)return '—'; const [y,m]=s.split('-'); return y+'년 '+Number(m)+'월'; }
@@ -46,8 +46,16 @@
     $('content').hidden=true;$('logout').hidden=true;
     $('search').value='';$('page-info').textContent='';$('list-message').textContent='';
   }
-  function gate(title,text) { clearData();$('gate').hidden=false;$('gate-title').textContent=title;$('gate-text').textContent=text;$('retry').hidden=false; }
-  function accessError(e) { if(e.status===401||e.status===403){gate('접근 권한을 다시 확인해 주세요.','로그인이 만료되었거나 관리자 권한·보안 확인이 필요합니다.');return true;}return false; }
+  function gate(title,text,retry=true) { clearData();$('gate').hidden=false;$('gate-title').textContent=title;$('gate-text').textContent=text;$('retry').hidden=!retry;if($('gate-login'))$('gate-login').hidden=true; }
+  function accessError(e) {
+    if(e.status===401){
+      gate('로그인이 필요합니다.','로그인 후 관리자 권한을 확인합니다.',false);
+      if($('gate-login')){$('gate-login').hidden=false;if(!loginPrompted){loginPrompted=true;setTimeout(()=>$('gate-login').click(),0);}}
+      return true;
+    }
+    if(e.status===403){gate('관리자 권한이 필요합니다.','관리자 권한이 있는 계정으로 로그인해 주세요.');return true;}
+    return false;
+  }
   function settings() {
     const list=$('column-list');list.replaceChildren();
     columns.forEach(([key,label])=>{const wrap=node('label');const check=node('input');check.type='checkbox';check.checked=visible.has(key);check.disabled=key==='name';
