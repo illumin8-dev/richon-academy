@@ -1,7 +1,7 @@
 """Canonical course entitlements in disposable localhost PostgreSQL only."""
 from datetime import date, datetime, timedelta, timezone
 import os
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
