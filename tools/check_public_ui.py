@@ -43,6 +43,9 @@ assert index.count('class="pcard') >= 6
 assert 'class="pcard coming-soon reveal"' in index
 assert 'aria-label="새로운 과정 준비 중"' in index
 assert 'COMING SOON' in index and '새로운 과정 준비 중' in index
+assert '리치온의 다음 실전 과정을 준비하고 있습니다.' not in index
+assert 'coming-soon-copy' not in index
+assert '<h3 class="coming-soon-title">' not in index
 assert 'placeholder-plus' not in index
 assert '소개 ↗' not in index and '소식 보기 ↗' not in index
 assert index.count('class="course-cta') >= 5
