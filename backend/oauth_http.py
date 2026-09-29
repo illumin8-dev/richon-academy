@@ -270,6 +270,7 @@ def make_router(settings):
     def callback(provider:str,request:Request):
         target='/'
         account_attempt=None
+        stage='validate_callback'
         try:
             pairs=list(request.query_params.multi_items());q=dict(pairs)
             if (len(pairs)!=len(q) or len(str(request.url.query))>8192 or not set(q)<= {'state','code','error','error_description'}
@@ -279,6 +280,7 @@ def make_router(settings):
             code=q.get('code')
             if not q.get('error') and (not isinstance(code,str) or not 1<=len(code)<=2048 or any(ord(char)<33 or ord(char)>126 for char in code)): raise store.InvalidFlow()
             if account_enabled:
+                stage='account_attempt'
                 account_attempt=accounts.consume_action_attempt(settings,provider,state,browser)
             if account_attempt is not None:
                 if q.get('error'):
@@ -317,8 +319,10 @@ def make_router(settings):
                 for name in (BROWSER,TICKET,LINK):
                     response.delete_cookie(name,path='/',secure=True,httponly=True,samesite='lax')
                 return response
+            stage='consume_attempt'
             target=store.consume_attempt(settings,provider,state,browser)
             if q.get('error'): return failed(target)
+            stage='exchange_provider'
             if collect_profile:
                 verified=providers.exchange_session(settings,provider,code,state,browser)
                 identity=verified.identity
@@ -326,13 +330,18 @@ def make_router(settings):
             else:
                 identity=providers.exchange(settings,provider,code,state,browser)
                 provider_profile=None
+            stage='member_lookup'
             member_id=store.member_for(identity)
             if member_id is not None and (not collect_profile or member_profile_store.completed(member_id, settings)):
+                stage='complete_existing'
                 return complete(member_id,request,target)
+            stage='stage_signup'
             ticket=store.stage_signup(settings,identity,browser,target,provider_profile)
             response=redirect('/auth/signup');set_temporary(response,TICKET,ticket)
             return response
         except Exception:
+            safe_provider=provider if provider in settings.providers else 'unknown'
+            logger.warning('oauth_callback_failed stage=%s provider=%s',stage,safe_provider)
             if account_attempt is not None:
                 response=redirect('/portal/mypage')
                 response.delete_cookie(BROWSER,path='/',secure=True,httponly=True,samesite='lax')
