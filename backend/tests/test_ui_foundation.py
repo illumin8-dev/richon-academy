@@ -32,3 +32,19 @@ def test_standalone_auth_has_no_legacy_inline_theme():
     assert 'var(--site-orange)' in css
     assert '#fff7ed' not in css
     assert '#c44916' not in css
+
+
+def test_course_admin_uses_shared_login_modal_gate():
+    html=(STATIC/'courses.html').read_text()
+    js=(STATIC/'courses.js').read_text()
+    assert '/portal/assets/site.css' in html
+    assert '/portal/assets/login.js' in html
+    assert 'id="gate-login"' in html and 'data-richon-login' in html
+    assert 'return_to=%2Fportal%2Fcourses' in html
+    assert "e.status===401" in js and "$('gate-login').click()" in js
+
+def test_auth_locked_fields_are_visual_not_explanatory():
+    css=(SHARED/'auth.css').read_text()
+    assert 'input[data-provider-locked=true]' in css
+    assert '.provider-lock-badge' in css
+    assert '.auth-main-signup' in css and '.auth-main-login' in css
