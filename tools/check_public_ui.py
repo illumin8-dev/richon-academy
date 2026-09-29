@@ -41,9 +41,14 @@ assert 'class="pcard placeholder reveal"' in index
 assert 'aria-label="추후 추가될 강의 자리"' in index
 assert 'class="placeholder-plus" aria-hidden="true">+</span>' in index
 assert 'placeholder-label' not in index
-assert '소개 ↗' not in index and '소식 보기 ↗' not in index
-assert '처음 시작하는 투자자가 시장 흐름과 투자 기준을 익히는 입문 과정입니다.' in index
-assert '사업성과 입지, 진행 단계를 분석해 재개발 투자 판단력을 높이는 과정입니다.' in index
+assert index.count('소개 ↗') >= 4 and '소식 보기 ↗' in index
+assert index.count('class="course-cta') >= 5
+assert '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.' in index
+assert '정밀한 입지 분석과 인프라 변화 예측으로 수도권 주요 재개발/재건축 단지를 공략하는 심화 과정.' in index
+assert '<p>대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.</p>' in index
+assert '<p>부동산 동향 / 경매 / 재개발 / 인테리어를 아우르는 통합적 관점으로 시장의 불확실성을 기회로 바꾸는 인사이트를 전합니다.</p>' in index
+assert '<p>강의에서는 시장 흐름을 먼저 읽고, 그 흐름에 맞는 투자 방식과 물건을 고르는 판단 기준을 중심으로 설명합니다.</p>' in index
+assert index.count('class="mentor-card"') == 6 and index.count('class="mentor-field"') == 6
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
 assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
