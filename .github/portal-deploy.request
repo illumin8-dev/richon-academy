@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-course-enabled",
-  "request_id": "auth-ux-postdeploy-course-inspect-20260930-a"
+  "operation": "inspect-login-requests",
+  "request_id": "login-failure-inspect-20260930-c"
 }
