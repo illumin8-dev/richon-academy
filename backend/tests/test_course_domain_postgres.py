@@ -143,7 +143,7 @@ def test_my_courses_exposes_optional_resources_only_during_access(course_db,acto
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
         request_id=req(),reason='가상 활성 수강',run_id=UUID(r['run_id']),member_id=member))
     own=store.my_courses(member,20,0)
-    row=next(x for x in own['items'] if x['enrollment_id']==grant['enrollment_id'])
+    row=next(x for x in own['items'] if str(x['enrollment_id'])==grant['enrollment_id'])
     assert row['status']=='ACTIVE'
     assert row['sessions'][0]['video_url']=='https://example.invalid/video'
     assert row['sessions'][0]['material_url']=='https://example.invalid/material'
@@ -151,7 +151,7 @@ def test_my_courses_exposes_optional_resources_only_during_access(course_db,acto
         c.execute("UPDATE richon.course_enrollments SET status='SUSPENDED',suspended_at=CURRENT_TIMESTAMP WHERE enrollment_id=%s",
                   (grant['enrollment_id'],))
     hidden=store.my_courses(member,20,0)
-    row=next(x for x in hidden['items'] if x['enrollment_id']==grant['enrollment_id'])
+    row=next(x for x in hidden['items'] if str(x['enrollment_id'])==grant['enrollment_id'])
     assert row['status']=='SUSPENDED'
     assert row['sessions'][0]['video_url'] is None and row['sessions'][0]['material_url'] is None
 
