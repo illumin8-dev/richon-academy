@@ -19,8 +19,6 @@
 !course_domain_models.py
 !course_domain_store.py
 !course_domain_portal.py
-!course_domain_migrate.py
-!course_entitlement_migrate.py
 !migrations/
 migrations/*
 !migrations/001_pending_orders.sql
