@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "admin-mypage-code-rollout-20260930-b"
+  "operation": "recover-login-handoff-check",
+  "request_id": "admin-mypage-handoff-recovery-20260930-a"
 }
