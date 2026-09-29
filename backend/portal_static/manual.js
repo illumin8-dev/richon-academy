@@ -11,7 +11,13 @@ async function request(path,body){
  try{const response=await fetch(path,{method:body===undefined?'GET':'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal,headers:body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':csrf||''},body:body===undefined?undefined:JSON.stringify(body)});
  const data=response.status===204?null:await response.json();
  if(!response.ok)throw {status:response.status,detail:data?.detail};return data;
- }catch(e){if(e.status===401||e.status===403)lock(textError(e));throw e;}finally{clearTimeout(timer);}
+ }catch(e){
+   if(e.status===401){
+     lock('로그인이 필요합니다.');
+     if($('gate-login')){$('gate-login').hidden=false;if(!loginPrompted){loginPrompted=true;setTimeout(()=>$('gate-login').click(),0);}}
+   }else if(e.status===403)lock('관리자만 사용할 수 있습니다.');
+   throw e;
+ }finally{clearTimeout(timer);}
 }
 // END REAL TRANSPORT
 const api=async(path,body)=>{const e=epoch,data=await request('/portal/api/admin/manual/'+path,body);if(e!==epoch)throw {stale:true};return data;};
