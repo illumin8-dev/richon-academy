@@ -1,6 +1,6 @@
 # CURRENT WORK / 리치온아카데미
 
-- 기준일: 2026-09-28
+- 기준일: 2026-09-29
 - 용도: 승인된 결정 / 현재 장애 / 다음 순서를 잊지 않기 위한 단일 작업 체크리스트
 - 원칙: 대화 기억이나 PR 제목만 믿지 않고, 이 문서 + 최신 PR 체크포인트 + 실제 배포 상태를 함께 확인한다.
 
@@ -114,22 +114,22 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 
 남은 항목 / 경계:
 - [ ] 강의별 주차 담당 강사는 course 데이터/상세 화면 구현 시 강의 안에서 표시
-- [x] 프로그램 카드 3×2 구조 유지 / 5개 강의 + 6번째는 `+`만 있는 빈 자리로 확정
-- [x] 강의 카드는 원본 최신 상세 소개 문구 / 핵심 태그 / 신청 CTA + 소개·소식 보기 보조 CTA를 함께 사용 (2026-09-29 재확정)
+- [x] 프로그램 카드 3×2 구조 유지 / 5개 강의 + 6번째는 `COMING SOON / 새로운 과정 준비 중` 카드로 확정
+- [x] 모집중은 신청하기만 / 대기는 대기 신청만 / 모집예정은 모집 예정 + 해당 apply.html 소개 링크로 확정 (2026-09-29)
 - [x] 대표 멘토 소개는 3문장으로 구성하고 문장마다 별도 줄로 표시
 - [x] 실전 멘토 카드는 이름 / 분야 / 짧은 실전 소개를 함께 표시
 - [ ] 외부화한 본문 JPEG의 WebP 변환은 후속 성능 최적화 항목
 - [x] fork main apply.html은 기존 승인 신청/결제 UI를 복구하고 현재 5개 과정/모집상태에 맞게 정합
-- [ ] 원본 marururu00/richon-academy apply.html은 아직 0 byte / fork main 검증 후 별도 원본 반영 필요
+- [x] 원본 marururu00/richon-academy main에 공개 UI/apply.html 반영 및 GitHub Pages 배포 확인 (PR #11 / 2026-09-29)
 - [ ] admin은 공개/회원과 다른 운영 UI family이므로 동일 header 강제 대신 course/admin 구현 단계에서 brand token·간격·타이포 정합
 - [ ] OAuth HTML/CSS embedded refactor는 다음 UI closeout PR에서 shared token/asset 기준으로 분리
-- [ ] 원본 marururu00/richon-academy에 public UI foundation + Kakao signup-guide/policy 반영: repo metadata는 push=true로 보이지만 branch/PR API는 여전히 403 Resource not accessible by integration
+- [x] 원본 marururu00/richon-academy에 public UI foundation + signup-guide/policy 반영 완료 (PR #11 / 2026-09-29)
 - [ ] 원본 public 배포 전 {{구글폼URL}} / {{결제링크URL}} / {{입금계좌}} 등 launch placeholder 재점검
 
 현재 public 배포 경계:
-- fork main에는 PR #57 반영 완료
-- 원본 marururu00/richon-academy main은 아직 기존 v7 landing 상태
-- 원본 write/PR 생성은 현재 연결 앱에서 403 Resource not accessible by integration
+- fork main 최신 공개 UI 반영
+- 원본 marururu00/richon-academy main은 PR #11까지 반영
+- GitHub Pages build/deployment 성공 확인 (merge 11e81b2e2ce91baa7b189a13fd5df9352c7c3520)
 
 ## 2. 강의 데이터 / 관리자
 
