@@ -121,7 +121,8 @@
       top.append(desc,element('span',statusLabels[row.status]||'상태 확인','account-badge'));card.append(top);
       if(row.description)card.append(element('p',row.description,'account-course-copy'));
       if(Array.isArray(row.sessions)&&row.sessions.length){
-        const detail=element('details');detail.append(element('summary','회차 / 학습 자료'));
+        const sessions=element('div',undefined,'account-course-sessions');
+        sessions.append(element('div','회차 / 학습 자료','account-session-heading'));
         const list=element('div',undefined,'account-session-list');
         for(const session of row.sessions){
           const item=element('div',undefined,'account-session');const info=element('div');
@@ -135,7 +136,7 @@
           }
           item.append(info,links);list.append(item);
         }
-        detail.append(list);card.append(detail);
+        sessions.append(list);card.append(sessions);
       }
       $('list').append(card);
     }
