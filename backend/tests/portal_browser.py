@@ -80,7 +80,8 @@ def main():
             page.goto(origin+'/portal/admin');expect(page.locator('#table-body tr')).to_have_count(2)
             expect(page.locator('#members-total')).to_have_text('12')
             if output:page.screenshot(path=str(output/'admin-desktop.png'),full_page=True)
-            for tab,title in [('members','회원 목록'),('courses','강의 목록'),('orders','신청·주문 내역')]:
+            expect(page.locator('[data-tab=courses]')).to_have_count(0)
+            for tab,title in [('members','회원 목록'),('orders','신청·주문 내역')]:
                 page.locator('[data-tab='+tab+']').click();expect(page.locator('#list-title')).to_have_text(title);expect(page.locator('#table-body tr')).to_have_count(2)
             page.locator('#search').fill('검색결과없음');page.locator('#search').press('Enter');expect(page.locator('#table-body')).to_contain_text('조건에 맞는 내역이 없습니다.')
             page.locator('#search').fill('');page.locator('#search').press('Enter');expect(page.locator('#table-body tr')).to_have_count(2)
