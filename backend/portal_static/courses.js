@@ -36,6 +36,7 @@ function catalogOptions(){
  const rs=state.runs.filter(x=>!x.archived).map(x=>({value:x.run_id,label:x.program_title+(x.cohort_label?' / '+x.cohort_label:'')}));
  for(const id of ['grant-run','session-run'])fillSelect($(id),rs,'기수 선택');
  fillSelect($('enrollment-run'),[{value:'',label:'전체 기수'},...rs],'전체 기수');
+ loadSessions();
 }
 function renderCatalog(){
  $('program-list').replaceChildren(...state.programs.map(p=>el('span',p.title+(p.fixed_months?' / '+p.fixed_months+'개월':''),'program-chip')));
@@ -80,13 +81,39 @@ async function loadEnrollments(){
   text('enrollment-status',data.items.length?'':'등록된 수강권이 없습니다.');
  }catch(e){text('enrollment-status','수강권을 불러오지 못했습니다.');}
 }
+function resetSessionForm(){
+ const f=$('session-form');const run=f.elements.run_id.value;f.reset();f.elements.run_id.value=run;
+ f.elements.session_id.value='';f.elements.version.value='';$('session-reset').hidden=true;text('session-save','회차 저장');
+}
+async function loadSessions(){
+ const run=$('session-run').value;const box=$('session-list');box.replaceChildren();
+ if(!run){text('session-status','기수를 선택하면 등록된 회차가 표시됩니다.');return;}
+ try{
+  const rows=await api('/portal/api/admin/learning/sessions?'+new URLSearchParams({run_id:run}));
+  for(const r of rows){
+   const item=el('div',undefined,'session-admin-item');const info=el('div');
+   info.append(el('b',String(r.sequence_no)+'회 · '+r.title),el('span',[r.mentor_name,r.video_url?'영상 등록':'영상 없음',r.material_url?'자료 등록':'자료 없음'].filter(Boolean).join(' / ')));
+   const edit=el('button','수정');edit.type='button';edit.addEventListener('click',()=>{
+    const f=$('session-form');f.elements.session_id.value=r.session_id;f.elements.version.value=String(r.version);
+    f.elements.run_id.value=r.run_id;f.elements.sequence_no.value=String(r.sequence_no);f.elements.sequence_no.disabled=true;
+    f.elements.title.value=r.title;f.elements.mentor_name.value=r.mentor_name||'';
+    f.elements.starts_at.value=r.starts_at?new Date(r.starts_at).toISOString().slice(0,16):'';
+    f.elements.ends_at.value=r.ends_at?new Date(r.ends_at).toISOString().slice(0,16):'';
+    f.elements.video_url.value=r.video_url||'';f.elements.material_url.value=r.material_url||'';
+    $('session-reset').hidden=false;text('session-save','회차 수정 저장');f.elements.title.focus();
+   });item.append(info,edit);box.append(item);
+  }
+  text('session-status',rows.length?'':'등록된 회차가 없습니다.');
+ }catch(e){text('session-status','회차를 불러오지 못했습니다.');}
+}
+
 async function boot(){
  try{
   const me=await api('/portal/api/me');if(me.role!=='admin')throw Object.assign(new Error(),{status:403});
   $('gate').hidden=true;$('content').hidden=false;await loadCatalog();
  }catch(e){text('gate-text',e.status===403?'관리자 권한이 필요합니다.':'로그인 또는 연결 상태를 확인해 주세요.');$('retry').hidden=false;}
 }
-$('retry').addEventListener('click',boot);$('refresh').addEventListener('click',loadCatalog);$('enrollment-run').addEventListener('change',loadEnrollments);
+$('retry').addEventListener('click',boot);$('refresh').addEventListener('click',loadCatalog);$('enrollment-run').addEventListener('change',loadEnrollments);$('session-run').addEventListener('change',()=>{resetSessionForm();loadSessions();});$('session-reset').addEventListener('click',()=>{const f=$('session-form');f.elements.sequence_no.disabled=false;resetSessionForm();loadSessions();});
 $('program-form').addEventListener('submit',async e=>{
  e.preventDefault();const f=formData(e.currentTarget);
  const body={request_id:requestId(),reason:f.reason,program_id:f.program_id,title:f.title,description:f.description,
@@ -122,11 +149,16 @@ $('grant-form').addEventListener('submit',async e=>{
  catch(x){text('grant-status','지급하지 못했습니다: '+(x.detail||x.status||''));}
 });
 $('session-form').addEventListener('submit',async e=>{
- e.preventDefault();const f=formData(e.currentTarget);
- const body={request_id:requestId(),reason:f.reason,run_id:f.run_id,sequence_no:Number(f.sequence_no),title:f.title,mentor_name:f.mentor_name,
-   starts_at:isoLocal(f.starts_at),ends_at:isoLocal(f.ends_at),video_url:f.video_url,material_url:f.material_url};
- try{await post('/portal/api/admin/learning/sessions',body);e.currentTarget.reset();text('session-status','회차를 저장했습니다.');catalogOptions();}
- catch(x){text('session-status','저장하지 못했습니다: '+(x.detail||x.status||''));}
+ e.preventDefault();const form=e.currentTarget;form.elements.sequence_no.disabled=false;const f=formData(form);const editing=Boolean(f.session_id);
+ const body=editing
+  ?{request_id:requestId(),reason:f.reason,session_id:f.session_id,version:Number(f.version),title:f.title,mentor_name:f.mentor_name,
+    starts_at:isoLocal(f.starts_at),ends_at:isoLocal(f.ends_at),video_url:f.video_url,material_url:f.material_url,cancelled:false}
+  :{request_id:requestId(),reason:f.reason,run_id:f.run_id,sequence_no:Number(f.sequence_no),title:f.title,mentor_name:f.mentor_name,
+    starts_at:isoLocal(f.starts_at),ends_at:isoLocal(f.ends_at),video_url:f.video_url,material_url:f.material_url};
+ try{
+  await post(editing?'/portal/api/admin/learning/sessions/update':'/portal/api/admin/learning/sessions',body);
+  text('session-status',editing?'회차를 수정했습니다.':'회차를 저장했습니다.');resetSessionForm();form.elements.sequence_no.disabled=false;await loadSessions();
+ }catch(x){if(editing)form.elements.sequence_no.disabled=true;text('session-status','저장하지 못했습니다: '+(x.detail||x.status||''));}
 });
 $('logout').addEventListener('click',async()=>{try{const t=await csrf();await api('/auth/logout',{method:'POST',headers:{'X-CSRF-Token':t}});location.href='/';}catch{ text('action-status','로그아웃하지 못했습니다.');}});
 boot();
