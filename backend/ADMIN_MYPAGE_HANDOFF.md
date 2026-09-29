@@ -190,3 +190,16 @@
 - merge commit: `1752850e03a449550b343f755bae8a7de2dcf750`.
 - production DB017 / legacy runtime ACL / monthly/manual feature는 아직 미적용.
 - 다음 작업 단위: feature OFF 상태로 최신 merged code를 protected candidate에 code-only rollout.
+
+
+### 체크포인트 6 / code-only rollout 진행 중
+- PR #91 병합 후 merged admin/mypage/monthly/manual code를 feature OFF 상태로 protected candidate에 rollout 요청.
+- request commit: `85d03b13eac458f7cfcae1f2710151c359d29363`.
+- workflow run: `36609510020`.
+- 현재 확인된 상태:
+  - request PASS
+  - Gcloud upload context / Docker build PASS
+  - Python tests + disposable PostgreSQL PASS
+  - `Roll out login handoff code to protected candidate` step 진행 중
+- 이 rollout은 DB017 / legacy ACL / RICHON_MONTHLY_ENABLED / RICHON_MANUAL_ENABLED를 변경하지 않음.
+- 다음 시작 지점: workflow run 36609510020 최종 결과와 새 candidate revision 확인.
