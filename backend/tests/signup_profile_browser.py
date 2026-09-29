@@ -129,7 +129,7 @@ def run_locked_provider_case(browser):
         assert page.locator('[name=phone]').is_editable() is False
         assert page.locator('[name=email]').is_editable() is True
         assert page.locator('[name=name]').input_value()=='제공자 이름'
-        assert page.locator('[name=phone]').input_value()=='01022223333'
+        assert page.locator('[name=phone]').input_value()=='010-2222-3333'
         assert page.locator('#signup-age_range').is_enabled() is False
         assert page.locator('#signup-gender').is_enabled() is False
         assert page.locator('#signup-age_range').input_value()=='30-39'
