@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-login-requests",
-  "request_id": "login-failure-inspect-20260929-b"
+  "operation": "rollout-login-handoff",
+  "request_id": "auth-ux-regression-fix-20260930-a"
 }
