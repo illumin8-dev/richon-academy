@@ -9,6 +9,8 @@ body.auth-page{margin:0;min-width:320px;background:#f7f6f2;color:var(--site-ink)
 .auth-main>p{margin:0 0 18px;color:var(--site-muted);font-size:14px}
 .auth-main form{display:grid;gap:16px}
 .auth-main-login form{gap:12px}
+.auth-main-login form+form{margin-top:12px}
+.auth-main-login .provider-login{width:100%;max-width:100%}
 .auth-main a{color:#8f6d24;text-underline-offset:3px}
 .auth-main button{min-height:46px;padding:12px 14px;border:1px solid #d8d4c8;border-radius:10px;background:#fff;color:var(--site-ink);font:700 14px/1.5 var(--site-font);cursor:pointer}
 .auth-main button[type=submit]:not(.provider-login){min-height:50px;border-color:var(--site-orange);background:var(--site-orange);color:#fff}
