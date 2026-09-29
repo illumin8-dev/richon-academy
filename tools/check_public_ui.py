@@ -45,6 +45,14 @@ assert index.count('class="course-cta a-disabled" aria-disabled="true">모집 �
 assert 'href="apply.html?course=interior"' not in index
 assert 'href="apply.html?course=welcome"' not in index
 assert index.count('aria-disabled="true">모집 예정</span>') == 2
+assert index.count('class="pcard') >= 6
+assert 'class="pcard placeholder reveal"' in index
+assert 'aria-label="추후 추가될 강의 자리"' in index
+assert 'class="placeholder-plus" aria-hidden="true">+</span>' in index
+assert 'placeholder-label' not in index
+assert '소개 ↗' not in index and '소식 보기 ↗' not in index
+assert '처음 시작하는 투자자가 시장 흐름과 투자 기준을 익히는 입문 과정입니다.' in index
+assert '사업성과 입지, 진행 단계를 분석해 재개발 투자 판단력을 높이는 과정입니다.' in index
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
 
@@ -68,7 +76,7 @@ assert 'frontend/shared/site.css' in hero
 assert '기존 리치온 헤더를 오프닝 뒤에만 노출' not in hero
 assert '.hero-js .site-nav' in hero
 
-print('PASS: public landing uses shared chrome, external images, unified course CTAs and approved mentor layout')
+print('PASS: public landing uses shared chrome, approved mentor copy, external thumbnails and 3x2 course cards')
 
 
 guide=(ROOT/'signup-guide.html').read_text()
