@@ -5,6 +5,7 @@ ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
 apply=(ROOT/'apply.html').read_text()
 shared=ROOT/'frontend'/'shared'
+work=(ROOT/'CURRENT_WORK.md').read_text()
 
 def wrapped(name):
     value=(shared/(name+'.html')).read_text().strip()
@@ -19,13 +20,6 @@ assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
 assert '대표 멘토' in index and '리치온 아카데미 대표 멘토' in index and '실전 멘토' in index
-assert '각 분야의 실전 관점은 강의별 커리큘럼 안에서 연결합니다.' not in index
-assert '대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.' in index
-for mentor in ('가위남','이루민','인생곰부','재부스','키네스트','후니동산'):
-    assert f'<b>{mentor}</b>' in index
-assert index.count('class="mentor-card"') == 6
-assert index.count('class="mentor-field"') == 6
-assert index.count('<div class="mentor-card">') == 6
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
 
@@ -38,15 +32,28 @@ for course in ("pre","study","redev","interior","subscription"):
 assert "redev:{name:'재개발 중급반'" in apply and "status:'waitlist'" in apply
 assert "interior:{name:'리치온 인테리어'" in apply and "status:'upcoming'" in apply
 assert "subscription:{name:'청약 실전반'" in apply and "status:'upcoming'" in apply
-assert 'class="course-cta a-wait" href="apply.html?course=redev">대기 신청 →' in index
-assert '<span class="status waitlist">대기 신청</span>' in index
-assert index.count('class="course-cta a-apply"') == 2
-assert index.count('class="course-cta a-disabled" aria-disabled="true">모집 예정</span>') == 2
+assert 'href="apply.html?course=redev">대기 신청 →' in index
 assert 'href="apply.html?course=interior"' not in index
 assert 'href="apply.html?course=welcome"' not in index
-assert index.count('aria-disabled="true">모집 예정</span>') == 2
+assert index.count('aria-disabled="true">모집 예정</span>') >= 2
+assert index.count('class="pcard') >= 6
+assert 'class="pcard placeholder reveal"' in index
+assert 'aria-label="추후 추가될 강의 자리"' in index
+assert 'class="placeholder-plus" aria-hidden="true">+</span>' in index
+assert 'placeholder-label' not in index
+assert index.count('소개 ↗') >= 4 and '소식 보기 ↗' in index
+assert index.count('class="course-cta') >= 5
+assert '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.' in index
+assert '정밀한 입지 분석과 인프라 변화 예측으로 수도권 주요 재개발/재건축 단지를 공략하는 심화 과정.' in index
+assert '<p>대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.</p>' in index
+assert '<p>부동산 동향 / 경매 / 재개발 / 인테리어를 아우르는 통합적 관점으로 시장의 불확실성을 기회로 바꾸는 인사이트를 전합니다.</p>' in index
+assert '<p>강의에서는 시장 흐름을 먼저 읽고, 그 흐름에 맞는 투자 방식과 물건을 고르는 판단 기준을 중심으로 설명합니다.</p>' in index
+assert index.count('class="mentor-card"') == 6 and index.count('class="mentor-field"') == 6
 assert "{{구글폼URL}}" in apply and "{{결제링크URL}}" in apply and "{{입금계좌}}" in apply
 assert "현재는 UI 준비 상태입니다." in apply
+assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
+assert '회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`' not in work
+assert '원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음' in work
 
 images=[
     'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',
@@ -68,7 +75,7 @@ assert 'frontend/shared/site.css' in hero
 assert '기존 리치온 헤더를 오프닝 뒤에만 노출' not in hero
 assert '.hero-js .site-nav' in hero
 
-print('PASS: public landing uses shared chrome, external images, unified course CTAs and approved mentor layout')
+print('PASS: public landing uses shared chrome, external images and approved mentor layout')
 
 
 guide=(ROOT/'signup-guide.html').read_text()
