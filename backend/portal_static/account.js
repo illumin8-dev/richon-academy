@@ -16,6 +16,7 @@
   const text=(id,value)=>{if($(id))$(id).textContent=String(value??'');};
   const element=(tag,value,cls)=>{const el=document.createElement(tag);if(value!==undefined)el.textContent=String(value);if(cls)el.className=cls;return el;};
   const date=value=>{const d=new Date(value);return Number.isFinite(d.getTime())?new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Asia/Seoul'}).format(d):'확인 필요';};
+  const phone=value=>{const v=String(value??'');if(/^01[016789][0-9]{8}$/.test(v))return v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7);if(/^01[016789][0-9]{7}$/.test(v))return v.slice(0,3)+'-'+v.slice(3,6)+'-'+v.slice(6);return v;};
 
   async function api(path,options={}) {
     const key=path.split('?')[0];
@@ -70,7 +71,7 @@
     const registered=data&&typeof data.name==='string'&&typeof data.phone==='string'&&typeof data.email==='string';
     if(registered){
       $('profile-use-note').hidden=false;
-      for(const field of ['name','phone','email']){text('profile-'+field,data[field]);$('profile-'+field+'-row').hidden=false;}
+      for(const field of ['name','phone','email']){text('profile-'+field,field==='phone'?phone(data[field]):data[field]);$('profile-'+field+'-row').hidden=false;}
       if(data.consultation_consent===true){
         for(const [field,dict,key] of [['age',ages,'age_range'],['gender',genders,'gender']]){
           if(Object.hasOwn(dict,data[key])){text('profile-'+field,dict[data[key]]);$('profile-'+field+'-row').hidden=false;}
@@ -175,7 +176,7 @@
   $('edit-consultation').addEventListener('change',setOptionalEnabled);
   $('edit-profile').addEventListener('click',()=>{
     const data=state.me?.registration;if(!data)return;
-    $('edit-name').value=data.name||'';$('edit-phone').value=data.phone||'';$('edit-email').value=data.email||'';
+    $('edit-name').value=data.name||'';$('edit-phone').value=phone(data.phone);$('edit-email').value=data.email||'';
     $('edit-consultation').checked=data.consultation_consent===true;
     $('edit-age').value=Object.hasOwn(ages,data.age_range)?data.age_range:'';
     $('edit-gender').value=Object.hasOwn(genders,data.gender)?data.gender:'';
