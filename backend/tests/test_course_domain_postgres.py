@@ -130,10 +130,16 @@ def test_my_courses_exposes_optional_resources_only_during_access(course_db,acto
     admin,member=actors
     pid='content-'+uuid4().hex[:8];program(admin,pid)
     start=date.today()-timedelta(days=1);end=date.today()+timedelta(days=30);r=run(admin,pid,start,end)
-    store.mutate(admin,'session.create',model.SessionCreate(
+    created=store.mutate(admin,'session.create',model.SessionCreate(
         request_id=req(),reason='가상 회차',run_id=UUID(r['run_id']),sequence_no=1,title='첫 회차',
-        mentor_name='가상 멘토',starts_at=datetime.now(timezone.utc),
+        mentor_name='가상 멘토',starts_at=datetime.now(timezone.utc)))
+    rows=store.sessions(UUID(r['run_id']))
+    assert rows[0]['video_url'] is None and rows[0]['material_url'] is None
+    updated=store.mutate(admin,'session.update',model.SessionUpdate(
+        request_id=req(),reason='가상 링크 추가',session_id=UUID(created['session_id']),version=created['version'],
+        title='첫 회차',mentor_name='가상 멘토',starts_at=rows[0]['starts_at'],ends_at=rows[0]['ends_at'],
         video_url='https://example.invalid/video',material_url='https://example.invalid/material'))
+    assert updated['version']==created['version']+1
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
         request_id=req(),reason='가상 활성 수강',run_id=UUID(r['run_id']),member_id=member))
     own=store.my_courses(member,20,0)
