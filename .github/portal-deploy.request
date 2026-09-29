@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-course-enabled",
-  "request_id": "course-enable-inspect-20260929-a"
+  "operation": "inspect-login-requests",
+  "request_id": "login-failure-inspect-20260929-b"
 }
