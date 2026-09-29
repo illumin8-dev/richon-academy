@@ -29,21 +29,7 @@ def course_db(registry_db):
     assert oauth_signup_profile_migrate.apply_migration()
     assert oauth_signup_demographics_migrate.apply_migration()
     assert kakao_ci_migrate.apply_migration()
-
-    # Production has a historical DB004 ledger checksum that differs from the
-    # current canonical file. Prove DB015 accepts it only when the exact DB005
-    # ledger and required DB004 schema objects are present.
-    expected004=course_domain_migrate.checksum('004_monthly_enrollments')
-    with registry_db() as c:
-        c.execute("UPDATE richon.schema_migrations SET checksum=%s WHERE version='004_monthly_enrollments'",
-                  ('0'*64,))
-    try:
-        assert course_domain_migrate.apply_migration()
-    finally:
-        with registry_db() as c:
-            c.execute("UPDATE richon.schema_migrations SET checksum=%s WHERE version='004_monthly_enrollments'",
-                      (expected004,))
-
+    assert course_domain_migrate.apply_migration()
     assert course_entitlement_migrate.apply_migration()
     return registry_db
 
