@@ -34,7 +34,7 @@ def notice(settings):
 
 def _display_phone(value):
     if not isinstance(value, str):
-        return value
+        return ''
     if re.fullmatch(r'01[016789][0-9]{8}', value):
         return value[:3] + '-' + value[3:7] + '-' + value[7:]
     if re.fullmatch(r'01[016789][0-9]{7}', value):
