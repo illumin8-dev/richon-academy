@@ -164,3 +164,16 @@
   - schema_migrations SELECT
 - helper source가 Cloud Run deploy/env enable/customer row mutation을 포함하지 않는 계약도 검증.
 - 다음: PR #91 최신 CI 확인 및 회귀 수정.
+
+
+### 체크포인트 4 / DB017 restricted-runtime hardening
+- exact ACL 테스트에서 DB004 trigger 함수의 `FOR UPDATE / FOR SHARE`가 runtime에 불필요한 UPDATE 권한을 요구하는 문제 발견.
+- 권한을 넓히지 않고 새 migration `017_monthly_runtime_hardening` 추가:
+  - `validate_monthly_term()`의 row-lock clause 제거.
+  - 기존 검증 로직 / confirmed immutability / order snapshot checks 유지.
+  - PUBLIC EXECUTE revoke 유지.
+- `monthly_runtime_hardening_migrate.py` 추가. 앱 startup 자동 migration 아님.
+- `prepare_legacy_admin.py`는 DB004/005 exact 확인 → DB017 적용/재진입 확인 → legacy runtime ACL → restricted readback 순서로 변경.
+- confirmation phrase: `APPLY_LEGACY_ADMIN_RUNTIME`.
+- 고객 row 변경 없음. schema change는 DB017 function replacement만.
+- 실제 production DB017/ACL 적용 및 feature ON은 아직 하지 않음.
