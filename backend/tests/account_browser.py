@@ -91,7 +91,7 @@ def main():
             expect(page.locator('.sidebar')).to_have_count(0)
             expect(page.locator('#edit-profile')).to_be_visible()
             expect(page.locator('#profile-name')).to_have_text('합성 회원')
-            expect(page.locator('#profile-phone')).to_have_text('01012345678')
+            expect(page.locator('#profile-phone')).to_have_text('010-1234-5678')
             expect(page.locator('#profile-email')).to_have_text('synthetic@example.invalid')
             expect(page.locator('#profile-age')).to_have_text('30~39세')
             expect(page.locator('#profile-gender')).to_have_text('여성')
