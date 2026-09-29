@@ -16,6 +16,9 @@ for page in (index,apply):
     assert wrapped('footer') in page
     assert 'href="frontend/shared/site.css"' in page
     assert 'src="frontend/shared/site.js"' in page
+    assert 'data-account-entry="enabled"' not in page
+    assert 'id="site-account-login"' in page and 'data-richon-login hidden' in page
+    assert 'id="site-account-me"' in page
 assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
