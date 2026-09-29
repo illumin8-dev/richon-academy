@@ -42,6 +42,7 @@ def read_logs(revision):
         filt=(
             'resource.type="cloud_run_revision" AND '
             f'resource.labels.service_name="{c.SERVICE}" AND '
+            f'resource.labels.revision_name="{revision}" AND '
             f'httpRequest.requestUrl:"{wanted}"'
         )
         raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
