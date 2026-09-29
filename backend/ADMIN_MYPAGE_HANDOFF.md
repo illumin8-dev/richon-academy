@@ -145,3 +145,22 @@
 - confirmation phrase: `APPLY_LEGACY_ADMIN_GRANTS`.
 - `manual_store._enrollment`은 실제 수정하지 않는 `monthly_enrollments`까지 FOR UPDATE하던 불필요 lock을 제거하고 `manual_enrollments`만 lock.
 - 실제 운영 ACL 적용은 아직 하지 않음.
+
+
+### 체크포인트 3 / exact legacy runtime test
+- `backend/tests/test_legacy_admin_runtime.py` 추가.
+- disposable PostgreSQL에서:
+  - DB004/005 exact schema
+  - `richon_portal_login` ACL 준비
+  - readiness exact contract
+  - 수동 과정/수강생/수강/term/audit INSERT
+  - 허용된 profile/term/manual archive UPDATE
+  - monthly trigger 실행
+  을 실제 제한 역할로 검증.
+- 금지 검증:
+  - DELETE
+  - TRUNCATE
+  - monthly_enrollments 직접 UPDATE
+  - schema_migrations SELECT
+- helper source가 Cloud Run deploy/env enable/customer row mutation을 포함하지 않는 계약도 검증.
+- 다음: PR #91 최신 CI 확인 및 회귀 수정.
