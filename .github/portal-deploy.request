@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "auth-ux-regression-fix-20260930-a"
+  "operation": "inspect-course-enabled",
+  "request_id": "auth-ux-postdeploy-course-inspect-20260930-a"
 }
