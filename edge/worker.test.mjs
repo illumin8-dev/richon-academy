@@ -6,6 +6,10 @@ const env={PORTAL_ENABLED:'true',PORTAL_UPSTREAM:'https://richon-portal-syntheti
 const req=(path='/auth/login',init)=>new Request(origin+path,init);
 const cookie='__Host-richon-session=test; HttpOnly; Path=/; SameSite=lax; Secure';
 
+test('auth stylesheet is explicitly proxied',()=>{
+  assert.equal(allowed('/auth/assets/auth.css','GET'),true);
+  assert.equal(allowed('/auth/assets/auth.css','POST'),false);
+});
 test('only login and portal paths / limited methods',()=>{
   for(const path of ['/health/db','/orders','/index.html','/apply.html','/auth/fake-login','/portal//manual','/portal/../orders','/portal/%2forder'])assert.equal(allowed(path,'GET'),false);
   assert.equal(allowed('/auth/start','GET'),false);assert.equal(allowed('/portal/manual','DELETE'),false);
@@ -67,7 +71,7 @@ test('Worker entry ignores execution context as transport',async()=>{
 // emulated here. These assertions prevent reintroducing forced cache TTLs.
 test('all auth and portal subrequests bypass cache rather than cache with TTL zero',async()=>{
   const cases=[['/auth/login','GET'],['/auth/signup','GET'],['/auth/kakao/callback','GET'],
-    ['/auth/naver/callback','GET'],['/auth/assets/kakao-login.png','GET'],['/auth/assets/site.css','GET'],['/auth/assets/handoff.js','GET'],['/auth/me','GET'],
+    ['/auth/naver/callback','GET'],['/auth/assets/kakao-login.png','GET'],['/auth/assets/site.css','GET'],['/auth/assets/auth.css','GET'],['/auth/assets/handoff.js','GET'],['/auth/me','GET'],
     ['/portal/mypage','GET'],['/auth/start','POST'],['/auth/signup','POST'],['/auth/logout','POST']];
   for(const [path,method] of cases){
     let observed;
