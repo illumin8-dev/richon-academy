@@ -19,7 +19,7 @@ ENDPOINTS = {
 }
 RICHON_KAKAO_APP_ID = 1585992
 PUBLIC_RETURNS = frozenset({'/', '/index.html', '/apply.html'})
-RETURNS = PUBLIC_RETURNS | frozenset({'/portal/mypage','/portal/admin','/portal/enrollments','/portal/manual'})
+RETURNS = PUBLIC_RETURNS | frozenset({'/portal/mypage','/portal/admin','/portal/enrollments','/portal/manual','/portal/courses'})
 
 class ProviderRejected(Exception):
     """Safe fixed error; never contains provider response bodies or credentials."""
