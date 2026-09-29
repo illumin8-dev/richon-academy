@@ -22,8 +22,6 @@
 !migrations/
 migrations/*
 !migrations/001_pending_orders.sql
-!migrations/015_course_run_foundation.sql
-!migrations/016_course_entitlements.sql
 !portal_static/
 portal_static/*
 !portal_static/mypage.html
