@@ -1,6 +1,8 @@
 """Canonical course-domain schema contract; no customer data and no production DB."""
 from pathlib import Path
 import re
+import hashlib
+import course_domain_migrate
 
 ROOT=Path(__file__).resolve().parents[1]
 SQL=(ROOT/'migrations'/'015_course_run_foundation.sql').read_text()
@@ -34,3 +36,16 @@ def test_legacy_tables_are_not_dropped_or_rewritten():
     assert 'ALTER TABLE RICHON.COURSES' not in upper
     assert 'ALTER TABLE RICHON.MONTHLY_ENROLLMENTS' not in upper
     assert 'DELETE FROM' not in upper and 'TRUNCATE' not in upper and 'INSERT INTO RICHON.COURSE_' not in upper
+
+
+def test_checksum_variant_classifies_known_byte_forms_without_raw_hashes():
+    name='004_monthly_enrollments'
+    raw=(ROOT/'migrations'/(name+'.sql')).read_bytes()
+    lf=raw.replace(b'\r\n',b'\n')
+    crlf=lf.replace(b'\n',b'\r\n')
+    assert course_domain_migrate.checksum_variant(
+        name,hashlib.sha256(raw).hexdigest())=='EXACT'
+    expected='EXACT' if crlf==raw else 'CRLF'
+    assert course_domain_migrate.checksum_variant(
+        name,hashlib.sha256(crlf).hexdigest())==expected
+    assert course_domain_migrate.checksum_variant(name,'0'*64)=='UNKNOWN'
