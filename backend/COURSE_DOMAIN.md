@@ -24,6 +24,11 @@ It does not seed real programs, members or enrollments, and it does not rewrite 
 ## Current implementation boundary / 2026-09-29
 - Migration 015 remains immutable as the existing canonical foundation.
 - Migration 016 extends 015 with audit/version fields, run price, and optional video/material links.
-- The new course-domain runtime is feature-gated by `RICHON_COURSE_DOMAIN_ENABLED` and remains OFF by default.
-- Production DB 015/016 application is not claimed here; code/CI must pass first and production migration is a separate explicit step.
+- Production preparation confirmed DB004 / DB005 were previously absent from the migration ledger and schema, then applied DB004 → DB005 → DB015 → DB016 in one reviewed owner transaction.
+- Exact `richon_portal_login` runtime privileges and restricted-runtime readback passed after migration.
+- `RICHON_COURSE_DOMAIN_ENABLED=true` is enabled only on the protected `portal-candidate` path.
+- Protected candidate: `richon-portal-course-36581021392-1`.
+- Final `inspect-course-enabled` passed with Cloudflare Access / edge gate / default 100% Cloud Run traffic / IAM / Secret boundaries unchanged.
+- Default 100% Cloud Run serving revision remains `richon-portal-gh-35810692921-1`; course enablement did not promote default traffic.
 - Payment remains outside this implementation. Manual ADMIN grants are the first entitlement creation path.
+- Real program/run/session data entry and authenticated owner-browser E2E remain operational follow-up, not schema implementation work.
