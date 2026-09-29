@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Read-only member/admin portal. Default OFF; no social-login bypass."""
 from datetime import datetime
 import logging
