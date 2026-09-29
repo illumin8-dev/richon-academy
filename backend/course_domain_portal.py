@@ -61,6 +61,11 @@ def make_router(settings:AuthSettings):
              offset:int=Query(0,ge=0,le=10000),include_archived:bool=False):
         return read(response,store.runs,program_id,limit,offset,include_archived)
 
+    @router.get('/admin/learning/sessions')
+    def sessions(response:Response,admin:Annotated[Principal,Depends(require_admin)],
+                 run_id:UUID,include_cancelled:bool=False):
+        return read(response,store.sessions,run_id,include_cancelled)
+
     @router.get('/admin/learning/enrollments')
     def enrollments(response:Response,admin:Annotated[Principal,Depends(require_admin)],
                     run_id:UUID|None=None,limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0,le=10000)):
@@ -90,6 +95,10 @@ def make_router(settings:AuthSettings):
     @router.post('/admin/learning/sessions')
     def create_session(body:model.SessionCreate,response:Response,admin:Annotated[Principal,Depends(permitted)]):
         return write(response,admin,'session.create',body)
+
+    @router.post('/admin/learning/sessions/update')
+    def update_session(body:model.SessionUpdate,response:Response,admin:Annotated[Principal,Depends(permitted)]):
+        return write(response,admin,'session.update',body)
 
     @router.post('/admin/learning/enrollments')
     def grant(body:model.EnrollmentGrant,response:Response,admin:Annotated[Principal,Depends(permitted)]):
