@@ -51,3 +51,24 @@
 3. 회원 count 정의 수정
 4. 회원 상세
 5. 마이페이지 정보 밀도/연결 로그인 UX
+
+
+## 로그인 재현 상태 / 2026-09-30
+
+- 로그인/회원가입 UI 회귀 수정 PR #88 병합 및 protected candidate 배포 완료.
+- 현재 candidate: `richon-portal-handoff-36597611986-1`.
+- 첫 비로그인 마이페이지 진입 시 간편 로그인 modal 자동 오픈.
+- standalone auth/signup UI 현대화, provider-locked field, phone display formatting 적용.
+- 현재 사용자 재현에서 Kakao 로그인/회원가입이 다시 완료되지 않음.
+- 운영 read-only 진단 결과:
+  - 현재 candidate `/auth/start` POST 3건 모두 HTTP 200.
+  - `/auth/kakao/callback` current-candidate 요청 0건.
+  - `oauth_callback_failed stage=...` 이벤트 0건.
+  - 따라서 현재 증거로는 callback 내부 / CI / signup DB 저장 실패가 아니라 provider 이동 후 richon callback 도착 전 구간 문제.
+- 실제 Kakao/Naver E2E 성공 기록은 PR #49에 있고, 해당 handoff 구현은 PR #46.
+- PR #46 성공 시점과 현재 `provider_handoff` / `HANDOFF_JS` 핵심 이동 방식은 동일함.
+- 다음 확인은 실제 브라우저에서 Kakao 버튼 클릭 후:
+  1. Kakao 도메인 화면이 실제 나타나는지
+  2. 나타난다면 인증/동의 뒤 어느 URL로 이동하는지
+  3. Kakao 화면 자체에서 오류가 나는지
+  를 사용자 개인정보/코드 없이 관찰하고, 필요 시 provider console redirect URI/consent 상태와 대조.
