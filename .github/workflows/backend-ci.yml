@@ -112,7 +112,7 @@ jobs:
               'auth_core.py', 'member_profile.py', 'marketing_consent.py', 'auth_http.py', 'portal.py', 'portal_store.py', 'monthly_store.py', 'monthly_portal.py',
               'manual_models.py', 'manual_store.py', 'manual_portal.py',
               'course_domain_models.py', 'course_domain_store.py', 'course_domain_portal.py',
-              'migrations/001_pending_orders.sql', 'migrations/015_course_run_foundation.sql', 'migrations/016_course_entitlements.sql',
+              'migrations/001_pending_orders.sql',
               'portal_static/mypage.html', 'portal_static/admin.html',
               'portal_static/portal.css', 'portal_static/portal.js',
               'portal_static/enrollments.html', 'portal_static/enrollments.css', 'portal_static/enrollments.js',
