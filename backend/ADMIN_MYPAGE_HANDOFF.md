@@ -120,3 +120,13 @@
 4. ACL owner 적용 후 protected candidate에서 monthly/manual feature ON.
 5. 실제 /portal/enrollments, /portal/manual route/API readback.
 6. production data 경계 확인 후 UI 세부 마감.
+
+
+### 체크포인트 1 / PR #91 1차 CI
+- Draft PR #91 생성: `fix(admin): unify operations, member detail and account UX`.
+- 첫 CI에서 Same-domain edge/image PASS, standalone admin preview PASS.
+- Portal UI failure는 기능 오류가 아니라 shared shell drift:
+  - `frontend/shared/mypage.html` 수정 후 `backend/portal_static/mypage.html`을 단순 복사해 build 규칙과 달라짐.
+  - `tools/build_site_shell.py` 규칙대로 shared header/footer를 삽입해 generated mypage를 재생성.
+- 수정 후 PR은 mergeable=true.
+- 다음: 최신 head CI 재확인 후 legacy admin runtime ACL helper 작성.
