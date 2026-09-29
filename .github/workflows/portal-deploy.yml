@@ -110,14 +110,17 @@ jobs:
       - name: Roll out login handoff code to protected candidate
         if: needs.request.outputs.operation == 'rollout-login-handoff'
         run: python3 -B .github/portal/login_handoff_rollout.py
+      - name: Recover orphaned login handoff check tag
+        if: needs.request.outputs.operation == 'recover-login-handoff-check'
+        run: python3 -B .github/portal/login_handoff_recovery.py
       - name: Snapshot fixed service and pinned configuration
-        if: ${{ needs.request.outputs.operation != 'rollout-login-handoff' && !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled","stage-marketing-enabled","inspect-marketing-enabled","stage-course-enabled","inspect-course-enabled","inspect-login-requests"]'), needs.request.outputs.operation) }}
+        if: ${{ needs.request.outputs.operation != 'rollout-login-handoff' && needs.request.outputs.operation != 'recover-login-handoff-check' && !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled","stage-marketing-enabled","inspect-marketing-enabled","stage-course-enabled","inspect-course-enabled","inspect-login-requests"]'), needs.request.outputs.operation) }}
         run: python3 -B .github/portal/operate.py snapshot
       - name: Deploy zero-traffic candidate (or internal-login configuration)
         if: contains(fromJSON('["deploy","configure-internal-login"]'), needs.request.outputs.operation)
         run: python3 -B .github/portal/operate.py candidate
       - id: identity
-        if: ${{ !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled","stage-marketing-enabled","inspect-marketing-enabled","stage-course-enabled","inspect-course-enabled","inspect-login-requests"]'), needs.request.outputs.operation) }}
+        if: ${{ needs.request.outputs.operation != 'recover-login-handoff-check' && !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled","stage-marketing-enabled","inspect-marketing-enabled","stage-course-enabled","inspect-course-enabled","inspect-login-requests"]'), needs.request.outputs.operation) }}
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
           project_id: richon-academy
@@ -137,7 +140,7 @@ jobs:
           PORTAL_ID_TOKEN: ${{ steps.identity.outputs.id_token }}
         run: python3 -B .github/portal/operate.py promote
       - name: Safe failure diagnosis (no application log export)
-        if: failure() && steps.auth.outcome == 'success' && needs.request.outputs.operation != 'rollout-login-handoff' && !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled","stage-marketing-enabled","inspect-marketing-enabled","stage-course-enabled","inspect-course-enabled","inspect-login-requests"]'), needs.request.outputs.operation)
+        if: failure() && steps.auth.outcome == 'success' && needs.request.outputs.operation != 'rollout-login-handoff' && needs.request.outputs.operation != 'recover-login-handoff-check' && !contains(fromJSON('["inspect-edge","stage-edge","stage-edge-naver","rollout-edge-code","stage-account-code","stage-account-enabled","inspect-account-enabled","stage-marketing-enabled","inspect-marketing-enabled","stage-course-enabled","inspect-course-enabled","inspect-login-requests"]'), needs.request.outputs.operation)
         run: python3 -B .github/portal/operate.py diagnose
       - name: Clean local temporary files and synthetic container
         if: always()
