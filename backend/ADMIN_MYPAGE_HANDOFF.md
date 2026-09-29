@@ -223,3 +223,38 @@
   3. branch HEAD를 건드리지 않은 상태에서 code-only rollout 재요청/완료 확인.
   4. 그 뒤에만 DB017 / legacy runtime ACL 적용 준비로 이동.
 
+### 체크포인트 8 / one-time recovery + code-only rollout 완료
+- 사용자 결정: orphan check 문제는 재사용 자동복구 기능으로 일반화하지 않고 이번 1회만 narrow recovery.
+- recovery 준비 전 no-cloud 검증:
+  - portal automation guards PASS.
+  - backend CI / Docker / disposable PostgreSQL PASS.
+- 첫 recovery run `36613399632`은 write 전에 `recovery_unexpected_traffic_rows`로 fail-closed.
+  - 원인: 기존 서비스에 candidate/check 외 다른 pre-existing 0% tag가 있었는데 recovery가 traffic row 총 3개를 가정함.
+  - 실제 tag 제거/traffic 변경은 수행되지 않음.
+- recovery guard를 수정해:
+  - exact orphan `portal-handoff-check -> richon-portal-handoff-36609510020-1`만 대상으로 고정.
+  - existing `portal-candidate -> richon-portal-handoff-36597611986-1` exact 확인.
+  - default untagged 100% exact 확인.
+  - 다른 기존 0% tag는 허용하되 before/after에서 그대로 보존되도록 검증.
+- recovery run `36613781804` PASS.
+  - removed tag: `portal-handoff-check` only.
+  - old candidate unchanged: `richon-portal-handoff-36597611986-1`.
+  - default 100% unchanged: `richon-portal-gh-35810692921-1`.
+  - IAM/config unchanged PASS.
+  - DB / feature flags untouched.
+- code-only rollout run `36614094019` PASS.
+  - rollout source: `fbb18da39014c202a1e228dc6b0eadb5d5bb39ce`.
+  - image digest: `sha256:5f6cb7100b8be620bce812a048bb8e9109a2bc17ef91973cd22b7643fdd27048`.
+  - old candidate: `richon-portal-handoff-36597611986-1`.
+  - new protected candidate: `richon-portal-handoff-36614094019-1`.
+  - `ACCOUNT=true / MARKETING=true / policy=member-info-v1` 유지.
+  - default 100% serving revision: `richon-portal-gh-35810692921-1` 유지.
+  - IAM / edge gate / Access gate PASS.
+  - public homepage login entry unchanged.
+- one-time recovery 코드/라우팅은 rollout 완료 후 다시 제거함.
+  - `.github/portal/common.py`와 `.github/workflows/portal-deploy.yml`은 recovery 도입 전 blob으로 복원.
+  - `login_handoff_recovery.py`, `test_login_handoff_recovery.py` 삭제.
+  - cleanup 후 portal automation guards run `36614694988` PASS.
+- production DB017 / legacy runtime ACL / `RICHON_MONTHLY_ENABLED` / `RICHON_MANUAL_ENABLED`은 여전히 미적용.
+- 다음 시작 지점: DB017 + legacy runtime ACL 적용 전 운영 상태/owner helper 최종 확인 후 적용 단계.
+
