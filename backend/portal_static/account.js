@@ -2,7 +2,7 @@
 'use strict';
 (() => {
   const $=id=>document.getElementById(id);
-  const state={epoch:0,request:0,ready:false,offset:0,limit:20,more:false,me:null};
+  const state={epoch:0,request:0,ready:false,offset:0,limit:20,more:false,me:null,loginPrompted:false};
   const fields=['name','phone','email','age','gender'];
   const names={kakao:'카카오',naver:'네이버'};
   const ages={'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
@@ -59,7 +59,14 @@
   }
 
   function authError(error){
-    if(error.status===401){gate('로그인이 필요합니다.','',false,true);return true;}
+    if(error.status===401){
+      gate('로그인이 필요합니다.','',false,true);
+      if(!state.loginPrompted){
+        state.loginPrompted=true;
+        queueMicrotask(()=>$('gate-login')?.click());
+      }
+      return true;
+    }
     if(error.status===403){gate('접근할 수 없습니다.','계정 상태를 확인해 주세요.');return true;}
     return false;
   }
