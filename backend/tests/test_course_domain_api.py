@@ -88,7 +88,7 @@ def test_non_admin_writes_never_reach_store(app,monkeypatch,path):
 
 def test_admin_write_requires_origin_and_csrf(app,monkeypatch):
     app.dependency_overrides[auth_http.require_member]=lambda:principal('admin')
-    blocked=Mock();monkeypatch.setattr(store,'mutate',blocked)
+    blocked=Mock(return_value={'program_id':'pre-richon','version':1});monkeypatch.setattr(store,'mutate',blocked)
     c=TestClient(app,base_url=ORIGIN,headers={'Cookie':auth_http.COOKIE+'='+TOKEN})
     body={'request_id':str(uuid4()),'reason':'가상 생성','program_id':'pre-richon','title':'Pre리치온','access_mode':'fixed_months','fixed_months':2}
     assert c.post('/portal/api/admin/learning/programs',json=body).status_code==403
