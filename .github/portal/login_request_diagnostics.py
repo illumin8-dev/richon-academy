@@ -15,6 +15,15 @@ import edge_ops as e
 OPERATION='inspect-login-requests'
 ALLOWED_PATHS={'/auth/login','/auth/start','/auth/assets/handoff.js','/auth/kakao/callback','/auth/naver/callback'}
 
+ALLOWED_CALLBACK_STAGES={
+    'validate_callback','account_attempt','consume_attempt','exchange_provider',
+    'member_lookup','complete_existing','stage_signup',
+}
+ALLOWED_PROVIDERS={'kakao','naver','unknown'}
+CALLBACK_STAGE_RE=re.compile(
+    r'oauth_callback_failed stage=([a-z_]+) provider=([a-z]+)'
+)
+
 
 def candidate_revision(svc):
     rows=[row for row in svc.get('status',{}).get('traffic',[])
@@ -79,6 +88,36 @@ def warning_count(revision):
         raise c.Stop('invalid_warning_log_response') from None
     c.need(isinstance(rows,list),'invalid_warning_log_response')
     return len(rows)
+
+
+def callback_stage_counts(revision):
+    """Return only allowlisted fixed stage/provider counts from stderr logs."""
+    filt=(
+        'resource.type="cloud_run_revision" AND '
+        f'resource.labels.service_name="{c.SERVICE}" AND '
+        f'resource.labels.revision_name="{revision}" AND '
+        'logName:"run.googleapis.com%2Fstderr"'
+    )
+    raw=c.command(['gcloud','logging','read',filt,'--project='+c.PROJECT,
+                   '--freshness=30m','--limit=200','--order=asc','--format=json'],
+                  timeout=120)
+    try:
+        rows=json.loads(raw) if raw.strip() else []
+    except (ValueError,UnicodeError):
+        raise c.Stop('invalid_callback_stage_log_response') from None
+    c.need(isinstance(rows,list),'invalid_callback_stage_log_response')
+    counts=Counter()
+    for row in rows:
+        text=row.get('textPayload')
+        if not isinstance(text,str):
+            continue
+        match=CALLBACK_STAGE_RE.search(text.lower())
+        if not match:
+            continue
+        stage,provider=match.groups()
+        if stage in ALLOWED_CALLBACK_STAGES and provider in ALLOWED_PROVIDERS:
+            counts[(stage,provider)]+=1
+    return counts
 
 
 def classify_handoff_errors(revision):
@@ -173,6 +212,10 @@ def run():
     for index,(stamp,_,method,status,rev) in enumerate(starts[-20:],1):
         print(f'AUTH_START_EVENT_{index} timestamp={stamp} method={method} status={status} revision={rev}')
     print('OAUTH_FLOW_NOT_COMPLETED_WARNINGS='+str(warning_count(revision)))
+    stages=callback_stage_counts(revision)
+    print('OAUTH_CALLBACK_STAGE_EVENTS='+str(sum(stages.values())))
+    for (stage,provider),count in sorted(stages.items()):
+        print(f'OAUTH_CALLBACK_STAGE stage={stage} provider={provider} count={count}')
     route_error_summary(revision)
     errors=classify_handoff_errors(revision)
     for key,count in sorted(errors.items()):
