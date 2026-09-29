@@ -101,6 +101,29 @@ class SessionCreate(Write):
         if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_session_range')
         return self
 
+class SessionUpdate(Write):
+    session_id: UUID
+    version: int=Field(ge=1)
+    title: str=Field(min_length=1,max_length=200)
+    mentor_name: str|None=Field(default=None,max_length=80)
+    starts_at: datetime
+    ends_at: datetime|None=None
+    video_url: str|None=Field(default=None,max_length=2048)
+    material_url: str|None=Field(default=None,max_length=2048)
+    cancelled: bool=False
+
+    @field_validator('video_url','material_url')
+    @classmethod
+    def https(cls,value):
+        if value and not value.startswith('https://'): raise ValueError('https_required')
+        return value
+
+    @model_validator(mode='after')
+    def time(self):
+        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_session_range')
+        return self
+
+
 class TargetProfile(Input):
     name: str=Field(min_length=1,max_length=80)
     email: str|None=Field(default=None,max_length=254)
