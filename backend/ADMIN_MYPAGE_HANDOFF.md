@@ -203,3 +203,23 @@
   - `Roll out login handoff code to protected candidate` step 진행 중
 - 이 rollout은 DB017 / legacy ACL / RICHON_MONTHLY_ENABLED / RICHON_MANUAL_ENABLED를 변경하지 않음.
 - 다음 시작 지점: workflow run 36609510020 최종 결과와 새 candidate revision 확인.
+
+### 체크포인트 7 / code-only rollout recovery 필요
+- workflow run `36609510020`은 최종 failure.
+  - request / Docker build / disposable PostgreSQL PASS.
+  - rollout 중 `stale_request_commit`으로 중단.
+  - 원인: rollout 실행 중 체크포인트 문서 커밋 `aa822e671cd39aba3bd11b53a58ffd005c29e701`가 같은 branch HEAD를 변경함.
+- 동일 operation을 새 request commit `6cb539c796e6307325bb22c4e5cd97ac3c95e807` / run `36611612893`으로 재요청.
+  - request / Docker build / disposable PostgreSQL PASS.
+  - rollout은 `handoff_check_tag_already_exists`로 fail-closed.
+- 해석:
+  - 첫 run은 stale 검사 전에 0% 검증용 `portal-handoff-check` revision/tag 생성과 check URL gate probe까지 통과한 뒤, candidate tag switch 직전 stale HEAD 검사에서 중단된 상태.
+  - 따라서 기존 `portal-candidate` 전환은 수행되지 않았고 default 100% serving traffic도 전환되지 않음.
+  - 남은 `portal-handoff-check` 때문에 재시도가 의도적으로 차단됨.
+- production DB017 / legacy runtime ACL / `RICHON_MONTHLY_ENABLED` / `RICHON_MANUAL_ENABLED`은 여전히 미적용.
+- 다음 시작 지점:
+  1. 고아 `portal-handoff-check`의 exact tag/revision/0% 상태와 보호 설정 불변을 read-only로 확인.
+  2. 확인된 해당 check tag만 제거하는 narrow recovery를 수행.
+  3. branch HEAD를 건드리지 않은 상태에서 code-only rollout 재요청/완료 확인.
+  4. 그 뒤에만 DB017 / legacy runtime ACL 적용 준비로 이동.
+
