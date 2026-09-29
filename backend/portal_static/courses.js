@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
 const $=id=>document.getElementById(id);
-const state={programs:[],runs:[],selected:null};
+const state={programs:[],runs:[],selected:null,loginPrompted:false};
 const text=(id,v)=>{if($(id))$(id).textContent=String(v??'');};
 const el=(tag,value,cls)=>{const x=document.createElement(tag);if(value!==undefined)x.textContent=String(value);if(cls)x.className=cls;return x;};
 const requestId=()=>crypto.randomUUID();
@@ -110,8 +110,16 @@ async function loadSessions(){
 async function boot(){
  try{
   const me=await api('/portal/api/me');if(me.role!=='admin')throw Object.assign(new Error(),{status:403});
-  $('gate').hidden=true;$('content').hidden=false;await loadCatalog();
- }catch(e){text('gate-text',e.status===403?'관리자 권한이 필요합니다.':'로그인 또는 연결 상태를 확인해 주세요.');$('retry').hidden=false;}
+  $('gate-login').hidden=true;$('retry').hidden=true;$('gate').hidden=true;$('content').hidden=false;await loadCatalog();
+ }catch(e){
+  $('content').hidden=true;$('gate').hidden=false;
+  if(e.status===401){
+   text('gate-text','로그인이 필요합니다.');$('retry').hidden=true;$('gate-login').hidden=false;
+   if(!state.loginPrompted){state.loginPrompted=true;setTimeout(()=>$('gate-login').click(),0);}
+  }else{
+   $('gate-login').hidden=true;text('gate-text',e.status===403?'관리자 권한이 필요합니다.':'연결 상태를 확인해 주세요.');$('retry').hidden=false;
+  }
+ }
 }
 $('retry').addEventListener('click',boot);$('refresh').addEventListener('click',loadCatalog);$('enrollment-run').addEventListener('change',loadEnrollments);$('session-run').addEventListener('change',()=>{resetSessionForm();loadSessions();});$('session-reset').addEventListener('click',()=>{const f=$('session-form');f.elements.sequence_no.disabled=false;resetSessionForm();loadSessions();});
 $('program-form').addEventListener('submit',async e=>{
