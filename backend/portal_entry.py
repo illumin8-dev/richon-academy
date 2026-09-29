@@ -13,6 +13,7 @@ import account_http
 import portal
 import monthly_portal
 import manual_portal
+import course_domain_portal
 
 ORIGIN = 'https://richonacademy.com'
 LIMIT = 65536
@@ -117,6 +118,7 @@ def build_app():
         account_http.install_if_enabled(app)
         monthly_portal.install_if_enabled(app)
         manual_portal.install_if_enabled(app)
+        course_domain_portal.install_if_enabled(app)
     app.add_middleware(EdgeBoundary, enabled=enabled, secret=os.getenv('RICHON_EDGE_SECRET', ''))
     return app
 
