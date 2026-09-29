@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "course-readiness-code-20260929-b"
+  "operation": "stage-course-enabled",
+  "request_id": "course-enable-20260929-a"
 }
