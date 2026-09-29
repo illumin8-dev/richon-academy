@@ -73,6 +73,7 @@
 
 <article class="panel"><div class="section-head"><div><h2>회차 / 영상 / 자료</h2><p>링크가 없으면 비워둘 수 있습니다.</p></div></div>
 <form id="session-form" class="form">
+<input name="session_id" type="hidden"><input name="version" type="hidden">
 <label class="wide">기수<select name="run_id" id="session-run" required></select></label>
 <label>회차<input name="sequence_no" type="number" min="1" max="1000" required></label>
 <label>멘토<input name="mentor_name" maxlength="80"></label>
@@ -82,8 +83,8 @@
 <label class="wide">영상 URL<input name="video_url" type="url" placeholder="https://"></label>
 <label class="wide">자료 URL<input name="material_url" type="url" placeholder="https://"></label>
 <label class="wide">기록 사유<input name="reason" required value="강의 회차 등록"></label>
-<button class="primary wide" type="submit">회차 저장</button>
-</form><p id="session-status" class="status"></p></article>
+<div class="wide form-actions"><button class="primary" id="session-save" type="submit">회차 저장</button><button id="session-reset" type="button" hidden>수정 취소</button></div>
+</form><div id="session-list" class="session-admin-list"></div><p id="session-status" class="status"></p></article>
 </section>
 
 <section class="panel"><div class="section-head"><div><h2>수강권 현황</h2><p>결제상태와 독립된 실제 수강 권한입니다.</p></div><select id="enrollment-run"></select></div>
