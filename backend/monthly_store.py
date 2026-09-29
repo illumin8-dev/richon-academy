@@ -99,9 +99,14 @@ def _base_for_schema(cur):
     The restricted runtime never reads schema_migrations. Do not catch DB access
     failures. This check and all reads share the repeatable-read snapshot.
     """
-    cur.execute("SELECT to_regclass('richon.manual_enrollments') IS NOT NULL")
-    archive_exists = cur.fetchone()[0]
-    if not archive_exists and os.getenv('RICHON_MANUAL_ENABLED','false') == 'true':
+    cur.execute("""SELECT
+        to_regclass('richon.manual_enrollments') IS NOT NULL,
+        to_regclass('richon.manual_learners') IS NOT NULL,
+        to_regclass('richon.manual_terms') IS NOT NULL,
+        to_regclass('richon.manual_audit') IS NOT NULL""")
+    archive_exists, learners_exists, terms_exists, audit_exists = cur.fetchone()
+    manual_schema_present = learners_exists or terms_exists or audit_exists
+    if not archive_exists and (manual_schema_present or os.getenv('RICHON_MANUAL_ENABLED','false') == 'true'):
         raise RuntimeError('manual_archive_store_unavailable')
     # Only fixed SQL is selected here; every search value remains a bind value.
     clause = """AND NOT EXISTS (
