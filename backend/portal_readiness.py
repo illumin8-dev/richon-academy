@@ -63,6 +63,33 @@ MARKETING_UPDATE = {
                                   'last_consented_at','last_withdrawn_at','updated_at'),
 }
 MARKETING_DELETE = ('member_marketing_consents',)
+COURSE_READ = ('course_programs','course_runs','course_sessions','course_enrollments')
+COURSE_WRITE_ONLY = ('course_domain_audit',)
+COURSE_SELECT_COLUMNS = {
+    'course_domain_audit': ('actor_id','request_id','fingerprint','result'),
+    'enrollment_learners': ('learner_id','member_id','name','phone','email','created_at'),
+}
+COURSE_INSERT = {
+    'course_programs': ('program_id','title','description','access_mode','fixed_months'),
+    'course_runs': ('run_id','program_id','cohort_label','starts_on','ends_on',
+                    'default_access_start','default_access_end','recruit_opens_at',
+                    'recruit_closes_at','capacity','status','price_krw'),
+    'course_sessions': ('session_id','run_id','sequence_no','title','mentor_name',
+                        'starts_at','ends_at','video_url','material_url'),
+    'course_enrollments': ('enrollment_id','run_id','learner_id','status','access_start',
+                           'access_end','source','note'),
+    'course_domain_audit': ('event_id','actor_id','request_id','fingerprint','operation',
+                            'entity_id','reason','result'),
+    'enrollment_learners': ('learner_id','member_id','name','email','phone'),
+}
+COURSE_UPDATE = {
+    'course_programs': ('title','description','archived_at','version','updated_at'),
+    'course_runs': ('cohort_label','recruit_opens_at','recruit_closes_at','capacity',
+                    'status','price_krw','archived_at','version','updated_at'),
+    'course_sessions': ('title','mentor_name','starts_at','ends_at','video_url',
+                        'material_url','cancelled_at','version','updated_at'),
+    'course_enrollments': ('status','cancelled_at','suspended_at','version','updated_at'),
+}
 
 
 def account_enabled():
@@ -71,6 +98,10 @@ def account_enabled():
 
 def marketing_enabled():
     return marketing.enabled()
+
+
+def course_enabled():
+    return os.getenv('RICHON_COURSE_DOMAIN_ENABLED','false') == 'true'
 
 
 def merged_grants(base, extra):
@@ -102,6 +133,17 @@ def marketing_grants_prepared(cur):
     cur.execute("""SELECT has_column_privilege(
         %s,'richon.member_marketing_consents','member_id','INSERT')""",(ROLE,))
     return cur.fetchone() == (True,)
+
+
+def course_grants_prepared(cur):
+    cur.execute("SELECT to_regclass('richon.course_domain_audit') IS NOT NULL")
+    if cur.fetchone() != (True,):
+        return False
+    cur.execute("""SELECT
+        has_column_privilege(%s,'richon.course_programs','program_id','INSERT'),
+        has_column_privilege(%s,'richon.course_domain_audit','event_id','INSERT')""",
+        (ROLE,ROLE))
+    return cur.fetchone()==(True,True)
 
 
 def provider_profile_schema_ready(cur):
@@ -147,17 +189,22 @@ def check_role(cur):
     account = account_enabled()
     profile_active = member_profile.enabled()
     marketing_active = marketing_enabled()
+    course_active = course_enabled()
     if account and not profile_active:
         raise ValueError('account_requires_member_profile_policy')
     if marketing_active and not profile_active:
         raise ValueError('marketing_requires_member_profile_policy')
+    if course_active and not account:
+        raise ValueError('course_requires_account_feature')
     if profile_active and not provider_profile_schema_ready(cur):
         raise ValueError('provider_profile_schema_required')
     provider_profile_grants = profile_active or provider_profile_grants_prepared(cur)
     account_grants = account or account_grants_prepared(cur)
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
-    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ())
+    course_grants = course_active or course_grants_prepared(cur)
+    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ()) + ((COURSE_READ + COURSE_WRITE_ONLY) if course_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
+    select_columns = {table: tuple(columns) for table,columns in ACCOUNT_SELECT_COLUMNS.items()}
     if provider_profile_grants:
         inserts = merged_grants(inserts, PROVIDER_PROFILE_INSERT)
     updates = UPDATE
@@ -176,6 +223,14 @@ def check_role(cur):
         inserts = merged_grants(inserts, MARKETING_INSERT)
         updates = merged_grants(updates, MARKETING_UPDATE)
         deletes = tuple(dict.fromkeys((*deletes, *MARKETING_DELETE)))
+    if course_grants:
+        inserts = merged_grants(inserts, COURSE_INSERT)
+        updates = merged_grants(updates, COURSE_UPDATE)
+        tables = tuple(dict.fromkeys((*tables, 'enrollment_learners')))
+        write_only.update(COURSE_WRITE_ONLY)
+        write_only.add('enrollment_learners')
+        for table,columns in COURSE_SELECT_COLUMNS.items():
+            select_columns[table] = tuple(dict.fromkeys((*select_columns.get(table,()), *columns)))
     for table in tables:
         relation = 'richon.' + table
         cur.execute("SELECT has_table_privilege(%s,%s,'SELECT')", (ROLE,relation))
@@ -190,7 +245,7 @@ def check_role(cur):
         columns = [r[0] for r in cur.fetchall()]
         for column in columns:
             cur.execute('SELECT has_column_privilege(%s,%s,%s,%s)', (ROLE,relation,column,'SELECT'))
-            expected_column_select = expected_select or column in ACCOUNT_SELECT_COLUMNS.get(table, ())
+            expected_column_select = expected_select or column in select_columns.get(table, ())
             if cur.fetchone()[0] != expected_column_select:
                 raise ValueError('portal_column_select_grant_mismatch')
         for operation, grants in (('INSERT', inserts), ('UPDATE', updates)):
