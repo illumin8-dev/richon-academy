@@ -59,9 +59,10 @@
       content.replaceChildren(...children);
     } catch {
       if(serial!==generation || !dialog.open)return;
-      const message=node('p','로그인 화면을 바로 불러오지 못했습니다. 새 브라우저에서는 테스트 접근 인증이 필요할 수 있습니다.','richon-login-status');message.setAttribute('role','alert');
-      const fallback=node('a','접근 인증 후 로그인 화면 열기','site-btn site-btn-line');fallback.href='/auth/login?return_to='+encodeURIComponent(target);
-      content.replaceChildren(message,fallback);
+      const message=node('p','로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.','richon-login-status');message.setAttribute('role','alert');
+      const retry=node('button','다시 시도','site-btn site-btn-line');retry.type='button';
+      retry.addEventListener('click',()=>{dialog.close();setTimeout(()=>open(trigger),0);},{once:true});
+      content.replaceChildren(message,retry);
     } finally {clearTimeout(timer);}
   }
   document.addEventListener('click',event=>{

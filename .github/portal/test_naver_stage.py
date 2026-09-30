@@ -75,7 +75,7 @@ class NaverStageTests(TestCase):
     def test_missing_access_confirmation_still_stops_before_any_cloud_writes(self):
         state = naver_receipt(); state['access'] = 'inconclusive'
         with patch.object(c, 'gc') as gc, patch.object(c, 'command') as command:
-            with self.assertRaisesRegex(c.Stop, 'access_gateway_not_confirmed'):
+            with self.assertRaisesRegex(c.Stop, 'customer_routes_not_confirmed'):
                 e.stage(state)
             gc.assert_not_called(); command.assert_not_called()
 
@@ -92,7 +92,7 @@ class NaverStageTests(TestCase):
             return (state['before'] if count <= 2 else naver_candidate(state)), public_policy()
         with patch.object(c,'source',return_value=state['sha']), patch.object(c,'gc',side_effect=gc), \
              patch.object(c,'command',return_value=''), patch.object(e,'get_service',side_effect=get), \
-             patch.object(e,'access_status',return_value='signin-gateway-confirmed'), \
+             patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES), \
              patch.object(e,'probe_origin'), patch.object(e.op,'save'), patch.object(e.op,'summary'):
             e.stage(state)
         writes = [a for a in calls if a[:3] == ('run','services','update')]
@@ -111,7 +111,7 @@ class NaverStageTests(TestCase):
             return 302, {'Location': 'https://' + e.ACCESS_HOST + '/cdn-cgi/access/login/richonacademy.com?token=secret-never-log'}, b''
         with patch.object(e, 'request', side_effect=response) as requests, patch.object(e.op, 'summary') as summary:
             self.assertEqual(e.access_status(), 'inconclusive')
-        self.assertEqual(requests.call_count, len(e.PATHS + e.PUBLIC))
+        self.assertEqual(requests.call_count, len(e.PATHS + e.PUBLIC) + 1)
         output = '\n'.join(call.args[0] for call in summary.call_args_list)
         self.assertIn('/auth/naver/callback', output)
         self.assertIn('"status": 403', output)

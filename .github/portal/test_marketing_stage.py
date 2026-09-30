@@ -74,7 +74,7 @@ class MarketingStageTests(TestCase):
 
     def test_before_requires_account_on_marketing_off_and_fixed_tags(self):
         before,policy,code_rev,account_rev,_,_=before_fixture()
-        with patch.object(a,'verify_revision'),              patch.object(e,'access_status',return_value='signin-gateway-confirmed'):
+        with patch.object(a,'verify_revision'),              patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES):
             self.assertEqual(m.validate_before(before,policy),(code_rev,account_rev))
         bad=deepcopy(before)
         env=c.environment(bad['spec']['template']['spec']['containers'][0])

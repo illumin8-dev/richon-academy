@@ -60,7 +60,7 @@ class AccountStageTests(TestCase):
                 }
                 with self.subTest(missing_status=missing_status,wrong_status=wrong_status), \
                      patch.object(c,'gc',side_effect=gc), \
-                     patch.object(e,'access_status',return_value='signin-gateway-confirmed'), \
+                     patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES), \
                      patch.object(r,'safe_origin_observation',side_effect=lambda url:observations[url]), \
                      patch.object(a.op,'summary'):
                     a.validate_before(svc,policy)
@@ -69,7 +69,7 @@ class AccountStageTests(TestCase):
         svc, policy, revisions = fixture()
         def gc(*args, **kwargs):
             return revisions[args[3]]
-        with patch.object(c,'gc',side_effect=gc),              patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(r,'safe_origin_observation',return_value='missing-key:200:non_json,wrong-key:200:non_json'),              patch.object(a.op,'summary'):
+        with patch.object(c,'gc',side_effect=gc),              patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES),              patch.object(r,'safe_origin_observation',return_value='missing-key:200:non_json,wrong-key:200:non_json'),              patch.object(a.op,'summary'):
             with self.assertRaises(c.Stop):
                 a.validate_before(svc,policy)
 

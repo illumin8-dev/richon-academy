@@ -61,6 +61,7 @@ def main():
         browser=p.chromium.launch(**kwargs)
         context=browser.new_context(viewport={'width':1280,'height':900},service_workers='block')
         context.add_cookies([{'name':auth.COOKIE,'value':TOKEN,'url':ORIGIN,'secure':True,'httpOnly':True,'sameSite':'Lax'}])
+        fail_modal={'remaining':0}
         def route(reqroute):
             if shared_asset(reqroute,ORIGIN): return
             req=reqroute.request
@@ -72,6 +73,9 @@ def main():
                 reqroute.fulfill(status=200,content_type='text/html',body='<h1>PROVIDER</h1>')
                 return
             assert url.scheme+'://'+url.netloc==ORIGIN
+            if url.path=='/auth/login' and req.method=='GET' and 'view=modal' in url.query and fail_modal['remaining']:
+                fail_modal['remaining']-=1
+                reqroute.fulfill(status=503,content_type='application/json',body='{"detail":"temporary"}');return
             if url.path=='/portal/api/me/security':
                 reqroute.fulfill(status=200,content_type='application/json',body=json.dumps({'fresh_auth':True,'provider_unlink_failed':False}));return
             if url.path in {'/portal/api/me/logins/link/pending','/portal/api/me/withdraw/status'}:
@@ -137,9 +141,14 @@ def main():
         expect(page.locator('#withdraw-dialog')).to_contain_text('회원탈퇴')
         page.keyboard.press('Escape')
         context.clear_cookies()
+        fail_modal['remaining']=1
         page.goto(ORIGIN+'/portal/mypage')
         expect(page.locator('#gate-login')).to_be_visible()
         expect(page.locator('#richon-login-dialog')).to_be_visible()
+        expect(page.locator('#richon-login-dialog')).to_contain_text('로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')
+        expect(page.get_by_role('button',name='다시 시도')).to_be_visible()
+        assert '테스트 접근 인증' not in page.locator('#richon-login-dialog').inner_text()
+        page.get_by_role('button',name='다시 시도').click()
         expect(page.locator('#richon-login-dialog .provider-login')).to_have_count(2)
         expect(page.locator('#richon-login-dialog input[name=over14]')).to_have_count(0)
         assert '계정으로 계속' not in page.locator('#richon-login-dialog').inner_text()

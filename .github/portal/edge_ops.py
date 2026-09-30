@@ -18,7 +18,9 @@ import operate as op
 ORIGIN = 'https://richonacademy.com'
 ACCESS_HOST = 'raspy-bush-b23c.cloudflareaccess.com'
 CANDIDATE = 'https://' + c.TAG + '---' + urlsplit(c.URL).netloc
-PATHS = ('/auth/login', '/auth/kakao/callback', '/auth/naver/callback', '/portal/mypage')
+CALLBACKS = ('/auth/kakao/callback', '/auth/naver/callback')
+PATHS = ('/auth/login', *CALLBACKS, '/portal/mypage')
+CUSTOMER_ROUTES = 'customer-routes-confirmed'
 STAGE_OPERATIONS = ('stage-edge', 'stage-edge-naver')
 # A public diagnostic label, NOT a credential or an authenticated identity.
 # Allows the owner to scope a BIC-only exception without browser impersonation.
@@ -27,7 +29,9 @@ PROBE_USER_AGENT = 'RichonPortalDeployCheck/1.0'
 NAVER_VERSIONS = {'NAVER_CLIENT_ID': ('richon-naver-client-id', '1'),
                   'NAVER_CLIENT_SECRET': ('richon-naver-client-secret', '1')}
 PUBLIC = ('/', '/apply.html')
-URLS = {c.URL + '/auth/login', CANDIDATE + '/auth/login'} | {ORIGIN + p for p in PATHS + PUBLIC}
+LOGIN_MODAL = ORIGIN + '/auth/login?view=modal&return_to=%2Fportal%2Fmypage'
+URLS = ({c.URL + '/auth/login', CANDIDATE + '/auth/login', LOGIN_MODAL}
+        | {ORIGIN + p for p in PATHS + PUBLIC})
 
 
 def get_service():
@@ -37,11 +41,12 @@ def get_service():
     return svc, policy
 
 
-def request(url, *, wrong_key=False):
+def request(url, *, wrong_key=False, accept='text/html'):
     c.need(url in URLS, 'unsafe_probe_url')
+    c.need(accept in ('text/html', 'application/json'), 'unsafe_probe_accept')
     c.need(not wrong_key or url in {c.URL + '/auth/login', CANDIDATE + '/auth/login'},
            'unsafe_probe_header')
-    headers = {'Accept': 'text/html', 'User-Agent': PROBE_USER_AGENT}
+    headers = {'Accept': accept, 'User-Agent': PROBE_USER_AGENT}
     if wrong_key:
         headers['X-Richon-Edge-Key'] = 'deliberately-invalid-test-key'
     req = urllib.request.Request(url, headers=headers, method='GET')
@@ -71,33 +76,71 @@ def probe_origin(url):
 
 
 def access_status():
-    """Observe all fixed public paths without auth, following no redirects.
+    """Verify the released customer auth/portal boundary without credentials.
 
-    Log only status/categories, never Location/query/cookies/body. A 403,
-    challenge, foreign redirect, or transport failure is NOT a passing gate.
+    The historical function name is retained for call-site compatibility, but
+    Cloudflare Access redirects are now a failure: customer /auth and /portal
+    routes must reach the Worker/app. Cloud Run origin protection is checked
+    separately by probe_origin().
     """
     confirmed = True
     for path in PATHS + PUBLIC:
         try:
             status, headers, _ = request(ORIGIN + path)
             target = urlsplit(headers.get('Location', ''))
-            signin = (status in (302, 303) and target.scheme == 'https'
-                      and target.netloc == ACCESS_HOST and not target.username
-                      and target.path == '/cdn-cgi/access/login/richonacademy.com')
-            public = (status == 200 and
-                      'text/html' in headers.get('Content-Type', ''))
-            passed = signin if path in PATHS else public
-            op.summary('ACCESS PROBE ' + path + ': ' + json.dumps({
+            access_redirect = (status in (302, 303) and target.scheme == 'https'
+                               and target.netloc == ACCESS_HOST and not target.username
+                               and target.path == '/cdn-cgi/access/login/richonacademy.com')
+            html_page = status == 200 and 'text/html' in headers.get('Content-Type', '')
+            callback_fallback = (
+                path in CALLBACKS and status == 303
+                and target.scheme == 'https' and target.netloc == urlsplit(ORIGIN).netloc
+                and not target.username and target.path == '/auth/login'
+                and target.query == 'error=login_failed'
+            )
+            if path in CALLBACKS:
+                passed = callback_fallback
+            else:
+                passed = html_page
+            op.summary('CUSTOMER ROUTE PROBE ' + path + ': ' + json.dumps({
                 'status': status, 'expected_response': passed,
-                'signin_gateway': signin,
+                'access_redirect': access_redirect,
                 'cloudflare_marker': bool(headers.get('CF-Ray')),
                 'challenge': headers.get('CF-Mitigated') == 'challenge',
             }, sort_keys=True))
-            confirmed = confirmed and passed
+            confirmed = confirmed and passed and not access_redirect
         except (c.Stop, ValueError):
             confirmed = False
-            op.summary('ACCESS PROBE ' + path + ': transport_or_redirect_unconfirmed')
-    return 'signin-gateway-confirmed' if confirmed else 'inconclusive'
+            op.summary('CUSTOMER ROUTE PROBE ' + path + ': transport_or_redirect_unconfirmed')
+
+    try:
+        status, headers, body = request(LOGIN_MODAL, accept='application/json')
+        valid = status == 200 and headers.get('Content-Type', '').split(';')[0] == 'application/json' and len(body) <= 8192
+        if valid:
+            try:
+                data = json.loads(body)
+            except (ValueError, UnicodeError):
+                valid = False
+            else:
+                valid = (
+                    isinstance(data, dict)
+                    and bool(re.fullmatch(r'[a-f0-9]{64}', data.get('csrf', '')))
+                    and data.get('return_to') == '/portal/mypage'
+                    and isinstance(data.get('providers'), list)
+                    and 1 <= len(data['providers']) <= 2
+                    and len(set(data['providers'])) == len(data['providers'])
+                    and set(data['providers']) <= {'kakao', 'naver'}
+                )
+        op.summary('CUSTOMER ROUTE PROBE login-modal: ' + json.dumps({
+            'status': status, 'expected_response': valid,
+            'cloudflare_marker': bool(headers.get('CF-Ray')),
+            'challenge': headers.get('CF-Mitigated') == 'challenge',
+        }, sort_keys=True))
+        confirmed = confirmed and valid
+    except (c.Stop, ValueError):
+        confirmed = False
+        op.summary('CUSTOMER ROUTE PROBE login-modal: transport_or_response_unconfirmed')
+    return CUSTOMER_ROUTES if confirmed else 'inconclusive'
 
 
 def candidate_configuration(before, operation):
@@ -143,11 +186,11 @@ def stage(state):
     c.need(state['request']['operation'] in STAGE_OPERATIONS, 'wrong_operation')
     intended = candidate_configuration(state['before'], state['request']['operation'])
     c.inspect(intended, state['policy'], boundary='edge')
-    c.need(state['access'] == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(state['access'] == CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     c.source(live=True)
     current, policy = get_service()
     unchanged(state['before'], state['policy'], current, policy)
-    c.need(access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(access_status() == CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     probe_origin(c.URL)
     tagged = c.IMAGE + ':' + state['sha']
     c.command(['gcloud', 'auth', 'configure-docker', c.REGION + '-docker.pkg.dev', '--quiet'])
@@ -200,7 +243,7 @@ def main():
     probe_origin(c.URL)
     op.summary('PASS: missing and wrong origin keys both denied by application (403 edge_required).')
     access = access_status()
-    op.summary('Access gateway check: ' + access + '. Owner email policy contents are not inspected here.')
+    op.summary('Customer route check: ' + access + '. Cloudflare Access redirects are not accepted on customer auth/portal routes.')
     current, fresh_policy = get_service()
     unchanged(svc, policy, current, fresh_policy)
     state = {'sha': sha, 'run': os.environ['GITHUB_RUN_ID'], 'attempt': os.environ['GITHUB_RUN_ATTEMPT'],

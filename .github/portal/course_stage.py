@@ -81,8 +81,8 @@ def ensure_before(svc,policy):
     c.need(not any(row.get('tag')==CHECK_TAG
                    for row in svc.get('status',{}).get('traffic',[])),
            'course_check_tag_already_exists')
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'course_access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'course_customer_routes_not_confirmed')
     return old
 
 
@@ -198,16 +198,16 @@ def stage():
     staged,staged_policy=e.get_service()
     verify_config(before,before_policy,staged,staged_policy,new_revision,switched=False)
     probe_gate(CHECK_URL)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'course_access_gateway_changed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'course_customer_routes_changed')
 
     c.gc('run','services','update-traffic',c.SERVICE,'--region='+c.REGION,
          '--update-tags='+c.TAG+'='+new_revision,'--remove-tags='+CHECK_TAG,timeout=180)
     current,current_policy=e.get_service()
     verify_config(before,before_policy,current,current_policy,new_revision,switched=True)
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'course_access_gateway_changed_after_switch')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'course_customer_routes_changed_after_switch')
     op.summary('COURSE DOMAIN ENABLED ON PROTECTED CANDIDATE: '+new_revision)
     op.summary('Default 100% revision unchanged: '+serving_revision(current))
     op.summary('Previous protected candidate: '+old)
@@ -230,8 +230,8 @@ def inspect():
                    for row in svc.get('status',{}).get('traffic',[])),
            'course_check_tag_not_removed')
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'course_access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'course_customer_routes_not_confirmed')
     op.summary('COURSE DOMAIN INSPECT PASSED. No DB/IAM/secret/customer writes.')
 
 

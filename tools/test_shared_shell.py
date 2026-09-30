@@ -61,8 +61,10 @@ class SharedShellTests(unittest.TestCase):
         self.assertIn('color:#8a857d', css)
         self.assertNotIn('opacity:0', css)
         login = (build.SOURCE / 'login.js').read_text()
-        self.assertIn('새 브라우저에서는 테스트 접근 인증이 필요할 수 있습니다.', login)
-        self.assertIn('접근 인증 후 로그인 화면 열기', login)
+        self.assertIn('로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.', login)
+        self.assertIn("node('button','다시 시도'", login)
+        self.assertNotIn('테스트 접근 인증', login)
+        self.assertNotIn('접근 인증 후 로그인 화면 열기', login)
 
 
 if __name__ == '__main__':

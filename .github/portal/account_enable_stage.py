@@ -124,7 +124,7 @@ def validate_before(svc,policy):
            and svc['status']['latestReadyRevisionName']==code_revision,
            'account_code_check_not_latest')
     code_stage.verify_revision(code_revision,svc,policy)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
     candidate=intended(svc)
     account=c.inspect(candidate,policy,boundary='edge')
     c.need(account['account_enabled'] is True,'account_candidate_not_enabled')
@@ -228,7 +228,7 @@ def inspect_current(sha):
     c.need(info['image']==code_image,'account_enabled_runtime_image_changed')
     verify_revision(worker_revision,svc,policy)
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
     fresh,fresh_policy=e.get_service()
     c.need(fresh['spec']==svc['spec']
            and c.policy_key(fresh_policy)==c.policy_key(policy)
@@ -280,7 +280,7 @@ def run():
     current,current_policy=e.get_service()
     verify_config(before,policy,current,current_policy,revision,code_revision,switched=False)
     probe_gate(CHECK_URL)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
 
     # The Worker upstream is the fixed portal-candidate tag. Move only that tag.
     c.gc('run','services','update-traffic',c.SERVICE,'--region='+c.REGION,
@@ -289,7 +289,7 @@ def run():
         current,current_policy=e.get_service()
         verify_config(before,policy,current,current_policy,revision,code_revision,switched=True)
         probe_gate(e.CANDIDATE)
-        c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+        c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
         fresh,fresh_policy=e.get_service()
         c.need(fresh['spec']==current['spec']
                and c.policy_key(fresh_policy)==c.policy_key(current_policy)

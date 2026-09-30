@@ -75,7 +75,7 @@ class CandidateReadback(TestCase):
             return {'image_summary': {'digest': 'sha256:' + 'b' * 64}}
         with patch.object(c, 'read_request', return_value={'operation':'inspect-edge'}), \
              patch.object(c, 'gc', side_effect=gc), patch.object(c, 'command') as commands, \
-             patch.object(e, 'access_status', return_value='signin-gateway-confirmed'), \
+             patch.object(e, 'access_status', return_value=e.CUSTOMER_ROUTES), \
              patch.object(e, 'probe_origin') as probes, patch.object(e, 'get_service', return_value=(svc, policy)), \
              patch.object(r.op, 'summary') as summary:
             r.inspect_existing(svc, policy)
@@ -119,7 +119,7 @@ class CandidateReadback(TestCase):
         def probe(url):
             if url == c.URL:
                 raise c.Stop('origin_app_gate_not_confirmed')
-        with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
+        with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
             with self.assertRaisesRegex(c.Stop,'serving_origin_app_gate_not_confirmed'):
                 r.inspect_existing(svc,policy)
 
@@ -130,7 +130,7 @@ class CandidateReadback(TestCase):
         def probe(url):
             if url == e.CANDIDATE:
                 raise c.Stop('origin_app_gate_not_confirmed')
-        with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value='signin-gateway-confirmed'),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
+        with patch.object(c,'read_request',return_value={'operation':'inspect-edge'}),              patch.object(c,'gc',side_effect=gc), patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES),              patch.object(e,'probe_origin',side_effect=probe), patch.object(r.op,'summary'):
             with self.assertRaisesRegex(c.Stop,'candidate_origin_app_gate_not_confirmed'):
                 r.inspect_existing(svc,policy)
 
