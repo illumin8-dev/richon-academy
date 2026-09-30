@@ -64,8 +64,8 @@ def ensure_before(svc,policy):
     old=current_candidate(svc)
     c.need(not any(row.get('tag')==CHECK_TAG for row in svc.get('status',{}).get('traffic',[])),
            'handoff_check_tag_already_exists')
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'handoff_access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'handoff_customer_routes_not_confirmed')
     return old,info
 
 
@@ -217,8 +217,8 @@ def run():
     final,final_policy=e.get_service()
     verify_config(before,policy,final,final_policy,revision,image,switched=True)
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'handoff_access_gateway_changed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'handoff_customer_routes_changed')
 
     stable,stable_policy=e.get_service()
     c.need(stable['spec']==final['spec']
