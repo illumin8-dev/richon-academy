@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-functional-header-hold-20260930-g"
+  "operation": "rollout-login-handoff",
+  "request_id": "central-calendar-boundary-rollout-20260930-h"
 }
