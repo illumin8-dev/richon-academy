@@ -58,12 +58,12 @@ class AccountEnabledStageTests(TestCase):
 
     def test_before_requires_zero_traffic_code_check_as_latest(self):
         staged,policy,_,code_revision,_,_,_=enabled_fixture()
-        with patch.object(code_stage,'verify_revision'),              patch.object(e,'access_status',return_value='signin-gateway-confirmed'):
+        with patch.object(code_stage,'verify_revision'),              patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES):
             found,_=a.validate_before(staged,policy)
         self.assertEqual(found,code_revision)
         broken=deepcopy(staged)
         broken['status']['latestReadyRevisionName']=r.CANDIDATE
-        with patch.object(code_stage,'verify_revision'),              patch.object(e,'access_status',return_value='signin-gateway-confirmed'):
+        with patch.object(code_stage,'verify_revision'),              patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES):
             with self.assertRaises(c.Stop):
                 a.validate_before(broken,policy)
 
@@ -98,7 +98,7 @@ class AccountEnabledStageTests(TestCase):
              patch.object(a,'validate_code_check_revision',return_value=image), \
              patch.object(a,'verify_revision') as verify, \
              patch.object(a,'probe_gate') as probe, \
-             patch.object(e,'access_status',return_value='signin-gateway-confirmed'), \
+             patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES), \
              patch.object(a.op,'summary'):
             self.assertEqual(a.inspect_current('a'*40),0)
         verify.assert_called_once_with(new_revision,switched,policy)
