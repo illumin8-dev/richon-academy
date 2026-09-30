@@ -432,3 +432,15 @@
   2. PASS면 병합.
   3. 병합 commit으로 Cloud Shell venv 재실행.
   4. COUNTS 집계로 production data boundary 판정.
+
+
+### 체크포인트 13 / PR #97 병합
+- PR #97 CI 3개 PASS:
+  - Same-domain login edge and portal image
+  - Login flow regression
+  - Backend checks
+- PR #97 병합 완료.
+- merge commit: bd4eb0050e366d8128b3f9e1c2ed7a17156614c4
+- 변경 범위는 Cloud Shell production aggregate inventory의 TLS CA 경로 보정만.
+- sslmode=verify-full 유지 / production app backend/db.py 불변 / DB·Cloud write 없음.
+- 다음 시작 지점: merge commit 기준 Cloud Shell에서 ops/diagnose_production_data.py 재실행 후 COUNTS 판정.
