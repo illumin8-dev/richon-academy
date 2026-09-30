@@ -597,3 +597,16 @@
   - current status before start date should resolve to SCHEDULED
   - sessions array intentionally empty until central admin calendar is implemented.
 - next: inspect actual mypage course rendering and verify production UI.
+
+
+### 체크포인트 21 / production 내 강의 end-to-end 검증 완료
+- 사용자 실제 production 화면 확인 완료.
+- /portal/mypage -> 내 강의에서 Pre리치온 9기 정상 노출 확인.
+- production data path end-to-end PASS:
+  - course_programs -> course_runs -> enrollment_learners -> course_enrollments -> /portal/api/me/courses -> 마이페이지 렌더링
+- 현재 sessions=0이므로 회차/영상/자료 영역 미노출이 정상.
+- admin/mypage/course-domain 기본 흐름 검증 완료.
+- 다음 큰 기능은 중앙관리 캘린더:
+  - 일정/회차/영상/자료의 단일 입력 지점
+  - course_sessions를 중앙 캘린더가 소유
+  - /portal/courses에서는 일정 직접 입력 금지 유지
