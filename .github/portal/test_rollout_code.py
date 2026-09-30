@@ -151,7 +151,7 @@ class CodeRollout(TestCase):
             else:raise AssertionError(args)
             current['spec']['traffic']=[{k:v for k,v in x.items() if k!='url'} for x in current['status']['traffic']]
         with ExitStack() as stack:
-            for obj,key,value in ((c,'source',lambda **k:'a'*40),(c,'read_request',lambda:{'operation':'rollout-edge-code','request_id':'test'}),(c,'command',lambda *a,**k:''),(c,'gc',gc),(e,'get_service',get),(e,'access_status',lambda:'signin-gateway-confirmed'),(e,'probe_origin',lambda u:None),(d,'probe_check_tag',lambda:None),(op:=d.op,'save',lambda x:None),(op,'summary',lambda x:None)):
+            for obj,key,value in ((c,'source',lambda **k:'a'*40),(c,'read_request',lambda:{'operation':'rollout-edge-code','request_id':'test'}),(c,'command',lambda *a,**k:''),(c,'gc',gc),(e,'get_service',get),(e,'access_status',lambda:e.CUSTOMER_ROUTES),(e,'probe_origin',lambda u:None),(d,'probe_check_tag',lambda:None),(op:=d.op,'save',lambda x:None),(op,'summary',lambda x:None)):
                 stack.enter_context(patch.object(obj,key,side_effect=value))
             stack.enter_context(patch.dict(os.environ,GITHUB_RUN_ID='456',GITHUB_RUN_ATTEMPT='1'))
             d.run()
