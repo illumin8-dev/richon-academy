@@ -74,5 +74,30 @@ class SharedShellTests(unittest.TestCase):
         self.assertNotIn('접근 인증 후 로그인 화면 열기', login)
 
 
+    def test_admin_pages_render_one_shared_shell(self):
+        header=(build.SOURCE/'admin-header.html').read_text().strip()
+        footer=(build.SOURCE/'admin-footer.html').read_text().strip()
+        sidebar=(build.SOURCE/'admin-sidebar.html').read_text()
+        for name in ('admin.html','courses.html','enrollments.html','manual.html'):
+            page=(build.STATIC/name).read_text()
+            with self.subTest(name=name):
+                self.assertEqual(page.count(header),1)
+                self.assertEqual(page.count(footer),1)
+                self.assertEqual(page.count('data-admin-tab-link="orders"'),1)
+                self.assertEqual(page.count('data-admin-tab-link="members"'),1)
+                self.assertNotIn('side-bottom',page)
+        self.assertIn('신청·주문',sidebar)
+        self.assertIn('회원 관리',sidebar)
+
+    def test_admin_member_list_hides_internal_uuid_and_tmi(self):
+        js=(build.STATIC/'portal.js').read_text()
+        admin=(build.STATIC/'admin.html').read_text()
+        self.assertNotIn("element('div',row.member_id,'secondary')",js)
+        self.assertNotIn('회원번호 검색',js)
+        self.assertNotIn('조회 버전',admin)
+        self.assertNotIn('회원 수와 주문 수는 별도 집계',admin)
+        self.assertNotIn('아직 실제 결제·수강 관리와 연결되지 않았습니다',admin)
+
+
 if __name__ == '__main__':
     unittest.main()
