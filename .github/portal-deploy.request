@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-central-calendar-boundary-hold-20260930-i"
+  "operation": "rollout-login-handoff",
+  "request_id": "admin-shell-detail-cleanup-rollout-20261001-j"
 }
