@@ -918,3 +918,98 @@
   - PR #107은 병합하지 말고 exploratory 상태로 유지/필요 시 닫기.
   - 최신 marururu00/main public files/assets를 portal/backend 통합 브랜치에 가져오고,
     deployment authority를 main으로 옮기는 통합 계획/구현부터 시작.
+
+
+
+### 체크포인트 26 / public + portal 단일 main 통합 PR #108 진행 중
+- 이번 대화 최우선 목표:
+  - marururu00/richon-academy 최신 public main과 illumin8-dev/richon-academy portal/backend를 illumin8-dev/main 단일 운영 정본으로 통합.
+  - 기존 Cloudflare Pages / richonacademy.com 운영 연결은 아직 변경하지 않음.
+- 기준 소스 재확인:
+  - 최신 upstream public main: `0e6567655bcf56f9dbb5ad73e6582f3a73c7cfe4`
+  - 최신 portal/backend authority: `79e8efb03a97ae0d81c3e431aec599f9c5533bf7`
+  - 기존 illumin8-dev/main: `8c14c4cc8b37bc4960b16c10cf273bbf788bc18f`
+- 실제 tree 비교:
+  - upstream public blobs: 85
+  - portal blobs: 281
+  - upstream only: 73
+  - portal only: 269
+  - 공통인데 내용이 다른 파일: 7개
+    - apply.html
+    - index.html
+    - index-test.html
+    - privacy.html
+    - terms.html
+    - frontend/shared/header.html
+    - frontend/shared/site.css
+  - footer.html / site.js는 양쪽 blob이 동일.
+- 통합 브랜치:
+  - `integration/unified-main-20261001`
+- 통합 방식:
+  - portal tree를 base로 사용.
+  - 최신 upstream public의 index/apply/index-test/privacy/terms/signup-guide/assets/public UI workflow/check script를 overlay.
+  - public 화면/assets는 upstream blob을 그대로 보존.
+  - portal/backend/auth/admin/edge/ops는 portal branch 내용을 그대로 보존.
+- shared 명시적 해결:
+  - `frontend/shared/header.html`: upstream public landing header를 유지.
+  - `frontend/shared/portal-header.html`: 기존 portal 기능 페이지용 header를 별도 source로 추가.
+  - `tools/build_site_shell.py`: private mypage/portal이 portal-header.html을 사용하도록 변경.
+  - `frontend/shared/site.css`: public CSS를 기준으로 유지하고 standalone auth fallback만 `.auth-main` 범위로 추가.
+  - `backend/portal_static/site.css`: 위 merged shared CSS와 exact sync.
+  - `tools/test_shared_shell.py`: public header / portal header 경계를 각각 검증하도록 변경.
+- Git history 보존:
+  - 첫 integration commit `e89aaffd83f4a5ff80ce31aaca616965f3f02391`은 portal head + upstream public head를 두 parent로 사용.
+  - 기존 illumin8-dev/main에 integration이 포함하지 않던 21개 커밋이 있었음.
+  - 이 21개는 모두 public UI 계열이고 upstream public main이 더 최신 정본임을 확인.
+  - 내용은 upstream을 유지하되 기존 main SHA를 merge parent로 포함한 commit `e0a5f22408d7af47d18e08ebf9a6992e2149c7c0` 생성.
+  - 현재 integration branch는 main 대비 behind 0.
+- deploy authority main 이전:
+  - commit `bb2ee78a1eb96ca877457246d785ef9d98a34e86`
+  - `.github/workflows/portal-deploy.yml` push branch / github.ref guard를 main으로 변경.
+  - `.github/portal/common.py` BRANCH/REF/WORKFLOW authority를 main으로 변경.
+  - connect.py / README / automation tests도 main trust 기준으로 갱신.
+  - portal automation / portal UI / login flow / same-domain edge/image / admin preview workflow가 main push에서도 빠지지 않도록 trigger 보강.
+  - `.github/portal-deploy.request` 이외의 일반 코드 변경은 GCP operation을 실행하지 않는 구조 유지.
+- 보존 검증:
+  - public exact files mismatch = 0
+  - assets mismatch = 0
+  - portal backend/edge/ops unexpected change = 0
+  - portal source missing = 0
+  - upstream public source missing = 0
+- PR #108:
+  - title: `integration: unify public and portal on main`
+  - head: `integration/unified-main-20261001`
+  - base: `main`
+  - 생성 직후 최종 확인에서 mergeable=true / mergeable_state=unstable(CI 진행 중).
+  - PR #107은 exploratory draft 그대로이며 병합하지 않음.
+- PR #108 첫 CI:
+  - Public UI checks만 먼저 failure.
+  - 원인은 통합 구조/CSS 충돌이 아니라 `tools/check_public_ui.py`가 읽는 `CURRENT_WORK.md`를 public overlay에서 제외한 것.
+  - upstream `CURRENT_WORK.md`를 추가하는 수정 commit 생성:
+    - current head: `1c3b0e0ba46fb450081d5cf8ee7f7be26dad6a6b`
+  - 이 수정 후 CI 7개가 새 head에서 다시 실행 중:
+    - Public UI checks
+    - Backend checks
+    - Portal automation guards
+    - Portal UI checks
+    - Login flow regression
+    - Same-domain login edge and portal image
+    - Build standalone admin preview
+- 현재 절대 금지/미실행:
+  - Cloudflare Pages 새 project 연결 안 함.
+  - richonacademy.com cutover 안 함.
+  - Worker route 변경 안 함.
+  - GCP/Neon/customer row 변경 안 함.
+  - site-wide CSS/shared 전체 리팩터링 안 함.
+- 다음 시작 지점:
+  1. PR #108 current head `1c3b0e0...`의 7개 CI 최종 결과 확인.
+  2. 실패 job이 있으면 해당 job log만 보고 최소 수정.
+  3. public/backend/portal/login/edge/admin preview 전부 PASS 확인.
+  4. PR #108 mergeability 재확인 후 main 병합.
+  5. 병합 후 illumin8-dev/main이 public + portal/backend 단일 코드 정본인지 tree/readback으로 재검증.
+  6. 여기까지 완료 후에만 다음 단계:
+     - 새 Cloudflare Pages를 illumin8-dev/main에 연결
+     - pages.dev 검증
+     - auth/portal Worker route 검증
+     - richonacademy.com cutover
+  7. 전체 사이트 CSS/shared source 통합은 hosting cutover 이후 별도 PR.
