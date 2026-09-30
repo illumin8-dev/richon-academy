@@ -258,3 +258,37 @@
 - production DB017 / legacy runtime ACL / `RICHON_MONTHLY_ENABLED` / `RICHON_MANUAL_ENABLED`은 여전히 미적용.
 - 다음 시작 지점: DB017 + legacy runtime ACL 적용 전 운영 상태/owner helper 최종 확인 후 적용 단계.
 
+### 체크포인트 9 / apply 복원 + 회사 Access + legacy enable 준비
+- public PR #13은 원본 `marururu00/main` 병합 및 GitHub Pages 배포 SUCCESS.
+- 사용자 확인: 현재 apply 페이지에 예전 상세 썸네일/강의 소개 갤러리가 누락됨.
+- 정상 소스 재확인:
+  - fork PR #59 / head `5830565ac11a66c9bcda905083ebede2be483d2e`에 기존 상세 강의 안내 이미지 49장 존재.
+  - pre 1 / study 12 / redevelopment 11 / interior 15 / subscription 10.
+- 복원 브랜치 `fix/apply-restore-details-20260930` 준비.
+  - commit `0e17d871f7996d430b4482a67ab66408f52b1706`.
+  - 현재 5개 과정 / 최신 모집상태와 CTA / 공개 로그인 숨김은 유지.
+  - 메인 과정 썸네일 + PR #59 상세 갤러리 49장 복원.
+  - 원본 upstream PR 생성은 사용자의 compare 화면 클릭이 필요.
+- 회사 브라우저 로그인 모달 실패 원인 확정:
+  - /auth/* /portal/*는 Cloudflare Access 보호 대상.
+  - modal fetch는 redirect:error라 Access 세션 없는 새 브라우저의 Access 302를 의도적으로 fail-closed 처리.
+  - 집 브라우저는 기존 Access 세션이 있어 통과 / 회사 브라우저는 별도 Access 인증 필요.
+- PR #92: 새 브라우저 Access 필요 가능성을 설명하는 fallback UX로 수정, 4개 CI PASS 후 병합.
+- PR #92 code-only rollout run `36656733191` PASS.
+  - new candidate `richon-portal-handoff-36656733191-1`.
+  - default 100% `richon-portal-gh-35810692921-1` unchanged.
+  - IAM / edge gate / Access gate PASS.
+- PR #93: monthly/manual을 항상 함께 OFF→ON하는 protected-candidate 전용 stage/inspect guard 추가.
+  - partial flag 상태 fail-closed.
+  - account/marketing/course=true 선행조건.
+  - zero-traffic Ready 검증 후 portal-candidate tag만 전환.
+  - DB/IAM/Secret/customer row/public homepage는 operation 범위 밖.
+  - Portal guard / Login regression / Backend+PostgreSQL CI PASS 후 병합 완료.
+  - merge commit `398160050fabeafedcba55a2c6d87b61ae4c699e`.
+- production DB017 + legacy runtime ACL은 아직 미적용. Neon connector는 exact project_id가 없어 직접 접근 불가.
+- 다음 시작 지점:
+  1. 사용자: apply 복원 upstream PR 생성.
+  2. 사용자 Cloud Shell: `prepare_legacy_admin.py --diagnose` read-only 결과 확인.
+  3. diagnose PASS 후 DB017 + minimal ACL owner apply.
+  4. stage-legacy-admin-enabled → inspect → /portal/enrollments, /portal/manual 실화면 확인.
+
