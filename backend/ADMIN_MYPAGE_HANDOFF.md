@@ -1013,3 +1013,61 @@
      - auth/portal Worker route 검증
      - richonacademy.com cutover
   7. 전체 사이트 CSS/shared source 통합은 hosting cutover 이후 별도 PR.
+
+
+
+### 체크포인트 27 / illumin8-dev main 단일 코드 정본 통합 완료
+- PR #108 `integration: unify public and portal on main` 병합 완료.
+- merge commit: `5ad0c1af0b8ee6942724571a6876eebbdb258672`
+- merge 방식: merge commit. upstream public / portal branch / 기존 illumin8 main 이력 보존.
+- PR #107 exploratory draft는 병합하지 않고 closed 처리.
+- 최종 source 보존 검증:
+  - marururu00/main 기준 public 지정 파일 mismatch 0
+  - public assets mismatch 0
+  - portal/backend/edge/ops 예상 밖 변경 0
+  - portal source missing 0
+- shared 충돌 최종 경계:
+  - `frontend/shared/header.html`: public landing header
+  - `frontend/shared/portal-header.html`: private auth/mypage portal header
+  - `frontend/shared/site.css`: public 규칙 + auth-main scoped fallback
+  - footer/site.js는 공통 source 유지
+- portal deploy authority 코드:
+  - `.github/workflows/portal-deploy.yml`: main push + request file 기준
+  - `.github/portal/common.py`: BRANCH=main / REF=refs/heads/main
+  - default branch code search에서 `feat/backend-portal-deploy` functional hardcode 검색 결과 0건.
+- PR #108 최종 CI 전부 PASS:
+  - Public UI checks
+  - Backend checks
+  - Portal automation guards
+  - Portal UI checks
+  - Login flow regression
+  - Same-domain login edge and portal image
+  - Build standalone admin preview
+- main 병합 후 push CI도 PASS:
+  - Backend checks PASS
+  - Portal automation guards PASS
+  - Portal UI checks PASS
+  - Login flow regression PASS
+  - Same-domain login edge/image PASS
+  - standalone admin preview PASS
+- 병합 직후 Portal operations:
+  - `.github/portal-deploy.request` operation=`hold`
+  - workflow request job만 PASS
+  - checks job SKIPPED
+  - portal job SKIPPED
+  - 따라서 이번 main 병합으로 GCP auth/deploy operation은 실행되지 않음.
+- 중요 운영 주의:
+  - 코드상의 WIF trust expectation은 main으로 변경 완료.
+  - 하지만 이번 hold run은 Google OIDC 인증을 타지 않았으므로 실제 GCP Workload Identity Provider의 attribute condition이 main 기준으로 변경됐는지는 아직 검증하지 않음.
+  - 다음 non-hold portal operation 전에 실제 provider condition readback/필요 시 main trust migration이 필요.
+- Cloudflare 상태:
+  - 기존 marururu00 Pages / richonacademy.com 운영 연결 변경 없음.
+  - Worker route 변경 없음.
+  - 새 illumin8-dev Pages project 아직 생성/연결 안 함.
+- 다음 단계:
+  1. 실제 GCP WIF provider branch/workflow trust를 read-only 확인하고, 필요 시 안전한 main trust migration 계획/적용.
+  2. 새 Cloudflare Pages project를 illumin8-dev/richon-academy main에 연결.
+  3. 새 pages.dev에서 landing/apply/images/privacy/terms/signup-guide/mobile 검증.
+  4. /auth/* /portal/* Worker route 공존 검증.
+  5. 마지막에 richonacademy.com custom domain cutover.
+  6. cutover 안정화 후 전체 사이트 CSS/shared source 통합 별도 PR.
