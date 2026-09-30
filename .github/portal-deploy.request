@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-legacy-admin-enabled",
-  "request_id": "post-rollout-legacy-inspect-20260930-d"
+  "operation": "hold",
+  "request_id": "post-rollout-hold-20260930-e"
 }
