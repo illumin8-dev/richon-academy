@@ -24,11 +24,16 @@
 <div><dt>가입일</dt><dd id="joined"></dd></div>
 <div id="profile-age-row" hidden><dt>연령대</dt><dd id="profile-age"></dd></div>
 <div id="profile-gender-row" hidden><dt>성별</dt><dd id="profile-gender"></dd></div>
-<div id="profile-marketing-row" hidden><dt>광고성 정보</dt><dd><span id="profile-marketing"></span> <button id="manage-marketing" class="account-inline-action" type="button" hidden>변경</button></dd></div>
 </dl>
-<div class="account-login-summary">
-  <div><span class="account-summary-label">로그인 연결</span><div id="providers" class="account-providers"></div></div>
-  <button id="manage-logins" class="account-inline-action" type="button" hidden>관리</button>
+<div class="account-manage-grid">
+  <div id="profile-marketing-row" class="account-manage-summary" hidden>
+    <div><span class="account-summary-label">광고성 정보</span><div class="account-summary-value"><span id="profile-marketing"></span></div></div>
+    <button id="manage-marketing" class="account-inline-action" type="button" hidden>변경</button>
+  </div>
+  <div class="account-login-summary">
+    <div><span class="account-summary-label">로그인 연결</span><div id="providers" class="account-providers"></div></div>
+    <button id="manage-logins" class="account-inline-action" type="button" hidden>관리</button>
+  </div>
 </div>
 <div class="account-actions"><a id="admin-link" class="site-account-link" href="/portal/admin" hidden>관리자</a><a id="withdraw-inquiry" class="account-withdrawal" href="tel:0322368944">회원탈퇴 문의</a><button id="withdraw-account" class="account-withdrawal" type="button" hidden>회원탈퇴</button></div>
 </section>

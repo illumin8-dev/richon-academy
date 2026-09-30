@@ -46,7 +46,7 @@ def main():
     profile={
         'member_id':principal.member_id,'display_name':'회원','role':'member',
         'created_at':datetime.now(timezone.utc),'providers':['kakao','naver'],
-        'linked_order_count':0,
+        'linked_order_count':0,'marketing_consent':False,
         'registration':{
             'name':'합성 회원','phone':'01012345678','email':'synthetic@example.invalid',
             'age_range':'30-39','gender':'female','consultation_consent':True,
@@ -101,8 +101,16 @@ def main():
             expect(page.locator('#profile-gender')).to_have_text('여성')
             expect(page.locator('#profile-use-note')).to_have_count(0)
             expect(page.locator('.account-values-compact')).to_be_visible()
+            expect(page.locator('.account-manage-grid')).to_be_visible()
             expect(page.locator('.account-login-summary')).to_be_visible()
+            expect(page.locator('#profile-marketing-row')).to_be_visible()
             expect(page.locator('#manage-logins')).to_be_visible()
+            if width==1280:
+                assert len(page.locator('.account-values-compact').evaluate("e=>getComputedStyle(e).gridTemplateColumns.split(' ')"))==3
+                assert len(page.locator('.account-manage-grid').evaluate("e=>getComputedStyle(e).gridTemplateColumns.split(' ')"))==2
+            if width==390:
+                assert len(page.locator('.account-values-compact').evaluate("e=>getComputedStyle(e).gridTemplateColumns.split(' ')"))==1
+                assert len(page.locator('.account-manage-grid').evaluate("e=>getComputedStyle(e).gridTemplateColumns.split(' ')"))==1
             expect(page.locator('#withdraw-account')).to_be_visible()
             expect(page.locator('#withdraw-inquiry')).to_be_hidden()
             assert page.locator('#withdraw-account').evaluate('e=>getComputedStyle(e).fontSize')=='12px'
