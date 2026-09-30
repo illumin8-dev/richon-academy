@@ -610,3 +610,73 @@
   - 일정/회차/영상/자료의 단일 입력 지점
   - course_sessions를 중앙 캘린더가 소유
   - /portal/courses에서는 일정 직접 입력 금지 유지
+
+
+### 체크포인트 22 / 관리자 UI 정리 중단 지점
+- 사용자 실제 화면 피드백:
+  - 회원 목록 이름 아래 내부 member UUID가 노출되어 불필요함.
+  - 회원 상세 dialog가 "회원 상세를 불러오지 못했습니다."로 실패.
+  - 신청·주문 / 회원 관리 메뉴가 관리자 페이지별로 다르게 보임.
+  - 관리자 페이지 header/footer가 공용화되지 않고 page-specific topbar/sidebar가 남아 있음.
+  - 조회 버전 / PG 미연결 / 별도 집계 / 정확한 기록 / 이 화면에서는... 같은 개발단계 TMI 문구가 과다함.
+- 확인 결과:
+  - member UUID는 backend/portal_static/portal.js의 memberPrimary()가 직접 렌더링 중.
+  - /portal/admin에서는 신청·주문 / 회원 관리가 내부 tab button이고, courses/enrollments/manual에서는 "회원 / 신청·주문" 단일 링크라 navigation drift 존재.
+  - mypage는 shared site header/footer 사용하지만 admin pages는 별도 topbar/sidebar 구조.
+  - Worker는 /portal/api/admin/members/{uuid} 같은 동적 경로를 허용하므로 상세 실패 원인은 edge allowlist 문제 아님.
+  - member_detail backend는 profile + marketing + canonical learning + legacy learning + orders를 한 번에 조합하며 이 production 조합에 대한 회귀 테스트가 부족했음.
+- branch: fix/admin-shell-detail-cleanup-20261001
+- PR #106: fix(admin): unify shell, trim UI noise and cover member detail
+- PR #106 head: b9f43eef41c7ee8f0e0b5210fb78335804e8e7a4
+- PR #106 상태 저장 시점:
+  - mergeable=true / mergeable_state=unstable
+  - Backend checks: in_progress
+  - standalone admin preview: in_progress
+  - Portal UI checks: in_progress
+  - Login flow regression: in_progress
+  - Same-domain login edge/image: in_progress
+- PR #106에 반영한 내용:
+  - frontend/shared/admin-header.html 추가
+  - frontend/shared/admin-sidebar.html 추가
+  - frontend/shared/admin-footer.html 추가
+  - tools/build_site_shell.py가 admin.html/courses.html/enrollments.html/manual.html의 shared admin shell을 렌더링하도록 확장
+  - 모든 관리자 페이지 sidebar에 동일하게:
+    - 강의 / 수강권
+    - 월별 수강관리
+    - 수강생 수동 등록 / 수정
+    - 신청·주문
+    - 회원 관리
+    - 마이페이지
+  - /portal/admin?tab=orders|members 직접 진입 지원
+  - 회원 목록의 raw member UUID 노출 제거
+  - admin/courses/enrollments/manual의 반복 TMI 문구 축소
+  - 공용 최소 admin footer 추가
+  - shared admin shell drift 회귀 테스트 추가
+  - member_detail + canonical enrollment + legacy enabled 조합의 disposable PostgreSQL 회귀 테스트 추가
+- 아직 하지 않은 것:
+  - PR #106 CI 결과 확인 / 실패 시 수정 / 병합
+  - PR #106 protected candidate rollout
+  - production 회원 상세 실제 재확인
+  - 회원 상세 실패의 실제 원인 확정(새 회귀 테스트 결과를 먼저 봐야 함)
+- 공개 원본 동기화 별도 진행 상태:
+  - fork branch: fix/upstream-public-ui-sync-20260930
+  - 원본 marururu00/main SHA eb77ee61cd365660e6d3ef9c75751d6cc02cf12a에서 직접 분기
+  - 원본 대비 5개 파일만 변경:
+    - apply.html: 랜딩 메뉴/햄버거/회원가입 안내 링크 제거, 상세 갤러리 유지
+    - signup-guide.html: 랜딩 메뉴/햄버거/회원가입 안내 링크 제거, 페이지 자체 유지
+    - index.html: dead calendar CSS + 회원가입 안내 링크 제거, 랜딩 메뉴 유지
+    - frontend/shared/footer.html: 회원가입 안내 링크 제거
+    - tools/check_public_ui.py: 새 계약으로 갱신
+  - compare result: ahead 5 / behind 0
+  - 두 GitHub 연결 모두 원본 PR create API가 403 Resource not accessible by integration
+  - 사용자가 compare 페이지에서 수동 Create pull request 해야 함:
+    https://github.com/marururu00/richon-academy/compare/main...illumin8-dev:fix/upstream-public-ui-sync-20260930?expand=1
+  - 제안 PR title: fix(ui): sync public functional navigation cleanup
+- 다음 시작 지점:
+  1. PR #106 CI 결과 확인.
+  2. 실패 시 해당 job log만 확인해 수정.
+  3. PASS면 병합.
+  4. protected candidate code-only rollout.
+  5. 사용자 production admin에서 UUID 제거 / sidebar 통일 / TMI 정리 / 회원 상세 재확인.
+  6. 회원 상세가 계속 실패하면 production-safe diagnostic helper로 상세 경로를 row 출력 없이 분리 진단.
+  7. 별도 공개 원본 PR 번호가 생기면 CI 확인 후 병합 준비.
