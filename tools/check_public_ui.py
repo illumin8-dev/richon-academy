@@ -56,7 +56,7 @@ assert '<h3 class="coming-soon-title">' not in index
 assert 'placeholder-plus' not in index
 assert '소개 ↗' not in index and '소식 보기 ↗' not in index
 assert index.count('class="course-cta') >= 5
-assert '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.' in index
+assert '부동산 투자원칙·갭투자·서울 초기재개발·시장구조부터 분양권·지방 재개발·경매까지, 실전형 순환 학습으로 기초를 세우는 정규 과정.' in index
 assert '정밀한 입지 분석과 인프라 변화 예측으로 수도권 주요 재개발/재건축 단지를 공략하는 심화 과정.' in index
 assert '<p>대중과 반대로 가는 길에서 기회를 찾아온 실전 투자자.</p>' in index
 assert '<p>부동산 동향 / 경매 / 재개발 / 인테리어를 아우르는 통합적 관점으로 시장의 불확실성을 기회로 바꾸는 인사이트를 전합니다.</p>' in index
