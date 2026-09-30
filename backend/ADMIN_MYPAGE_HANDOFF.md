@@ -470,3 +470,11 @@
   2. PASS면 병합.
   3. 병합 SHA로 Cloud Shell 재실행.
   4. safe code로 cloud-target 실패 지점을 확정.
+
+
+### 체크포인트 15 / PR #98 병합
+- PR #98 CI 3개 PASS.
+- PR #98 병합 완료.
+- merge commit: 5d4422e15bdf7172adccf0f2c6e50c08d090153c
+- 다음: merge commit 기준 Cloud Shell에서 production aggregate inventory 재실행.
+- 기대 결과는 성공 시 COUNTS, 실패 시 세분화된 safe code 중 하나.
