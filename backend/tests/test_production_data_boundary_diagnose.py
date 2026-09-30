@@ -82,3 +82,19 @@ def test_helper_has_no_database_or_cloud_mutation_paths():
     assert 'customer_phone' not in source
     assert 'customer_email' not in source
     assert re.search(r'\\bSELECT\\b[^;]*\\bsubject\\b',source,re.I|re.S) is None
+
+
+
+def test_helper_classifies_gcloud_failures_without_printing_stderr():
+    source=(ROOT/'ops'/'diagnose_production_data.py').read_text()
+    for code in (
+        'project_describe_failed',
+        'owner_service_describe_failed',
+        'portal_service_describe_failed',
+        'owner_secret_access_failed',
+        'runtime_secret_access_failed',
+    ):
+        assert code in source
+    assert 'capture_output=True' in source
+    assert 'result.stderr' not in source
+    assert 'print(result.stdout' not in source
