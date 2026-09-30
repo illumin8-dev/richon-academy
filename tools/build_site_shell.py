@@ -38,7 +38,7 @@ def render_admin_sidebar(raw: str, active: str | None) -> str:
 
 
 def outputs():
-    header = (SOURCE / 'header.html').read_text()
+    header = (SOURCE / 'portal-header.html').read_text()
     footer = (SOURCE / 'footer.html').read_text()
     result = {}
     for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'auth.css', 'ops.css', 'account.css', 'account.js'):
