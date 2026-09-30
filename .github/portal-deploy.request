@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-unified-main-wif-check-hold-20261001-a"
+  "operation": "inspect",
+  "request_id": "unified-main-wif-readonly-20261001-b"
 }
