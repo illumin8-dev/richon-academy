@@ -580,3 +580,20 @@
   - Cloud Run / IAM / feature flags
 - exact replay NO-OP / conflict overwrite 금지 / customer identifier 출력 금지.
 - 실제 실행 직전 사용자 승인 필요.
+
+
+### 체크포인트 20 / Pre리치온 9기 관리자 수강권 production 지급 완료
+- 사용자 Cloud Shell 실행 결과:
+  - TARGET=richon-academy / production Neon / Pre리치온 9기 admin enrollment
+  - TLS_MODE=verify-full / TLS_CA=system-file
+  - LEARNER_LINK=CREATED
+  - ENROLLMENT=CREATED
+  - SESSIONS=0
+  - PRE_RICHON_9_ADMIN_ENROLLMENT=PASS
+  - MEMBER_PROFILE_CHANGED=NO / ORDERS_CHANGED=NO / CLOUD_CHANGED=NO
+- expected My Courses:
+  - sole active admin member has member-linked enrollment for Pre리치온 9기
+  - access 2026-10-08 ~ 2026-12-07
+  - current status before start date should resolve to SCHEDULED
+  - sessions array intentionally empty until central admin calendar is implemented.
+- next: inspect actual mypage course rendering and verify production UI.
