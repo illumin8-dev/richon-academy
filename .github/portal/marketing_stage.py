@@ -124,7 +124,7 @@ def validate_before(svc,policy):
            and svc['status']['latestReadyRevisionName']==worker,
            'marketing_worker_not_latest')
     a.verify_revision(worker,svc,policy)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
     return code,worker
 
 
@@ -214,7 +214,7 @@ def inspect_current(sha):
     c.need(c.traffic(svc)==[(r.SERVING,100)],'marketing_readback_default_traffic_changed')
     verify_revision(worker,svc,policy)
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
     op.summary('MARKETING-ENABLED READBACK PASSED: '+worker)
     op.summary('SOURCE CONTROL: '+sha+' / runtime image: '+info['image'].split('@',1)[1])
     op.summary('ACCOUNT=true / MARKETING=true / policy=member-info-v1 / portal-candidate only.')
@@ -264,7 +264,7 @@ def run():
     current,current_policy=e.get_service()
     verify_config(before,policy,current,current_policy,revision,code,old_worker,image,switched=False)
     probe_gate(CHECK_URL)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
 
     c.gc('run','services','update-traffic',c.SERVICE,'--region='+c.REGION,
          '--update-tags='+c.TAG+'='+revision,'--remove-tags='+CHECK_TAG,timeout=180)
@@ -272,7 +272,7 @@ def run():
     current,current_policy=e.get_service()
     verify_config(before,policy,current,current_policy,revision,code,old_worker,image,switched=True)
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed','access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,'customer_routes_not_confirmed')
 
     op.summary('MARKETING-ENABLED WORKER CANDIDATE READY: '+revision)
     op.summary('SOURCE IMAGE: '+sha+' / '+digest)
