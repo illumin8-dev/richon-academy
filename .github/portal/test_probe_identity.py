@@ -73,6 +73,6 @@ class ProbeIdentity(TestCase):
         state = receipt(); state['request']['operation'] = 'stage-edge-naver'
         state['access'] = 'inconclusive'
         with patch.object(c, 'gc') as gc, patch.object(c, 'command') as command:
-            with self.assertRaisesRegex(c.Stop, 'access_gateway_not_confirmed'):
+            with self.assertRaisesRegex(c.Stop, 'customer_routes_not_confirmed'):
                 e.stage(state)
             gc.assert_not_called(); command.assert_not_called()
