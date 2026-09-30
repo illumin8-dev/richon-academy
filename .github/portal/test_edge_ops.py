@@ -1,5 +1,6 @@
 """Offline edge-gate operation tests; no cloud, network, or real credentials."""
 from copy import deepcopy
+import json
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -15,7 +16,7 @@ def public_policy():
 def receipt():
     return {'sha': 'b'*40, 'run': '123', 'attempt': '1',
             'request': {'operation': 'stage-edge', 'request_id': 'offline'},
-            'before': service(True), 'policy': public_policy(), 'access': 'signin-gateway-confirmed'}
+            'before': service(True), 'policy': public_policy(), 'access': e.CUSTOMER_ROUTES}
 
 
 def candidate(state):
@@ -98,18 +99,50 @@ class EdgeGuards(TestCase):
     def test_redirect_is_not_followed(self):
         self.assertIsNone(e.op.NoRedirect().redirect_request(None, None, 302, '', {}, 'https://evil.invalid'))
 
-    def test_access_403_is_inconclusive(self):
+    def test_customer_route_403_is_inconclusive(self):
         with patch.object(e, 'request', return_value=(403, {}, b'')):
             self.assertEqual(e.access_status(), 'inconclusive')
 
-    def test_access_confirmation_requires_correct_tenant_and_public_pages(self):
+    def test_customer_route_confirmation_requires_app_pages_callbacks_and_modal(self):
+        modal = json.dumps({
+            'csrf': 'a' * 64,
+            'return_to': '/portal/mypage',
+            'providers': ['kakao', 'naver'],
+            'collect_profile': True,
+            'notice': None,
+        }).encode()
         def response(url, **kw):
+            if url == e.LOGIN_MODAL:
+                self.assertEqual(kw.get('accept'), 'application/json')
+                return 200, {'Content-Type': 'application/json'}, modal
+            path = url.removeprefix(e.ORIGIN)
+            if path in e.CALLBACKS:
+                return 303, {'Location': e.ORIGIN + '/auth/login?error=login_failed'}, b''
+            if path in e.PATHS + e.PUBLIC:
+                return 200, {'Content-Type': 'text/html'}, b''
+            raise AssertionError(url)
+        with patch.object(e, 'request', side_effect=response):
+            self.assertEqual(e.access_status(), e.CUSTOMER_ROUTES)
+
+    def test_cloudflare_access_redirect_on_customer_route_is_not_a_pass(self):
+        def response(url, **kw):
+            if url == e.LOGIN_MODAL:
+                return 302, {'Location': 'https://' + e.ACCESS_HOST + '/cdn-cgi/access/login/richonacademy.com?kid=x'}, b''
             if url in {e.ORIGIN + p for p in e.PUBLIC}:
                 return 200, {'Content-Type': 'text/html'}, b''
             return 302, {'Location': 'https://' + e.ACCESS_HOST + '/cdn-cgi/access/login/richonacademy.com?kid=x'}, b''
         with patch.object(e, 'request', side_effect=response):
-            self.assertEqual(e.access_status(), 'signin-gateway-confirmed')
-        with patch.object(e, 'request', return_value=(302, {'Location':'https://evil.invalid/cdn-cgi/access/login/richonacademy.com'}, b'')):
+            self.assertEqual(e.access_status(), 'inconclusive')
+
+    def test_invalid_modal_bootstrap_is_not_a_pass(self):
+        def response(url, **kw):
+            if url == e.LOGIN_MODAL:
+                return 200, {'Content-Type': 'application/json'}, b'{}'
+            path = url.removeprefix(e.ORIGIN)
+            if path in e.CALLBACKS:
+                return 303, {'Location': e.ORIGIN + '/auth/login?error=login_failed'}, b''
+            return 200, {'Content-Type': 'text/html'}, b''
+        with patch.object(e, 'request', side_effect=response):
             self.assertEqual(e.access_status(), 'inconclusive')
 
     def test_changed_policy_config_or_traffic_rejected(self):
@@ -150,7 +183,7 @@ class EdgeGuards(TestCase):
             return (state['before'] if get_count <= 2 else candidate(state)), public_policy()
         with patch.object(c,'source',return_value=state['sha']), patch.object(c,'gc',side_effect=gc), \
              patch.object(c,'command',return_value=''), patch.object(e,'get_service',side_effect=get), \
-             patch.object(e,'access_status',return_value='signin-gateway-confirmed'), \
+             patch.object(e,'access_status',return_value=e.CUSTOMER_ROUTES), \
              patch.object(e,'probe_origin'), patch.object(e.op,'save'), patch.object(e.op,'summary'):
             e.stage(state)
         writes = [args for args in calls if args[:3] == ('run','services','update')]
