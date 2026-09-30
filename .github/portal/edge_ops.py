@@ -190,7 +190,7 @@ def stage(state):
     c.source(live=True)
     current, policy = get_service()
     unchanged(state['before'], state['policy'], current, policy)
-    c.need(access_status() == CUSTOMER_ROUTES, 'access_gateway_not_confirmed')
+    c.need(access_status() == CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     probe_origin(c.URL)
     tagged = c.IMAGE + ':' + state['sha']
     c.command(['gcloud', 'auth', 'configure-docker', c.REGION + '-docker.pkg.dev', '--quiet'])
