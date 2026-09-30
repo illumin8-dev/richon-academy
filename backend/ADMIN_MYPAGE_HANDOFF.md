@@ -444,3 +444,29 @@
 - 변경 범위는 Cloud Shell production aggregate inventory의 TLS CA 경로 보정만.
 - sslmode=verify-full 유지 / production app backend/db.py 불변 / DB·Cloud write 없음.
 - 다음 시작 지점: merge commit 기준 Cloud Shell에서 ops/diagnose_production_data.py 재실행 후 COUNTS 판정.
+
+
+### 체크포인트 14 / production inventory gcloud 오류 분류
+- production aggregate inventory 재실행 결과:
+  - STOP: cloud-target / command_failed
+  - DB 연결/secret-access/aggregate read 단계 진입 전 중단.
+  - customer row 조회/DB write 없음.
+- generic command_failed로는 정확한 실패 지점을 알 수 없어 helper 진단을 세분화.
+- PR #98 생성:
+  - branch: fix/production-diagnostic-gcloud-errors-20260930
+  - head: 107f82916c5742a3444f199f16187fc256fad00b
+  - safe code:
+    - project_describe_failed
+    - owner_service_describe_failed
+    - portal_service_describe_failed
+    - owner_secret_access_failed
+    - runtime_secret_access_failed
+  - gcloud stdout/stderr/Secret/DSN은 출력하지 않음.
+  - 기존 sslmode=verify-full + explicit system CA file 유지.
+  - production app backend/db.py 불변.
+- PR #98 생성 직후라 CI run 목록은 아직 비어 있는 상태에서 체크포인트 저장.
+- 다음 시작 지점:
+  1. PR #98 CI 확인.
+  2. PASS면 병합.
+  3. 병합 SHA로 Cloud Shell 재실행.
+  4. safe code로 cloud-target 실패 지점을 확정.
