@@ -91,10 +91,14 @@ class GuardTests(unittest.TestCase):
         with self.assertRaises(c.Stop): c.inspect(svc, {})
 
     def test_future_module_or_policy_requires_review(self):
-        for key, value in [('RICHON_MANUAL_ENABLED', 'true'), ('RICHON_TERMS_VERSION', 'production-v1')]:
-            svc = service(True); env = svc['spec']['template']['spec']['containers'][0]['env']
-            next(x for x in env if x['name'] == key)['value'] = value
-            with self.assertRaises(c.Stop): c.inspect(svc, {})
+        svc = service(True)
+        env = svc['spec']['template']['spec']['containers'][0]['env']
+        env.append({'name':'RICHON_MANUAL_ENABLED','value':'true'})
+        with self.assertRaises(c.Stop): c.inspect(svc, {})
+
+        svc = service(True); env = svc['spec']['template']['spec']['containers'][0]['env']
+        next(x for x in env if x['name'] == 'RICHON_TERMS_VERSION')['value'] = 'production-v1'
+        with self.assertRaises(c.Stop): c.inspect(svc, {})
 
     def test_unknown_or_duplicate_env_rejected(self):
         for item in ({'name': 'NAVER_CLIENT_SECRET', 'value': 'PRIVATE'}, {'name': 'KAKAO_APP_ID', 'value': '1585992'}):

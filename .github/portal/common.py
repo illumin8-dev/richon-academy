@@ -76,8 +76,8 @@ MARKETING = {'RICHON_MARKETING_CONSENT_ENABLED': 'true'}
 COURSE = {'RICHON_COURSE_DOMAIN_ENABLED': 'true'}
 PLAIN = {'RICHON_BOOTSTRAP_VERIFY': 'true', 'KAKAO_APP_ID': '1585992',
          'RICHON_OAUTH_ORIGIN': 'https://richonacademy.com',
-         'RICHON_AUTH_ALLOWED_ORIGINS': 'https://richonacademy.com',
-         'RICHON_MONTHLY_ENABLED': 'false', 'RICHON_MANUAL_ENABLED': 'false'}
+         'RICHON_AUTH_ALLOWED_ORIGINS': 'https://richonacademy.com'}
+LEGACY_FLAGS = ('RICHON_MONTHLY_ENABLED', 'RICHON_MANUAL_ENABLED')
 
 
 class Stop(Exception):
@@ -146,7 +146,7 @@ def read_request(value=None):
         need(REQUEST.stat().st_size <= 2048, 'request_too_large')
         value = json.loads(REQUEST.read_text())
     need(isinstance(value, dict) and set(value) == {'operation', 'request_id'}, 'invalid_request')
-    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code', 'stage-account-enabled', 'inspect-account-enabled', 'stage-marketing-enabled', 'inspect-marketing-enabled', 'stage-course-enabled', 'inspect-course-enabled', 'inspect-login-requests', 'rollout-login-handoff'), 'unsupported_operation')
+    need(value['operation'] in ('hold', 'inspect', 'deploy', 'configure-internal-login', 'inspect-edge', 'stage-edge', 'stage-edge-naver', 'rollout-edge-code', 'stage-account-code', 'stage-account-enabled', 'inspect-account-enabled', 'stage-marketing-enabled', 'inspect-marketing-enabled', 'stage-course-enabled', 'inspect-course-enabled', 'inspect-login-requests', 'rollout-login-handoff', 'stage-legacy-admin-enabled', 'inspect-legacy-admin-enabled'), 'unsupported_operation')
     need(isinstance(value['request_id'], str) and re.fullmatch('[A-Za-z0-9_.-]{1,80}', value['request_id']), 'invalid_request_id')
     return value
 
@@ -213,7 +213,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
          str(annotations.get('run.googleapis.com/maxScale', '1')) == '1', 'service_scaling_changed')
     env = environment(c)
     naver_references(env, boundary=boundary)
-    need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(INTERNAL) |
+    need(set(env) <= set(SECRET_NAMES) | set(PLAIN) | set(LEGACY_FLAGS) | set(INTERNAL) |
          set(ACCOUNT) | set(MARKETING) | set(COURSE) | (set(NAVER_NAMES) if boundary == 'edge' else set()), 'unreviewed_env')
     for name, secret in SECRET_NAMES.items():
         item = env.get(name, {})
@@ -221,6 +221,15 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
         need('value' not in item and ref.get('name') == secret and
              re.fullmatch('[1-9][0-9]*', str(ref.get('key', ''))), 'missing_or_unpinned_secret_reference')
     need(all(env.get(k, {}).get('value') == v for k, v in PLAIN.items()), 'unexpected_portal_setting')
+    legacy_present = set(env) & set(LEGACY_FLAGS)
+    need(legacy_present in (set(), set(LEGACY_FLAGS)), 'partial_or_invalid_legacy_setting')
+    if legacy_present:
+        legacy_values = {env[k].get('value') for k in LEGACY_FLAGS}
+        need(legacy_values in ({'false'}, {'true'}), 'partial_or_invalid_legacy_setting')
+        legacy_enabled = legacy_values == {'true'}
+    else:
+        # Older/synthetic service fixtures predate these flags; absence means OFF.
+        legacy_enabled = False
     modes = {env.get(k, {}).get('value') for k in FLAGS}
     need(modes in ({'false'}, {'true'}), 'partial_login_config')
     account_present = 'RICHON_ACCOUNT_ENABLED' in env
@@ -258,6 +267,7 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
         need(modes == {'true'}, 'edge_login_must_remain_enabled')
     return {'enabled': modes == {'true'}, 'account_enabled': account_enabled,
             'marketing_enabled': marketing_enabled, 'course_enabled': course_enabled,
+            'monthly_enabled': legacy_enabled, 'manual_enabled': legacy_enabled,
             'revision': status['latestReadyRevisionName'], 'image': c['image']}
 
 
