@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-rollout-hold-20260930-e"
+  "operation": "rollout-login-handoff",
+  "request_id": "functional-header-rollout-20260930-f"
 }
