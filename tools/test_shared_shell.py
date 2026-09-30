@@ -44,9 +44,11 @@ class SharedShellTests(unittest.TestCase):
         for label in ('RICH', 'ON', 'ESTATE STUDY', '오픈카톡방', '강의 신청'):
             self.assertIn(label, public)
             self.assertIn(label, header)
-        for landing_only in ('후기', '정규 프로그램', '강사/멘토', 'navMenu', 'site-burger'):
-            self.assertIn(landing_only, public)
-            self.assertNotIn(landing_only, header)
+        for landing_label in ('후기', '정규 프로그램', '강사/멘토'):
+            self.assertIn(landing_label, public)
+            self.assertNotIn(landing_label, header)
+        for functional_forbidden in ('id="navMenu"', 'site-burger'):
+            self.assertNotIn(functional_forbidden, header)
         footer = (build.SOURCE / 'footer.html').read_text()
         for value in ('장순호', '175-01-03647', '032-236-8944', '개인정보처리방침', '이용약관'):
             self.assertIn(value, public)
