@@ -116,7 +116,7 @@ def inspect_existing(svc, policy):
     digest = image.get('image_summary', {}).get('digest', '')
     c.need(re.fullmatch(r'sha256:[a-f0-9]{64}', digest)
            and info['image'] == c.IMAGE + '@' + digest, 'candidate_source_image_mismatch')
-    c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(e.access_status() == e.CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     try:
         e.probe_origin(c.URL)
     except c.Stop as exc:
@@ -141,7 +141,7 @@ def inspect_existing(svc, policy):
     op.summary('ROLLBACK VERIFIED: ' + SERVING + ' / service URL traffic 100%; candidate tag traffic 0%.')
     op.summary('NAVER REFERENCES: both approved version 1; actual secret payloads not read.')
     op.summary('READ-ONLY: no revision created, traffic update, IAM/DB write or provider login.')
-    op.summary('Access gateway observed; owner email policy and real user OAuth still require browser verification.')
+    op.summary('customer routes observed; owner email policy and real user OAuth still require browser verification.')
 
 
 def main():
