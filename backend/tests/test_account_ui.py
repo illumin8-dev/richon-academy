@@ -84,9 +84,11 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
     assert c.get('/portal/admin').headers['referrer-policy']=='no-referrer'
     assert c.get('/portal/api/me').headers['referrer-policy']=='no-referrer'
     fallback=client().get('/auth/login')
+    portal_header=(ROOT/'frontend/shared/portal-header.html').read_text().strip()
+    shared_footer=(ROOT/'frontend/shared/footer.html').read_text().strip()
     for response in (page,fallback):
-        for name in ('header','footer'):
-            assert (ROOT/'frontend/shared'/f'{name}.html').read_text().strip() in response.text
+        assert portal_header in response.text
+        assert shared_footer in response.text
         assert 'frame-ancestors \'none\'' in response.headers['content-security-policy']
         assert "script-src 'self'" in response.headers['content-security-policy']
     for forbidden in ('홈페이지로','MY LEARNING JOURNEY','조회 버전','계정으로 계속해서 이용하세요','카카오 회원님'):
