@@ -2,3 +2,6 @@
 gha-creds-*.json
 __pycache__/
 *.pyc
+
+# Generated allowlisted Cloudflare Pages output.
+.pages-dist/
