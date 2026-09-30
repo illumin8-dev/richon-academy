@@ -61,7 +61,7 @@ def validate_before(svc, policy):
                  for name in (r.CANDIDATE,r.SERVING)}
     for name, revision in revisions.items():
         r.validate_revision(revision,name,svc,policy)
-    c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(e.access_status() == e.CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     serving = r.safe_origin_observation(c.URL)
     candidate = r.safe_origin_observation(e.CANDIDATE)
     op.summary('EXISTING SERVING ORIGIN: ' + serving)
