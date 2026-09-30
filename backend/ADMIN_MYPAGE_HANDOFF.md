@@ -561,3 +561,22 @@
   1. decide/implement central admin calendar later.
   2. if desired, grant a member enrollment separately with explicit row-write approval.
   3. verify My Courses after an enrollment exists.
+
+
+### 체크포인트 19 / 관리자 계정 수강권 지급 helper 준비
+- PR #105 CI 3개 PASS / mergeable clean / 병합 완료.
+- merge commit: c120e81ef0078789c57649e0334b77e3a94059a5
+- helper: ops/grant_pre_richon_9_admin.py
+- 아직 production write 실행 안 함.
+- 실행 시 write 범위:
+  - enrollment_learners: sole active admin의 member-linked learner가 없을 때만 +1
+  - course_enrollments: Pre리치온 9기 +1
+  - course_domain_audit: +1
+- 변경 금지:
+  - members / member_profiles
+  - orders / payment / member_order_links
+  - course_sessions
+  - legacy monthly/manual
+  - Cloud Run / IAM / feature flags
+- exact replay NO-OP / conflict overwrite 금지 / customer identifier 출력 금지.
+- 실제 실행 직전 사용자 승인 필요.
