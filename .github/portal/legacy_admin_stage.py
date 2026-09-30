@@ -79,8 +79,8 @@ def ensure_before(svc,policy):
     c.need(not any(row.get('tag')==CHECK_TAG
                    for row in svc.get('status',{}).get('traffic',[])),
            'legacy_check_tag_already_exists')
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'legacy_access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'legacy_customer_routes_not_confirmed')
     return old
 
 
@@ -194,8 +194,8 @@ def stage():
     staged,staged_policy=e.get_service()
     verify_config(before,before_policy,staged,staged_policy,new_revision,switched=False)
     probe_gate(CHECK_URL)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'legacy_access_gateway_changed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'legacy_customer_routes_changed')
 
     c.source(live=True)
     c.gc('run','services','update-traffic',c.SERVICE,'--region='+c.REGION,
@@ -203,8 +203,8 @@ def stage():
     current,current_policy=e.get_service()
     verify_config(before,before_policy,current,current_policy,new_revision,switched=True)
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'legacy_access_gateway_changed_after_switch')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'legacy_customer_routes_changed_after_switch')
     op.summary('LEGACY ADMIN ENABLED ON PROTECTED CANDIDATE: '+new_revision)
     op.summary('Default 100% revision unchanged: '+serving_revision(current))
     op.summary('Previous protected candidate: '+old)
@@ -228,8 +228,8 @@ def inspect():
                    for row in svc.get('status',{}).get('traffic',[])),
            'legacy_check_tag_not_removed')
     probe_gate(e.CANDIDATE)
-    c.need(e.access_status()=='signin-gateway-confirmed',
-           'legacy_access_gateway_not_confirmed')
+    c.need(e.access_status()==e.CUSTOMER_ROUTES,
+           'legacy_customer_routes_not_confirmed')
     op.summary('LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.')
 
 
