@@ -59,8 +59,20 @@ def sole_admin(cur):
 
 def ensure_course_exact(cur):
     course.verify_schema(cur)
-    program_exists,run_exists=course.target_state(cur)
-    need(program_exists and run_exists,'pre_richon_9_missing')
+    cur.execute("""SELECT title,description,access_mode,fixed_months,archived_at
+        FROM richon.course_programs WHERE program_id=%s""",(course.PROGRAM_ID,))
+    program=cur.fetchone()
+    need(program is not None and course.exact_program(program),'pre_richon_program_mismatch')
+
+    cur.execute("""SELECT program_id,cohort_label,starts_on,ends_on,default_access_start,
+        default_access_end,recruit_opens_at,recruit_closes_at,capacity,status,price_krw,archived_at
+        FROM richon.course_runs WHERE run_id=%s""",(course.RUN_ID,))
+    run=cur.fetchone()
+    need(run is not None and course.exact_run(run),'pre_richon_9_run_mismatch')
+
+    cur.execute("""SELECT count(*) FROM richon.course_runs
+        WHERE program_id=%s AND cohort_label=%s""",(course.PROGRAM_ID,course.COHORT))
+    need(cur.fetchone()==(1,),'pre_richon_9_duplicate_cohort')
 
 
 def existing_state(cur,admin_id):
