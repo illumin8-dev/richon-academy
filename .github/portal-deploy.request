@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-legacy-admin-enabled",
-  "request_id": "legacy-admin-public-auth-inspect-20260930-b"
+  "operation": "rollout-login-handoff",
+  "request_id": "post-access-ui-rollout-20260930-c"
 }
