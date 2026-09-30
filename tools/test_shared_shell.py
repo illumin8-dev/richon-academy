@@ -38,16 +38,21 @@ class SharedShellTests(unittest.TestCase):
         self.assertEqual(page.count('id="siteNav"'), 1)
         self.assertIn('data-richon-login hidden', page)
 
-    def test_shared_header_is_derived_from_current_public_header_labels(self):
+    def test_shared_header_is_functional_page_chrome(self):
         public = (ROOT / 'index.html').read_text()
         header = (build.SOURCE / 'header.html').read_text()
-        for label in ('RICH', 'ON', 'ESTATE STUDY', '후기', '정규 프로그램', '강사/멘토', '오픈카톡방', '강의 신청'):
+        for label in ('RICH', 'ON', 'ESTATE STUDY', '오픈카톡방', '강의 신청'):
             self.assertIn(label, public)
             self.assertIn(label, header)
+        for landing_only in ('후기', '정규 프로그램', '강사/멘토', 'navMenu', 'site-burger'):
+            self.assertIn(landing_only, public)
+            self.assertNotIn(landing_only, header)
         footer = (build.SOURCE / 'footer.html').read_text()
         for value in ('장순호', '175-01-03647', '032-236-8944', '개인정보처리방침', '이용약관'):
             self.assertIn(value, public)
             self.assertIn(value, footer)
+        self.assertNotIn('회원가입 안내', footer)
+
 
     def test_public_landing_and_application_bytes_are_unchanged_in_this_pr(self):
         for name, expected in APPROVED.items():
