@@ -46,7 +46,7 @@ def main():
     profile={
         'member_id':principal.member_id,'display_name':'회원','role':'member',
         'created_at':datetime.now(timezone.utc),'providers':['kakao','naver'],
-        'linked_order_count':0,
+        'linked_order_count':0,'marketing_consent':False,
         'registration':{
             'name':'합성 회원','phone':'01012345678','email':'synthetic@example.invalid',
             'age_range':'30-39','gender':'female','consultation_consent':True,
