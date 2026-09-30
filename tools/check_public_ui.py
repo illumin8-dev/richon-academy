@@ -72,6 +72,20 @@ assert '과정별 일정과 운영 방식은 신청 안내에서 최종 확인�
 assert '신청 정보와 결제 정보는 실제 운영 링크가 열린 뒤 입력합니다.' not in apply
 assert '접수 확인 후 수강 방법과 준비사항을 별도로 안내합니다.' not in apply
 assert '현재는 UI 준비 상태입니다.' not in apply
+# PR #59에서 보존된 과정별 상세 소개 이미지 49장을 현재 신청 UI에 복원한다.
+for value in (
+    'id="course-visual"', 'id="course-gallery"',
+    'assets/images/pre-richon-course.jpg', 'assets/images/richon-study-course.jpg',
+    'assets/images/redevelopment-reconstruction-course.jpg', 'assets/images/space-design-course.jpg',
+    'assets/images/subscription-course.jpg',
+):
+    assert value in apply
+for prefix,count in (('pre',1),('study',12),('redevelopment',11),('interior',15),('subscription',10)):
+    for number in range(1,count+1):
+        path=ROOT/'assets'/'apply'/f'{prefix}-{number:02d}.jpg'
+        assert path.is_file() and path.stat().st_size > 1000
+        assert f'assets/apply/{prefix}-{number:02d}.jpg' in apply
+assert apply.count('assets/apply/') == 49
 for copy in (
     '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.',
     '현금흐름, 갭투자, 서울 초기재개발, 경매 등 매주 실전 주제로 깊이 파고드는 핵심 스터디.',
