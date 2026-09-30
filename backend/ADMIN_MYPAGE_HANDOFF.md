@@ -536,3 +536,28 @@
   1. 관리자 강의관리 UI에서 프로그램/9기 노출 확인.
   2. 중앙관리 캘린더는 별도 기능으로 설계/구현.
   3. 일정은 중앙관리 캘린더에서 입력되어 course_sessions에 저장되는 구조로 연결.
+
+
+### 체크포인트 18 / 중앙 캘린더 경계 배포 완료
+- PR #104 CI 4개 PASS / mergeable clean / 병합 완료.
+- 관리자 /portal/courses:
+  - 프로그램/기수 기본정보 관리 유지
+  - 수강권 지급/현황 유지
+  - 회차/시간/영상/자료 직접 입력 UI 제거
+  - 중앙관리 캘린더에서 일괄 관리 예정 안내로 대체
+  - course_sessions DB/API 자체는 유지
+- protected candidate rollout run 36684483088 PASS.
+- source: ce683a9c2afa0a8cf37075129359b1f0de094d1e
+- image digest: sha256:2c4a5117ff1a78c0ac34a76918451c825869a39eda7fd8d201f94c95c0c7fa53
+- old candidate: richon-portal-handoff-36681481162-1
+- new candidate: richon-portal-handoff-36684483088-1
+- default 100% unchanged: richon-portal-gh-35810692921-1
+- IAM/edge/access checks PASS.
+- deploy request returned to hold.
+- production Pre리치온 9기 already exists:
+  - program/run only
+  - sessions=0 / enrollments=0
+- next:
+  1. decide/implement central admin calendar later.
+  2. if desired, grant a member enrollment separately with explicit row-write approval.
+  3. verify My Courses after an enrollment exists.
