@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "admin-shell-detail-cleanup-rollout-20261001-k"
+  "operation": "hold",
+  "request_id": "post-admin-shell-detail-cleanup-hold-20261001-l"
 }
