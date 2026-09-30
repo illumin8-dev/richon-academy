@@ -60,6 +60,9 @@ class SharedShellTests(unittest.TestCase):
         self.assertIn('.account-withdrawal{font-size:12px', css)
         self.assertIn('color:#8a857d', css)
         self.assertNotIn('opacity:0', css)
+        login = (build.SOURCE / 'login.js').read_text()
+        self.assertIn('새 브라우저에서는 테스트 접근 인증이 필요할 수 있습니다.', login)
+        self.assertIn('접근 인증 후 로그인 화면 열기', login)
 
 
 if __name__ == '__main__':
