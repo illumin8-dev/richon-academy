@@ -680,3 +680,74 @@
   5. 사용자 production admin에서 UUID 제거 / sidebar 통일 / TMI 정리 / 회원 상세 재확인.
   6. 회원 상세가 계속 실패하면 production-safe diagnostic helper로 상세 경로를 row 출력 없이 분리 진단.
   7. 별도 공개 원본 PR 번호가 생기면 CI 확인 후 병합 준비.
+
+
+### 체크포인트 23 / PR #106 수정 후 CI 진행 + CSS 구조 파악
+- 사용자 요청으로 timeout 방지를 위해 이 지점에서 중단.
+- PR #106: fix(admin): unify shell, trim UI noise and cover member detail
+- branch: fix/admin-shell-detail-cleanup-20261001
+- latest head: 1ce5771810c1704956c508f3f66b231096c6d6e4
+- 첫 CI에서 실제 원인 발견:
+  1. 회원 상세 실패 실제 원인:
+     - backend/portal_store.py member_detail()가 _rows(cur)를 호출하지만 _rows가 정의되지 않아 NameError.
+     - production 화면의 "회원 상세를 불러오지 못했습니다."와 일치하는 실제 backend bug.
+  2. 중앙 캘린더 안내 문구를 간소화했는데 옛 exact-copy 테스트가 이전 문구를 요구.
+  3. admin browser가 기존 [data-tab] button 구조를 기대했으나 shared sidebar의 [data-admin-tab-link] link 구조로 변경됨.
+  4. standalone manual preview는 공용 admin header 적용 후 제거된 #identity 요소를 manual.js가 계속 참조하여 JS boot 중단.
+- 위 4개 모두 수정 완료:
+  - portal_store.py에 _rows(cur) 추가.
+  - course admin calendar boundary test를 간결 문구 기준으로 수정.
+  - portal_browser.py를 data-admin-tab-link 기준으로 변경.
+  - manual.js에서 page-specific #identity 의존 제거.
+- 현재 PR #106 CI 상태 마지막 확인:
+  - Same-domain login edge/image = PASS
+  - Login flow regression = PASS
+  - Backend checks = PASS
+  - Standalone admin preview = PASS
+  - Portal UI checks = 아직 in_progress (Playwright install/test 대기 중)
+  - mergeable=true / mergeable_state=unstable (마지막 UI job 미완료 때문)
+- PR #106 UI 변경 범위:
+  - raw member UUID 목록 노출 제거
+  - 관리자 4페이지 공용 admin header/sidebar/footer source 추가
+  - 모든 관리자 sidebar 메뉴 통일:
+    강의 / 수강권, 월별 수강관리, 수강생 수동 등록 / 수정, 신청·주문, 회원 관리, 마이페이지
+  - /portal/admin?tab=orders|members 직접 진입 지원
+  - 개발단계 TMI 문구 대폭 축소
+  - shared admin shell drift test 추가
+  - production과 유사한 canonical enrollment + legacy ON member_detail PostgreSQL 회귀 테스트 추가
+- CSS / main / portal 구조 파악:
+  - 현재 전체 사이트 CSS는 단일 정본이 아님.
+  - public main:
+    - frontend/shared/site.css
+    - assets/hero/home-hero.css
+    - index.html의 큰 inline <style>
+    - apply.html의 inline <style>
+  - portal 회원/로그인:
+    - backend/portal_static/site.css (frontend/shared/site.css에서 build)
+    - account.css / auth.css
+  - portal 관리자:
+    - ops.css 공통 base/token
+    - portal.css 공통 admin layout/components
+    - courses.css / enrollments.css / manual.css 페이지별 CSS
+  - 같은 경로 frontend/shared/site.css도 main과 feat/backend-portal-deploy 내용이 이미 다름:
+    - main site.css blob sha c4d06dc3...
+    - portal branch site.css blob sha 6e721829...
+  - header.html도 main과 portal branch가 다르고 footer만 현재 동일.
+  - 즉 "shared" 이름은 쓰지만 main/public과 portal이 branch 단위로 갈라져 있어 진짜 single source of truth는 아님.
+- CSS 정리 권장 최종 방향:
+  1. 전 사이트 공통 design tokens + logo/header/footer + button/form base를 하나의 shared core로 만든다.
+  2. admin은 sidebar/table/filter/dialog만 admin layer로 둔다.
+  3. page-specific CSS는 실제 고유 레이아웃만 남긴다.
+  4. index/apply inline CSS는 별도 파일로 추출해 공통/페이지 전용 경계를 명확히 한다.
+  5. main/public과 portal branch의 frontend/shared를 eventually 하나의 authoritative source로 합친다.
+- 이 CSS 전체 리팩터링은 PR #106에 섞지 않음. 공개 main까지 영향 범위가 커 별도 PR/작업으로 진행.
+- 공개 원본 동기화 별도 브랜치:
+  - fix/upstream-public-ui-sync-20260930
+  - original main 대비 ahead 5 / behind 0
+  - 원본 PR 생성 API는 403이라 사용자가 compare 페이지에서 수동 PR 생성 필요.
+- 다음 시작 지점:
+  1. PR #106 Portal UI checks 최종 결과 확인.
+  2. PASS면 PR #106 병합.
+  3. protected candidate code-only rollout.
+  4. 사용자 실제 admin 화면에서 UUID 제거 / 메뉴 통일 / TMI 정리 / 회원 상세 정상 동작 확인.
+  5. 그 다음 별도 작업으로 main+portal CSS/shared source 통합 계획을 구체화하고 PR 진행.
