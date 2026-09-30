@@ -155,24 +155,6 @@
   .free-badge{background:var(--gold);color:#231c0c;font-family:'GmarketSans','Pretendard',sans-serif;font-size:12px;font-weight:700;padding:4px 9px;border-radius:6px;margin-left:6px;vertical-align:middle;line-height:1;letter-spacing:.02em}
 
   .cal{margin-top:40px;background:var(--bg-2);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px}
-  .cal-legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:18px;font-size:12.5px;color:var(--soft)}
-  .cal-legend span{display:inline-flex;align-items:center;gap:6px}
-  .cal-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-  .cal-dow{text-align:center;font-size:12px;font-weight:700;color:var(--faint);padding:6px 0}
-  .cal-dow.sun{color:#e0695f}.cal-dow.sat{color:#5b8def}
-  .cal-cell{min-height:88px;background:var(--bg-3);border:1px solid rgba(255,255,255,.05);border-radius:9px;padding:8px}
-  .cal-cell.today{outline:2px solid var(--orange);outline-offset:2px}
-  .cal-cell.muted{opacity:.32}
-  .cal-cell .d{font-size:12.5px;font-weight:700;color:var(--soft);margin-bottom:5px}
-  .cal-ev{font-size:10.5px;line-height:1.3;border-radius:5px;padding:4px 6px;margin-top:4px;color:#0e0e12;font-weight:700}
-  .cal-ev small{display:block;font-weight:500;opacity:.8}
-  .cal-list{display:none;margin-top:18px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px}
-  .cal-list-item{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-top:8px;background:var(--bg-3)}
-  .cal-list-item i{flex:0 0 auto;width:11px;height:11px;border-radius:3px;margin-top:6px}
-  .cal-list-item b{font-size:14px;color:var(--text)}
-  .cal-list-item span{font-size:12.5px;color:var(--soft)}
-  @media(max-width:720px){.cal-grid{display:none}.cal-list{display:block}.cal-cell{min-height:auto}.cal-ev small{display:none}}
 
   .mentor-section{display:grid;gap:26px}
   .mentor-overview .sec-title{margin-bottom:10px}
@@ -258,10 +240,6 @@
   .pcard .tags span{border-color:#e6e3db}
   .a-info{border-color:#d8d4c8}
   .cal{background:#fff;border-color:#e6e3db}
-  .cal-cell{background:#f6f5f2;border-color:#ece9e0}
-  .cal-list{border-top-color:#e6e3db}
-  .cal-list-item{background:#f6f5f2;border-color:#ece9e0}
-  .cal-list-item b{color:#1c1f26}
   .inst .role{color:#a9842f}
   .rcard{background:#fff;border-color:#e6e3db}
   .cta{background:#f6f5f2}
@@ -292,9 +270,6 @@
   .btn:hover,.a-apply:hover,.a-info:hover{transform:translateY(-3px)}
   .btn-o:hover{box-shadow:0 14px 28px -14px rgba(244,121,32,.65)}
 
-  /* 캘린더 셀 살짝 반응 */
-  .cal-cell{transition:transform .25s,background .25s}
-  .cal-cell:not(.muted):hover{transform:translateY(-3px);background:#fdf9f0}
 
   /* 스크롤 리빌 (기존 .reveal 보강) */
   .reveal{opacity:0;transform:translateY(26px);transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .85s cubic-bezier(.2,.7,.2,1)}
