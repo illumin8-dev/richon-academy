@@ -351,3 +351,58 @@
 4. 외부 무인증 readback에서 Access 302가 사라지고 새 customer-route probe가 PASS하는지 확인.
 5. 사용자 브라우저에서 마이페이지 → 간편로그인 modal → Kakao/Naver 실제 E2E 확인.
 6. 로그인 정상화 후 관리자 화면 확인 → 실제 회원 수강권 1개 부여 → 해당 회원 마이페이지 `내 강의` 확인 순서로 재개.
+
+
+### 체크포인트 11 / Access 제거·마이페이지 3열·운영데이터 진단 준비
+- Cloudflare Zero Trust에서 테스트용 Access application 2개(/auth/*, /portal/*) 삭제 완료.
+- 실제 사용자 브라우저에서 로그인 정상 동작 확인.
+- 외부 read-only customer-route 검증 PASS:
+  - /auth/login = 200
+  - /auth/kakao/callback = 303
+  - /auth/naver/callback = 303
+  - /portal/mypage = 200
+  - login modal bootstrap = 200
+  - Access redirect 없음
+- PR #94 병합 완료: 고객용 로그인 fallback을 범용 문구 + 다시 시도로 변경하고, 배포 가드를 Access 302 기대에서 customer-route 정상응답 기대 방식으로 전환.
+- PR #95 병합/배포 완료:
+  - 내 정보 6개 항목 = 데스크톱 3열 x 2행.
+  - 광고성 정보 / 로그인 연결 = 같은 관리행 2칸.
+  - 모바일은 1열.
+  - protected candidate rollout run 36669194473 PASS.
+  - new candidate = richon-portal-handoff-36669194473-1.
+  - default 100% serving traffic / IAM / Secret / 기존 feature config 불변.
+- post-rollout inspect run 36669561980 PASS.
+  - LEGACY ADMIN INSPECT PASSED.
+  - DB/IAM/secret/customer write 없음.
+  - monthly/manual 활성 상태 보존 확인.
+- 관리자/마이페이지 1~7 중:
+  - 1 월별/수동 404 해결 및 ON = 완료
+  - 2 관리자 UI family 통합 = 완료
+  - 3 withdrawn 회원 total 제외 = 완료
+  - 4 회원 상세 강의/수강권/주문 = 완료
+  - 5 마이페이지 정보 밀도 = 완료
+  - 6 로그인 연결 UX 통합 = 완료
+  - 7 production DB 실제 데이터 경계 확인 = 다음 단계
+- PR #96 병합 완료.
+  - aggregate-only production data helper ops/diagnose_production_data.py 추가.
+  - 회원/주문/legacy/canonical course 관련 숫자 집계만 출력.
+  - 고객 row/이름/전화/이메일/ID/OAuth subject/DSN/secret 출력 금지.
+  - DB read_only SELECT 집계만 허용.
+  - 수정 후 CI 전부 PASS.
+  - 이 helper 병합 자체로 production DB/Cloud Run 변경 없음.
+- portal-deploy.request는 hold로 복귀.
+
+#### 헤더/회원가입 안내 후속 결정
+- 랜딩이 아닌 기능 페이지에서 후기 / 정규 프로그램 / 강사·멘토 앵커 메뉴는 제거하는 방향.
+- index.html 랜딩만 기존 3개 메뉴 유지.
+- 기능 페이지는 로고 / 오픈카톡 / 강의 신청 / 로그인·마이페이지 중심으로 단순화.
+- signup-guide.html은 2026-09-28 Kakao 심사용 회원가입 절차/수집항목/CI 증빙 페이지로 생성된 것 확인.
+- Kakao CI 심사 완료 전 URL은 유지하되, 일반 사용자 푸터 메뉴에서는 숨기는 방향 검토.
+- 헤더 정리는 다음 별도 PR 단위로 처리.
+
+#### 다음 시작 지점
+1. Cloud Shell에서 ops/diagnose_production_data.py를 production 대상으로 read-only 실행하고 COUNTS 결과만 확인.
+2. 실제 0건인지 / DB에는 있는데 UI가 빈지 판정.
+3. 필요 시 실제 회원 1명에 canonical 수강권 1개 부여(이 단계는 customer-row write이므로 실행 직전 사용자 확인).
+4. 해당 회원 마이페이지 내 강의 확인.
+5. 기능페이지 헤더 단순화 + signup-guide 푸터 노출 정리 별도 PR.
