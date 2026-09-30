@@ -115,7 +115,7 @@ privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
 
 assert 'href="/signup-guide.html"' not in footer
-assert wrapped('footer') in guide
+assert footer.strip() in guide
 for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only not in guide
 assert 'id="navMenu"' not in guide
