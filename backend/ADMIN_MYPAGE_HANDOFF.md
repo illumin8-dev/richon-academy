@@ -1132,3 +1132,63 @@
   4. 새 Pages origin과 기존 /auth/* /portal/* Worker route 공존 확인.
   5. 모두 PASS 후 richonacademy.com custom domain cutover.
   6. 기존 marururu00 Pages project는 rollback 여유 동안 유지.
+
+
+
+### 체크포인트 29 / Cloudflare Pages 연결 전 public output 격리 완료
+- WIF/main 이전 후 최신 protected candidate read-only 검증 완료:
+  - `inspect-legacy-admin-enabled` PASS.
+  - log: `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+  - final portal request는 hold 복귀.
+- Cloudflare Pages 연결 전 새 위험 발견:
+  - 통합 main은 public-only repo가 아니라 backend/.github/ops/edge/docs/tools 등을 함께 포함.
+  - repository root를 Pages output으로 사용하면 내부 코드/운영 파일이 정적 배포될 수 있으므로 root deploy 금지.
+- 안전한 Pages public build 추가:
+  - `tools/build_public_pages.sh`
+  - output: `.pages-dist`
+  - root public allowlist:
+    - index.html
+    - apply.html
+    - privacy.html
+    - terms.html
+    - signup-guide.html
+  - shared runtime assets:
+    - frontend/shared/site.css
+    - frontend/shared/site.js
+  - static assets:
+    - assets/**
+  - backend/.github/edge/ops/docs/preview/tools는 output에 포함되지 않음.
+  - symlink public assets fail-closed.
+  - top-level index.html 필수.
+- `.gitignore`에 `.pages-dist/` 추가.
+- Public UI workflow 보강:
+  - main push에서도 실행.
+  - privacy/terms/signup-guide/assets/**/build_public_pages.sh 변경 감시.
+  - build script 실제 실행 검증 추가.
+- 관련 commits:
+  - build script: `a47b354ce81c4db72c0402591ce8b2c06e0808b6`
+  - gitignore: `432a5dd2625ab2f318f9b22bd5f4835e4eccb1ea`
+  - public CI: `d7b306cf10fef3d947087b24dba78756d433adac`
+- 검증:
+  - Public UI checks PASS
+  - isolated Pages output build PASS
+  - application inline JS syntax PASS
+  - Backend checks PASS
+  - Login flow regression PASS
+- 새 Cloudflare Pages project 설정값:
+  - Git repository: `illumin8-dev/richon-academy`
+  - Production branch: `main`
+  - Framework preset: None
+  - Build command: `bash tools/build_public_pages.sh`
+  - Build output directory: `.pages-dist`
+  - Root directory: repository root / 별도 path 지정하지 않음
+  - Environment variables: 없음
+  - custom domain: 아직 연결하지 않음
+  - 첫 pages.dev 검증 전 기존 marururu00 Pages/richonacademy.com 유지
+  - 첫 배포 후 preview branch automatic deployments는 우선 None 권장.
+- 다음 시작 지점:
+  1. 사용자 Cloudflare dashboard에서 새 Pages project를 위 설정으로 생성.
+  2. GitHub App repo access가 없으면 illumin8-dev/richon-academy만 추가 승인.
+  3. 첫 production deployment 성공 후 `*.pages.dev` URL 전달.
+  4. GPT가 pages.dev의 landing/apply/privacy/terms/signup-guide/assets/mobile을 외부에서 검증.
+  5. pages.dev PASS 뒤 custom domain cutover 단계로 이동.
