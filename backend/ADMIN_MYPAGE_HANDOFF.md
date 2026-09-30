@@ -751,3 +751,44 @@
   3. protected candidate code-only rollout.
   4. 사용자 실제 admin 화면에서 UUID 제거 / 메뉴 통일 / TMI 정리 / 회원 상세 정상 동작 확인.
   5. 그 다음 별도 작업으로 main+portal CSS/shared source 통합 계획을 구체화하고 PR 진행.
+
+
+### 체크포인트 24 / PR #106 병합·배포 완료
+- PR #106 CI 5개 전부 PASS 후 병합 완료.
+- merge commit: c4aeb85a77d6e5b717de9c7ae0e1eceb8621fde3
+- 실제 회원 상세 실패 원인 수정:
+  - portal_store.member_detail()에서 사용하던 _rows(cur)가 정의되지 않아 NameError 발생.
+  - portal_store.py에 _rows helper 추가.
+  - canonical enrollment + legacy ON 조합의 disposable PostgreSQL 회귀 테스트 PASS.
+- 관리자 UI:
+  - 회원 목록 raw member UUID 제거.
+  - 관리자 4페이지 shared admin header/sidebar/footer source 사용.
+  - 신청·주문 / 회원 관리 메뉴를 모든 관리자 페이지에서 동일하게 분리 노출.
+  - /portal/admin?tab=orders|members 지원.
+  - 반복 TMI 문구 축소.
+  - manual.js의 제거된 #identity header 의존 제거.
+- rollout 첫 시도 run 36738579206:
+  - 모든 code/build/db checks PASS.
+  - live preflight에서 /auth/login만 Cloudflare 520 1회 발생.
+  - handoff_customer_routes_not_confirmed로 candidate 변경 전 fail-closed.
+  - 다른 live routes는 callback 303 / mypage 200 / public 200 / modal 200 정상.
+- 새 request id로 동일 rollout 재시도 run 36739145776.
+- 재시도 PASS:
+  - LOGIN HANDOFF CANDIDATE ROLLOUT=PASS
+  - source=6f64c4ec1b88f5efac4160c75e3a14b159286d7a
+  - image digest=sha256:2c81d11fae1c4275f584c0669f6989924a8a1018ec43a4a14f4949a3ade5b975
+  - old candidate=richon-portal-handoff-36684483088-1
+  - new candidate=richon-portal-handoff-36739145776-1
+  - default 100%=richon-portal-gh-35810692921-1 unchanged
+  - IAM / EDGE_GATE / ACCESS_GATE PASS
+- deploy request hold 복귀.
+- 사용자 실제 확인 필요:
+  1. 회원 목록 UUID 제거
+  2. 회원 상세 정상 오픈
+  3. sidebar 메뉴 동일
+  4. TMI 정리 체감 확인
+- CSS architecture:
+  - 아직 site-wide single source가 아님.
+  - public main / portal member-auth / portal admin의 3 layer로 분리.
+  - main과 portal branch의 frontend/shared/site.css/header.html도 서로 drift 중.
+  - 별도 CSS consolidation PR 필요.
