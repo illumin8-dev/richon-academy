@@ -116,8 +116,7 @@ def test_static_assets_have_no_token_storage_or_html_injection():
 def test_course_admin_reserves_session_editing_for_central_calendar():
     html=(portal.STATIC/'courses.html').read_text()
     js=(portal.STATIC/'courses.js').read_text()
-    assert '중앙관리 캘린더에서 일괄 관리할 예정입니다.' in html
-    assert '현재 이 화면에서는 일정 데이터를 생성하거나 수정하지 않습니다.' in html
+    assert '일정 / 영상 / 자료는 중앙관리 캘린더에서 관리합니다.' in html
     for forbidden in ('id="session-form"','id="session-run"','id="session-list"','id="session-save"'):
         assert forbidden not in html
     for forbidden in ("$('session-form')","$('session-run')",'loadSessions','resetSessionForm','isoLocal('):
