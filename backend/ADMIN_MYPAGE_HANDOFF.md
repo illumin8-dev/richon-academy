@@ -406,3 +406,29 @@
 3. 필요 시 실제 회원 1명에 canonical 수강권 1개 부여(이 단계는 customer-row write이므로 실행 직전 사용자 확인).
 4. 해당 회원 마이페이지 내 강의 확인.
 5. 기능페이지 헤더 단순화 + signup-guide 푸터 노출 정리 별도 PR.
+
+
+### 체크포인트 12 / production inventory Cloud Shell TLS 보정
+- ops/diagnose_production_data.py 첫 실행:
+  - venv + psycopg[binary]: owner_tls_verification_failed
+  - system Python: owner_connection_failed_unknown
+  - 둘 다 secret-access 단계에서 중단되어 customer row 조회/DB write 없음.
+- production DB/Secret 자체 문제로 단정하지 않고 Cloud Shell Python/psycopg/libpq/CA 경계 차이로 범위를 축소.
+- 보안 결정:
+  - sslmode=verify-full 유지.
+  - sslmode=require/disable로 완화하지 않음.
+  - production app backend/db.py는 변경하지 않음.
+  - 진단 helper만 Python system CA의 실제 파일 경로를 sslrootcert로 명시하도록 보정.
+- PR #97 생성:
+  - branch: fix/production-diagnostic-cloudshell-tls-20260930
+  - head: e2cf69315ccd5b4cb13598adda4eae20aa7e1c3f
+  - Cloud Shell diagnostic 전용 connect() 추가.
+  - psycopg 미설치 시 psycopg_missing safe code.
+  - full TLS verification 유지 테스트 추가.
+  - 고객 row/식별자 출력 및 DB/Cloud write 없음.
+- PR #97 CI는 생성 직후 아직 run 목록이 잡히기 전 상태에서 체크포인트 저장.
+- 다음 시작 지점:
+  1. PR #97 CI 결과 확인.
+  2. PASS면 병합.
+  3. 병합 commit으로 Cloud Shell venv 재실행.
+  4. COUNTS 집계로 production data boundary 판정.
