@@ -792,3 +792,129 @@
   - public main / portal member-auth / portal admin의 3 layer로 분리.
   - main과 portal branch의 frontend/shared/site.css/header.html도 서로 drift 중.
   - 별도 CSS consolidation PR 필요.
+
+
+### 체크포인트 25 / 운영 정본 이전 결정 + 남은 전체 로드맵
+- 사용자 실화면 확인 완료:
+  - 관리자 UUID 제거 확인
+  - 회원 상세 정상 동작 확인
+  - 신청·주문 / 회원 관리 메뉴 통일 확인
+  - TMI 문구 축소 확인
+  - 관리자 페이지별 여백 차이는 존재하나 CSS 통합 단계에서 같이 정리하기로 결정
+- 소스/호스팅 전략 최종 결정:
+  - 현재 public 운영 소스는 marururu00/richon-academy main + Cloudflare Pages.
+  - portal/backend 정본은 illumin8-dev/richon-academy feat/backend-portal-deploy.
+  - GPT의 marururu00 write 접근 제약 때문에 public/portal이 계속 갈라지는 구조가 비효율적.
+  - 앞으로 illumin8-dev/richon-academy를 유일한 운영 정본으로 만들기로 결정.
+  - 이후 필요 시 최초 frontend 개발자에게 illumin8-dev repo 권한을 역으로 부여.
+  - marururu00 repo는 당분간 과거 frontend 원본/백업으로 보존.
+- 중요한 Cloudflare 구분:
+  - 삭제한 것은 Cloudflare Access의 /auth/*, /portal/* 사전 인증 application 2개.
+  - /auth/*, /portal/* 실제 route는 삭제되지 않았고 Worker -> Cloud Run portal로 현재도 동작.
+  - repo/Pages 이전 시 Worker route는 유지해야 함.
+- main / portal divergence:
+  - portal branch는 fork main 대비 약 701 commits ahead / 131 behind.
+  - 양쪽에서 동시에 수정된 실제 overlap file은 4개:
+    1. frontend/shared/header.html
+    2. frontend/shared/footer.html
+    3. frontend/shared/site.css
+    4. frontend/shared/site.js
+  - 최신 original marururu00/main SHA 확인 당시: 0e6567655bcf56f9dbb5ad73e6582f3a73c7cfe4
+  - 최신 public main에만 있고 portal branch에 없는 파일은 hero/apply gallery/images/public workflow/signup-guide 등 다수.
+- PR #107:
+  - integration: merge portal codebase into unified main line
+  - draft exploratory PR
+  - mergeable=false / dirty
+  - 이 PR을 그대로 병합하지 않음.
+  - 통합 구조/충돌 범위 확인용으로만 사용.
+- repo 통합 최종 방법:
+  1. illumin8-dev 쪽에 통합 브랜치 생성.
+  2. portal/backend/auth/admin/edge/ops/workflow 전체 보존.
+  3. 최신 marururu00/main 공개 페이지/assets/public CI를 그대로 가져옴.
+  4. shared overlap 4개는 명시적으로 재구성.
+  5. portal deploy branch hardcode(feat/backend-portal-deploy)를 main authority로 이전:
+     - .github/workflows/portal-deploy.yml
+     - .github/portal/common.py
+     - 관련 branch/ref guard/test
+  6. public CI + backend CI + portal UI/login/edge CI 모두 통과.
+  7. illumin8-dev/main을 새 단일 정본으로 확정.
+- Cloudflare Pages 이전 안전 순서:
+  1. 기존 marururu00 Pages + richonacademy.com은 그대로 유지.
+  2. 새 Cloudflare Pages project를 illumin8-dev/richon-academy main에 연결.
+  3. 새 *.pages.dev 주소에서 공개 랜딩/apply/images/privacy/terms/signup-guide/mobile 전체 확인.
+  4. /auth/*, /portal/* Worker routes가 새 Pages와 공존하면서 정상 동작하는지 확인.
+  5. 마지막에 richonacademy.com custom domain만 새 Pages project로 cutover.
+  6. 기존 marururu00 Pages project는 즉시 삭제하지 않고 rollback 여유 확보 후 정리.
+- CSS/UX 통합은 repo/hosting 통합 후 별도 단계:
+  - 지금 site-wide CSS single source가 아님.
+  - public main:
+    - frontend/shared/site.css
+    - assets/hero/home-hero.css
+    - index.html inline <style>
+    - apply.html inline <style>
+  - portal member/auth:
+    - site.css + account.css / auth.css
+  - portal admin:
+    - ops.css + portal.css + courses.css / enrollments.css / manual.css
+  - 목표:
+    - 전체 사이트 공통 tokens/base/header/footer/buttons/forms를 하나의 authoritative source로 통합
+    - admin은 sidebar/table/filter/dialog만 admin layer
+    - account/auth와 public은 page-specific 부분만 남김
+    - index/apply inline CSS를 외부 파일로 추출
+    - 같은 단위(버튼/input/panel/spacing 등)는 사이트 전체 규칙 통일
+    - 관리자 페이지별 여백 차이도 이 단계에서 통일
+- 카카오 / 네이버 현재 남은 상태:
+  - 공통:
+    - 실제 /auth/* /portal/* customer route는 Access 사전 인증 없이 정상 동작하도록 전환 완료.
+    - 회원 로그인/마이페이지/계정 연결 코드와 production path는 구현됨.
+  - Naver:
+    - production aggregate에서 Naver identity 1건 확인됨.
+    - 실제 Naver 로그인 기술 E2E는 동작한 증거가 있음.
+    - 일반 이용자 공개용 Naver 검수 신청/승인 완료 증거는 저장소에 없음.
+    - 따라서 platform 검수 신청/승인 상태는 별도 수동 확인 필요.
+  - Kakao:
+    - Kakao CI 개인정보 동의항목 재심사용 문서/회원가입 화면/CI 사용 사유 자료는 준비됨.
+    - 과거 반려 사유에 맞춰 가입 절차, 필수/선택 항목, CI 처리 설명 보강함.
+    - production aggregate에서는 Kakao identity 0건.
+    - Kakao CI 추가 동의항목 재심사 실제 제출/승인 완료 증거는 저장소에 없음.
+    - 따라서 재심사 제출 여부/결과는 Kakao Developers 콘솔에서 수동 확인 필요.
+    - 심사 완료 전 signup-guide.html URL은 유지하되 일반 사용자 footer 노출은 숨기는 방향.
+  - provider 후속:
+    - 플랫폼 심사/실사용 과정에서 요구되면 외부 provider unlink/account-state webhook 범위는 별도 검토.
+- 중앙관리 캘린더:
+  - 아직 구현하지 않음.
+  - public calendar는 제거.
+  - /portal/courses의 직접 session 입력 UI도 제거.
+  - course_sessions DB/API는 유지.
+  - 현재 Pre리치온 9기 sessions=0.
+  - 향후 중앙 관리자 캘린더가 회차/일시/영상/자료를 단일 입력 지점으로 소유.
+  - 범위 확장 후보: 강의 / 특강 / 브리핑 / 임장 / 기타 운영 일정.
+- 강의/수강권:
+  - Pre리치온 9기 program/run production 생성 완료.
+  - 기간 2026-10-08 ~ 2026-12-07 / 가격 176000.
+  - 관리자 계정 수강권 production 지급 및 마이페이지 내 강의 E2E 확인 완료.
+  - 실제 수강생 운영은 real member 대상으로 검색 -> 수강권 지급 -> 관리자 현황 -> 학생 마이페이지 흐름을 운영하면서 UX 보완 가능.
+- 결제:
+  - 의도적으로 뒤로 미룸.
+  - production aggregate 당시 orders total 2 / pending 2 / linked 0.
+  - PG 미연결.
+  - 이후 신청 -> 결제 -> 회원 연결 -> 자동 수강권 지급 흐름으로 연결 필요.
+  - PortOne / StepPay / 토스 등 PG 결정도 후속.
+- 기타 후속:
+  - 오래된 superseded open PR 정리 필요 (#101/#86/#72/#59/#48/#43/#25/#10 등).
+  - public upstream 임시 sync 브랜치 fix/upstream-public-ui-sync-20260930은 새 정본 이전으로 대체될 예정.
+- 최종 안전 우선순위:
+  A. illumin8-dev/main 단일 코드베이스 통합
+  B. 새 Cloudflare Pages를 illumin8-dev/main에 연결하고 pages.dev 검증
+  C. richonacademy.com cutover + auth/portal route 재검증
+  D. 전체 사이트 CSS/shared source 통합
+  E. Kakao CI 재심사 / Naver 일반 공개 검수 상태 확인 및 필요 시 제출
+  F. 중앙관리 캘린더 구현
+  G. 실제 수강생 운영 UX 보완
+  H. 결제/PG 연결
+  I. 오래된 PR/임시 브랜치 정리
+- 다음 대화 시작 지점:
+  - A 단계부터 진행.
+  - PR #107은 병합하지 말고 exploratory 상태로 유지/필요 시 닫기.
+  - 최신 marururu00/main public files/assets를 portal/backend 통합 브랜치에 가져오고,
+    deployment authority를 main으로 옮기는 통합 계획/구현부터 시작.
