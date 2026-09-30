@@ -3,7 +3,8 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const admin = document.body.dataset.page === 'admin';
-  const state = {tab: 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false};
+  const requestedTab = new URLSearchParams(location.search).get('tab');
+  const state = {tab: requestedTab === 'members' ? 'members' : 'orders', offset: 0, limit: 20, hasMore: false, request: 0, unlocked: false};
   const profileFields = ['phone', 'email', 'age', 'gender', 'consultation', 'consented'];
   const ageLabels = {'14-19':'14~19세','20-29':'20~29세','30-39':'30~39세','40-49':'40~49세','50-59':'50~59세','60-69':'60~69세','70+':'70세 이상'};
   const genderLabels = {female:'여성', male:'남성'};
@@ -86,8 +87,8 @@
     }
   }
   const configs = {
-    orders: {title:'신청·주문 내역', description:'연결되지 않은 비회원 주문도 함께 확인합니다.', search:'신청자 이름 / 주문번호 / 연락처 검색', placeholder:'이름 또는 정확한 주문번호·전화번호·이메일', filter:'회원 연결', key:'linked', options:[['','전체'],['true','연결됨'],['false','미연결']], heads:['신청자','강의 / 기수','주문 금액','상태','신청일']},
-    members: {title:'회원 목록', description:'회원과 연결된 로그인 종류를 확인합니다. 비회원 신청자는 주문 목록에서 확인하세요.', search:'회원 이름 / 회원번호 검색', placeholder:'표시 이름 또는 정확한 회원번호', filter:'회원 상태', key:'status', options:[['','전체'],['active','이용 중'],['disabled','이용 정지'],['withdrawn','탈퇴']], heads:['회원','로그인 계정','역할 / 상태','연결된 주문','가입일']},
+    orders: {title:'신청·주문 내역', description:'', search:'신청자 검색', placeholder:'이름 / 주문번호 / 연락처', filter:'회원 연결', key:'linked', options:[['','전체'],['true','연결됨'],['false','미연결']], heads:['신청자','강의 / 기수','주문 금액','상태','신청일']},
+    members: {title:'회원 목록', description:'', search:'회원 이름 검색', placeholder:'이름 검색', filter:'회원 상태', key:'status', options:[['','전체'],['active','이용 중'],['disabled','이용 정지'],['withdrawn','탈퇴']], heads:['회원','로그인 계정','역할 / 상태','연결된 주문','가입일']},
     courses: {title:'강의 목록', description:'서버에 등록된 강의와 가격입니다. 수강기간과 수강 확정은 아직 관리하지 않습니다.', search:'강의명 / 기수 검색', placeholder:'강의명, 기수 또는 정확한 강의 ID', filter:'신청 가능', key:'enabled', options:[['','전체'],['true','가능'],['false','중지']], heads:['강의 / 기수','수강료','신청 상태','등록일']}
   };
   function primary(main, sub) { const box=element('div'); box.append(element('div',main,'primary-text')); if (sub) box.append(element('div',sub,'secondary')); return box; }
@@ -95,7 +96,7 @@
     const box=element('div');
     const button=element('button',row.display_name,'member-detail-trigger');
     button.type='button';button.addEventListener('click',()=>openMemberDetail(row.member_id));
-    box.append(button,element('div',row.member_id,'secondary'));
+    box.append(button);
     return box;
   }
   function detailPair(label,value){
@@ -206,11 +207,20 @@
   $('prev').addEventListener('click',()=>{if(state.offset>0){state.offset-=state.limit;list();}});
   $('next').addEventListener('click',()=>{if(state.hasMore){state.offset+=state.limit;list();}});
   if(admin){
-    document.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>{
-      state.tab=button.dataset.tab;state.offset=0;$('search').value='';const cfg=configs[state.tab];
+    const applyTab=(tab,updateUrl=false)=>{
+      state.tab=tab==='members'?'members':'orders';state.offset=0;
+      const cfg=configs[state.tab];
       text('list-title',cfg.title);text('list-description',cfg.description);text('search-label',cfg.search);text('filter-label',cfg.filter);$('search').placeholder=cfg.placeholder;
-      $('filter').replaceChildren(...cfg.options.map(([v,t])=>{const el=element('option',t);el.value=v;return el;}));
-      document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));list();
+      $('filter').replaceChildren(...cfg.options.map(([v,t])=>{const option=element('option',t);option.value=v;return option;}));
+      document.querySelectorAll('[data-admin-tab-link]').forEach(link=>{
+        const active=link.dataset.adminTabLink===state.tab;
+        if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+      });
+      if(updateUrl)history.replaceState(null,'','/portal/admin?tab='+encodeURIComponent(state.tab));
+    };
+    applyTab(state.tab);
+    document.querySelectorAll('[data-admin-tab-link]').forEach(link=>link.addEventListener('click',event=>{
+      event.preventDefault();$('search').value='';applyTab(link.dataset.adminTabLink,true);list();
     }));
     $('search-form').addEventListener('submit',event=>{event.preventDefault();state.offset=0;list();});
   }
