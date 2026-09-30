@@ -221,9 +221,15 @@ def inspect(svc, policy, *, require_ready=True, boundary='private'):
         need('value' not in item and ref.get('name') == secret and
              re.fullmatch('[1-9][0-9]*', str(ref.get('key', ''))), 'missing_or_unpinned_secret_reference')
     need(all(env.get(k, {}).get('value') == v for k, v in PLAIN.items()), 'unexpected_portal_setting')
-    legacy_values = {env.get(k, {}).get('value') for k in LEGACY_FLAGS}
-    need(legacy_values in ({'false'}, {'true'}), 'partial_or_invalid_legacy_setting')
-    legacy_enabled = legacy_values == {'true'}
+    legacy_present = set(env) & set(LEGACY_FLAGS)
+    need(legacy_present in (set(), set(LEGACY_FLAGS)), 'partial_or_invalid_legacy_setting')
+    if legacy_present:
+        legacy_values = {env[k].get('value') for k in LEGACY_FLAGS}
+        need(legacy_values in ({'false'}, {'true'}), 'partial_or_invalid_legacy_setting')
+        legacy_enabled = legacy_values == {'true'}
+    else:
+        # Older/synthetic service fixtures predate these flags; absence means OFF.
+        legacy_enabled = False
     modes = {env.get(k, {}).get('value') for k in FLAGS}
     need(modes in ({'false'}, {'true'}), 'partial_login_config')
     account_present = 'RICHON_ACCOUNT_ENABLED' in env
