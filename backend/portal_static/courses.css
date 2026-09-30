@@ -1,0 +1,27 @@
+/* Course operations use the shared admin shell from portal.css. This file only owns course-specific controls and layout. */
+.grid.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.form label,.target-search label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#625d57}
+.form input,.form select,.form textarea,.target-search input,.section-head select{width:100%;min-height:42px;border:1px solid var(--ops-line);border-radius:9px;padding:9px 10px;background:#fff;color:var(--ops-ink)}
+.form textarea{min-height:80px;resize:vertical}
+.wide{grid-column:1/-1}
+.primary{min-height:44px;border:0;border-radius:9px;background:var(--ops-orange);color:#fff;font-weight:800}
+.status{min-height:22px;margin-top:10px!important;font-size:13px}
+.hint{font-size:12px;margin-top:8px!important}
+.program-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.program-chip{border:1px solid var(--ops-line);border-radius:999px;padding:7px 10px;font-size:12px}
+.run-list{display:grid;gap:10px;margin-top:14px}
+.run-card{display:grid;grid-template-columns:minmax(180px,1.4fr) repeat(4,minmax(100px,.7fr)) auto;gap:10px;align-items:center;border:1px solid var(--ops-line);border-radius:12px;padding:12px}
+.run-card strong{display:block}.run-card small{color:var(--ops-muted)}
+.run-card select,.run-card input{min-height:38px;border:1px solid var(--ops-line);border-radius:8px;padding:7px}
+.run-card button,.target-search button,.target-item,.cancel{min-height:38px;border:1px solid var(--ops-line);border-radius:8px;background:#fff;padding:8px 11px}
+.target-search{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:16px;align-items:end}
+.target-results{display:grid;gap:7px;margin:10px 0}.target-item{text-align:left}.target-item:hover{border-color:var(--ops-orange)}
+.target-item b{display:block}.target-item span{font-size:12px;color:var(--ops-muted)}
+.table-wrap{overflow:auto;margin-top:16px}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{text-align:left;border-bottom:1px solid var(--ops-line);padding:10px 9px;font-size:13px}
+th{font-size:11px;color:var(--ops-muted);letter-spacing:.04em}
+.cancel{color:#9a3d30}
+@media(max-width:1050px){.grid.two{grid-template-columns:1fr}.run-card{grid-template-columns:1fr 1fr}.run-card>div:first-child{grid-column:1/-1}}
+@media(max-width:560px){.form{grid-template-columns:1fr}.wide{grid-column:auto}.run-card{grid-template-columns:1fr}.run-card>div:first-child{grid-column:auto}}

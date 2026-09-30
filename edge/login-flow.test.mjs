@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {allowed, handle, safeLocation, returnReferer, responseReferrerPolicy} from './worker.mjs';
+const ORIGIN='https://richonacademy.com';
+const env={PORTAL_ENABLED:'true',PORTAL_UPSTREAM:'https://richon-portal-example-as.a.run.app',RICHON_EDGE_SECRET:'S'.repeat(43)};
+
+test('form documents get same-origin; callback/error/asset responses stay no-referrer',()=>{
+  for(const path of ['/auth/login','/auth/signup','/portal/mypage']) assert.equal(responseReferrerPolicy(path,'GET',200,'text/html; charset=utf-8'),'same-origin');
+  for(const [path,method,status,type] of [['/auth/login','POST',200,'text/html'],['/auth/login','GET',422,'text/html'],['/auth/kakao/callback','GET',303,'text/html'],['/auth/assets/kakao-login.png','GET',200,'image/png'],['/portal/admin','GET',200,'text/html']]) assert.equal(responseReferrerPolicy(path,method,status,type),'no-referrer');
+});
+test('prior-page hint is exact same-origin and discards query/fragment',()=>{
+  for(const path of ['/','/index.html','/apply.html','/portal/mypage']) assert.equal(returnReferer(ORIGIN+path+'?code=do-not-forward#fragment'),ORIGIN+path);
+  for(const value of [null,'https://evil.invalid/apply.html',ORIGIN+'.evil.invalid/apply.html',ORIGIN+'/portal/../apply.html',ORIGIN+'/%61pply.html',ORIGIN+'/auth/login','https://user@richonacademy.com/apply.html']) assert.equal(returnReferer(value),null);
+});
+test('public returns allowed only at login completion, no external/query/traversal/loops',()=>{
+  for(const source of ['/auth/kakao/callback','/auth/naver/callback','/auth/signup']) for(const path of ['/','/index.html','/apply.html']) assert.equal(safeLocation(path,source),ORIGIN+path);
+  for(const value of ['https://evil.invalid/','//evil.invalid/','/apply.html?code=x','/apply.html#x','/portal/../apply.html','/%61pply.html']) assert.throws(()=>safeLocation(value,'/auth/kakao/callback'));
+  assert.throws(()=>safeLocation('/apply.html','/auth/start'));
+  assert.equal(safeLocation('/auth/signup','/auth/kakao/callback'),ORIGIN+'/auth/signup');
+});
+test('new public destinations never become proxy request routes; asset exact GET only',()=>{
+  for(const path of ['/','/index.html','/apply.html','/auth/assets/unknown.png']) assert.equal(allowed(path,'GET'),false);
+  assert.equal(allowed('/auth/assets/kakao-login.png','GET'),true);assert.equal(allowed('/auth/assets/kakao-login.png','POST'),false);
+  for(const asset of ['site.css','site.js','login.js','signup.js','handoff.js','auth.css']){
+    assert.equal(allowed('/auth/assets/'+asset,'GET'),true);
+    assert.equal(allowed('/auth/assets/'+asset,'POST'),false);
+  }
+});
+test('actual proxy preserves supplied Origin, sanitizes only login GET Referer',async()=>{
+  let seen;
+  const transport=async(url,args)=>{seen=args;return new Response('<form></form>',{headers:{'Content-Type':'text/html; charset=utf-8'}})};
+  const response=await handle(new Request(ORIGIN+'/auth/login',{headers:{Referer:ORIGIN+'/apply.html?discard=x'}}),env,transport);
+  assert.equal(response.headers.get('referrer-policy'),'same-origin');assert.equal(seen.headers.get('referer'),ORIGIN+'/apply.html');assert.equal(seen.headers.get('origin'),null);
+  await handle(new Request(ORIGIN+'/auth/start',{method:'POST',headers:{Origin:'null',Referer:ORIGIN+'/apply.html'},body:'csrf=synthetic'}),env,transport);
+  assert.equal(seen.headers.get('origin'),'null');assert.equal(seen.headers.get('referer'),null);
+  const redirect=await handle(new Request(ORIGIN+'/auth/kakao/callback'),env,async()=>new Response(null,{status:303,headers:{Location:'/apply.html'}}));
+  assert.equal(redirect.headers.get('location'),ORIGIN+'/apply.html');assert.equal(redirect.headers.get('referrer-policy'),'no-referrer');assert.equal(redirect.headers.get('cache-control'),'no-store');
+});
+
+test('both official provider assets are fixed GET-only gated no-store subrequests',async()=>{
+  for(const provider of ['kakao','naver']) {
+    const path=`/auth/assets/${provider}-login.png`;
+    assert.equal(allowed(path,'GET'),true);
+    assert.equal(allowed(path,'POST'),false);
+    let seen;
+    const result=await handle(new Request(ORIGIN+path),env,async(url,init)=>{
+      seen=init;return new Response(new Uint8Array([137,80,78,71]),{headers:{'Content-Type':'image/png'}});
+    });
+    assert.equal(result.status,200);
+    assert.equal(seen.cache,'no-store');assert.equal(seen.cf,undefined);
+    assert.equal(seen.headers.get('X-Richon-Edge-Key'),env.RICHON_EDGE_SECRET);
+    assert.equal(result.headers.get('Referrer-Policy'),'no-referrer');
+    assert.equal(result.headers.get('Cache-Control'),'no-store');
+  }
+  assert.equal(allowed('/auth/assets/other.png','GET'),false);
+});
+
+
+test('account actions may redirect only to the two official authorization hosts',()=>{
+  for(const path of ['/portal/api/me/logins/link/start','/portal/api/me/reauth/start','/portal/api/me/logins/unlink/start','/portal/api/me/withdraw/provider/start']) {
+    assert.equal(safeLocation('https://kauth.kakao.com/oauth/authorize?state=x',path),'https://kauth.kakao.com/oauth/authorize?state=x');
+    assert.equal(safeLocation('https://nid.naver.com/oauth2.0/authorize?state=x',path),'https://nid.naver.com/oauth2.0/authorize?state=x');
+  }
+  for(const value of ['https://evil.invalid/oauth/authorize','https://kauth.kakao.com/other','https://nid.naver.com/other']) {
+    assert.throws(()=>safeLocation(value,'/portal/api/me/logins/link/start'));
+  }
+});
+
+test('link confirmation cookie remains host-only secure httponly and is forwarded only to portal',async()=>{
+  const cookie='__Host-richon-link='+'L'.repeat(43)+'; Path=/; Secure; HttpOnly; SameSite=Lax';
+  const result=await handle(new Request(ORIGIN+'/auth/kakao/callback'),env,async()=>new Response(null,{status:303,headers:{Location:'/portal/mypage','Set-Cookie':cookie}}));
+  assert.equal(result.status,303);
+  assert.match(result.headers.get('set-cookie')||'',/__Host-richon-link=/);
+});

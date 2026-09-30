@@ -16,6 +16,9 @@ for page in (index,apply):
     assert wrapped('footer') in page
     assert 'href="frontend/shared/site.css"' in page
     assert 'src="frontend/shared/site.js"' in page
+    assert 'data-account-entry="enabled"' not in page
+    assert 'id="site-account-login"' in page and 'data-richon-login hidden' in page
+    assert 'id="site-account-me"' in page
 for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only in index
     assert landing_only not in apply
@@ -31,6 +34,8 @@ assert index.count('class="mentor-feature-card"') == 1
 assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
+assert '.cal-' not in index
+assert '캘린더 셀 살짝 반응' not in index
 
 assert len(apply) > 5000
 assert apply.count('id="burger"') == 0
@@ -74,8 +79,34 @@ assert '과정별 일정과 운영 방식은 신청 안내에서 최종 확인�
 assert '신청 정보와 결제 정보는 실제 운영 링크가 열린 뒤 입력합니다.' not in apply
 assert '접수 확인 후 수강 방법과 준비사항을 별도로 안내합니다.' not in apply
 assert '현재는 UI 준비 상태입니다.' not in apply
+# PR #59에서 보존된 과정별 상세 소개 이미지 49장을 현재 신청 UI에 복원한다.
+for value in (
+    'id="course-visual"', 'id="course-gallery"',
+    'assets/images/pre-richon-course.jpg', 'assets/images/richon-study-course.jpg',
+    'assets/images/redevelopment-reconstruction-course.jpg', 'assets/images/space-design-course.jpg',
+    'assets/images/subscription-course.jpg',
+):
+    assert value in apply
+for prefix,count in (('pre',1),('study',12),('redevelopment',11),('interior',15),('subscription',10)):
+    for number in range(1,count+1):
+        path=ROOT/'assets'/'apply'/f'{prefix}-{number:02d}.jpg'
+        assert path.is_file() and path.stat().st_size > 1000
+        assert f'assets/apply/{prefix}-{number:02d}.jpg' in apply
+assert apply.count('assets/apply/') == 57
+for number in range(2,10):
+    path=ROOT/'assets'/'apply'/f'pre-{number:02d}.png'
+    assert path.is_file() and path.stat().st_size > 1000
+    assert f'assets/apply/pre-{number:02d}.png' in apply
+for value in (
+    '2개월(8주) 과정', '매주 목요일 저녁 9시', '온라인 ZOOM 라이브',
+    'Week 1','부동산 투자원칙','Week 2','갭투자','Week 3','서울초기재개발',
+    'Week 4','부동산 기초 및 시장구조','Week 5','분양권 전략',
+    'Week 6','지방 재개발','Week 7','경매 권리분석 및 수익화',
+    'Week 8','현장 및 멘토와의 만남',
+):
+    assert value in apply
 for copy in (
-    '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.',
+    '부동산 투자원칙·갭투자·서울 초기재개발·시장구조부터 분양권·지방 재개발·경매까지, 실전형 순환 학습으로 기초를 세우는 정규 과정.',
     '현금흐름, 갭투자, 서울 초기재개발, 경매 등 매주 실전 주제로 깊이 파고드는 핵심 스터디.',
     '정밀한 입지 분석과 인프라 변화 예측으로 수도권 주요 재개발/재건축 단지를 공략하는 심화 과정.',
     '자산 가치를 높이는 공간 디자인 전문 과정. 수익률로 이어지는 인테리어 전략과 공간가치 판단을 다룹니다.',

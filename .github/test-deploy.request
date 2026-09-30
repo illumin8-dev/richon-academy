@@ -1,0 +1,5 @@
+{
+  "operation": "order-smoke",
+  "course_id": "verify-20260922-4d5529da96f34e299d222a4ac3cd1d63",
+  "allow_synthetic_orders": true
+}
