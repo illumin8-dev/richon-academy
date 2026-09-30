@@ -7,6 +7,15 @@ import legacy_admin_stage as legacy
 from test_course_stage import course_before
 
 
+def legacy_before():
+    before,policy,revision=legacy_before()
+    env=c.environment(before['spec']['template']['spec']['containers'][0])
+    for name in c.LEGACY_FLAGS:
+        env[name]={'name':name,'value':'false'}
+    before['spec']['template']['spec']['containers'][0]['env']=list(env.values())
+    return before,policy,revision
+
+
 class LegacyAdminStageTests(TestCase):
     def test_request_contract_accepts_only_explicit_legacy_operations(self):
         self.assertEqual(c.read_request({
@@ -17,7 +26,7 @@ class LegacyAdminStageTests(TestCase):
         })['operation'],'inspect-legacy-admin-enabled')
 
     def test_intended_changes_only_monthly_manual_flags(self):
-        before,policy,_=course_before()
+        before,policy,_=legacy_before()
         # The course fixture has account+marketing+course enabled and legacy OFF.
         original=deepcopy(before)
         changed=legacy.intended(before)
@@ -39,7 +48,7 @@ class LegacyAdminStageTests(TestCase):
         self.assertEqual(c.protected(restored),c.protected(original))
 
     def test_partial_legacy_enablement_is_rejected(self):
-        before,policy,_=course_before()
+        before,policy,_=legacy_before()
         env=c.environment(before['spec']['template']['spec']['containers'][0])
         env['RICHON_MONTHLY_ENABLED']['value']='true'
         env['RICHON_MANUAL_ENABLED']['value']='false'
@@ -48,7 +57,7 @@ class LegacyAdminStageTests(TestCase):
             c.inspect(before,policy,boundary='edge')
 
     def test_tag_switch_changes_only_worker_candidate(self):
-        before,_,_=course_before()
+        before,_,_=legacy_before()
         new_rev=c.SERVICE+'-legacy-123-1'
         expected=[]
         for tag,revision,percent,url in legacy.tag_rows(before):
