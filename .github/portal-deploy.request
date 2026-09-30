@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "access-fallback-rollout-20260930-a"
+  "operation": "stage-legacy-admin-enabled",
+  "request_id": "legacy-admin-enable-20260930-a"
 }
