@@ -515,3 +515,24 @@
   3. PROGRAM/RUN 생성 + SESSIONS=0/ENROLLMENTS=0 readback 확인.
   4. 이후 관리자 course 화면에서 9기 표시 확인.
   5. 중앙관리 캘린더 설계/구현은 별도 단계.
+
+
+### 체크포인트 17 / Pre리치온 9기 production 생성 완료
+- 사용자 Cloud Shell 실행 결과:
+  - TARGET=richon-academy / production Neon / Pre리치온 9기
+  - TLS_MODE=verify-full / TLS_CA=system-file
+  - PROGRAM=CREATED
+  - RUN=CREATED
+  - SESSIONS=0 / ENROLLMENTS=0
+  - PRE_RICHON_9=PASS
+  - MEMBER_ROWS_CHANGED=NO / ORDERS_CHANGED=NO / CLOUD_CHANGED=NO
+- production canonical course state:
+  - program: Pre리치온 (프리리치온)
+  - cohort: Pre리치온 9기
+  - access/run boundary: 2026-10-08 ~ 2026-12-07
+  - price: 176000 KRW
+  - schedule/session data: intentionally empty
+- 다음:
+  1. 관리자 강의관리 UI에서 프로그램/9기 노출 확인.
+  2. 중앙관리 캘린더는 별도 기능으로 설계/구현.
+  3. 일정은 중앙관리 캘린더에서 입력되어 course_sessions에 저장되는 구조로 연결.
