@@ -1071,3 +1071,64 @@
   4. /auth/* /portal/* Worker route 공존 검증.
   5. 마지막에 richonacademy.com custom domain cutover.
   6. cutover 안정화 후 전체 사이트 CSS/shared source 통합 별도 PR.
+
+
+
+### 체크포인트 28 / main WIF trust 이전 + 최신 protected candidate read-only 검증 완료
+- GCP WIF provider `github-portal`의 실제 attribute condition이 옛 branch를 가리키는 것을 Cloud Shell readback으로 확인:
+  - old ref: `refs/heads/feat/backend-portal-deploy`
+  - old workflow_ref: `...portal-deploy.yml@refs/heads/feat/backend-portal-deploy`
+- 사용자가 Cloud Shell에서 provider attribute condition만 안전하게 변경:
+  - new ref: `refs/heads/main`
+  - new workflow_ref: `illumin8-dev/richon-academy/.github/workflows/portal-deploy.yml@refs/heads/main`
+  - repository_id / repository_owner_id / event_name / issuer / attributeMapping은 유지.
+- GitHub read-only WIF 검증:
+  - request `inspect` 실행.
+  - backend/Docker precheck PASS.
+  - google-github-actions/auth WIF 인증 PASS.
+  - 따라서 GitHub `main` -> GCP WIF trust 이전 자체는 완료.
+- legacy `inspect`는 그 뒤 `public_boundary_requires_separate_review`로 STOP:
+  - 원인: 이 operation은 과거 IAM-private 서비스 검사용.
+  - 현재 운영은 이미 승인된 allUsers invoker + application edge gate 구조이므로 의도된 fail-closed.
+- `inspect-edge` 재검증:
+  - WIF auth PASS.
+  - `candidate_readback.py`가 2026-09-24의 옛 candidate를 상수로 고정해서 `unexpected_candidate_revision` STOP.
+  - stale constants:
+    - CANDIDATE=richon-portal-gh-35980631252-1
+    - SERVING=richon-portal-gh-35810692921-1
+    - SOURCE=61183057f5392e7af177e10e0c42ccf955b8cafb
+  - 이후 여러 login/account/course/legacy candidate rollout이 있었으므로 이 readback 계약은 현재 candidate에 맞지 않음.
+  - 이 실패는 WIF/운영 장애가 아니라 오래된 diagnostic hardcode 문제.
+- 최신 candidate-aware read-only 검증:
+  - operation `inspect-legacy-admin-enabled` 실행.
+  - 특정 옛 revision을 하드코딩하지 않고 현재 portal-candidate를 동적으로 읽는 경로.
+  - workflow PASS.
+  - log: `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+  - 검증 범위:
+    - edge boundary
+    - current portal-candidate tag
+    - default serving traffic 100%
+    - account=true
+    - marketing=true
+    - course=true
+    - monthly=true
+    - manual=true
+    - candidate edge gate
+    - customer routes
+- 최종 request:
+  - `.github/portal-deploy.request`를 다시 `hold`로 복귀.
+  - hold commit: `4deb8b8a06cb68a61e0129adf1de6c563085e086`
+- Cloudflare / DB 변경:
+  - Cloudflare Pages/custom domain/Worker route 변경 없음.
+  - DB/Neon/customer row 변경 없음.
+  - Cloud Run revision/traffic/IAM/secret 변경 없음.
+- 후속 코드 부채:
+  - `candidate_readback.py`의 옛 fixed candidate/source 상수는 후속 maintenance PR에서 최신 구조에 맞게 정리 필요.
+  - 현재 운영 검증에는 dynamic `inspect-legacy-admin-enabled` 경로를 사용.
+- 다음 단계:
+  1. 새 Cloudflare Pages project를 illumin8-dev/richon-academy main에 연결.
+  2. custom domain은 아직 연결하지 않고 pages.dev preview 먼저 검증.
+  3. landing/apply/assets/privacy/terms/signup-guide/mobile 확인.
+  4. 새 Pages origin과 기존 /auth/* /portal/* Worker route 공존 확인.
+  5. 모두 PASS 후 richonacademy.com custom domain cutover.
+  6. 기존 marururu00 Pages project는 rollback 여유 동안 유지.
