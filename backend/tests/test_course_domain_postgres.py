@@ -11,6 +11,8 @@ import oauth_signup_profile_migrate,oauth_signup_demographics_migrate,kakao_ci_m
 import course_domain_migrate,course_entitlement_migrate
 import course_domain_models as model
 import course_domain_store as store
+import portal
+import portal_store
 from test_orders_postgres import postgres
 from test_auth_postgres import guarded_target, auth_postgres, CONSENT
 from test_monthly_postgres import monthly_db
@@ -168,3 +170,22 @@ def test_admin_cancel_is_audited_and_does_not_delete_history(course_db,actors):
     with course_db() as c:
         assert c.execute('SELECT status,cancelled_at IS NOT NULL FROM richon.course_enrollments WHERE enrollment_id=%s',(grant['enrollment_id'],)).fetchone()==('CANCELLED',True)
         assert c.execute("SELECT count(*) FROM richon.course_domain_audit WHERE operation IN ('enrollment.grant','enrollment.cancel') AND entity_id=%s",(grant['enrollment_id'],)).fetchone()==(2,)
+
+
+def test_admin_member_detail_combines_canonical_enrollment_with_legacy_enabled(course_db,actors,monkeypatch):
+    admin,member=actors
+    pid='detail-'+uuid4().hex[:8]
+    program(admin,pid)
+    start=date.today()
+    end=start+timedelta(days=30)
+    r=run(admin,pid,start,end,label='상세 테스트')
+    grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
+        request_id=req(),reason='가상 회원 상세',run_id=UUID(r['run_id']),member_id=member))
+    monkeypatch.setenv('RICHON_MONTHLY_ENABLED','true')
+    detail=portal_store.member_detail(member)
+    validated=portal.AdminMemberDetail.model_validate(detail)
+    row=next(x for x in validated.learning if str(x.enrollment_id)==grant['enrollment_id'])
+    assert row.program_title=='가상 '+pid
+    assert row.cohort_label=='상세 테스트'
+    assert validated.legacy_learning==[]
+    assert validated.orders==[]
