@@ -1,4 +1,4 @@
 {
-  "operation": "inspect-edge",
-  "request_id": "public-auth-boundary-inspect-20260930-a"
+  "operation": "inspect-legacy-admin-enabled",
+  "request_id": "legacy-admin-public-auth-inspect-20260930-b"
 }
