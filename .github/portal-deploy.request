@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "post-access-ui-rollout-20260930-c"
+  "operation": "inspect-legacy-admin-enabled",
+  "request_id": "post-rollout-legacy-inspect-20260930-d"
 }
