@@ -1,7 +1,7 @@
 name: Login flow regression (no deployment)
 on:
   push:
-    branches: ['fix/login-csrf-return-kakao']
+    branches: [main, 'fix/login-csrf-return-kakao']
   pull_request:
     paths: ['backend/**', 'edge/**', 'ops/**', '.github/portal/**', '.github/workflows/login-flow-ci.yml']
 permissions:

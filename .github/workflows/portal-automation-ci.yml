@@ -1,7 +1,7 @@
 name: Portal automation guards (no cloud)
 on:
   push:
-    branches: ['feat/backend-portal-deploy']
+    branches: [main]
     paths: ['.github/portal/**', '.github/workflows/portal-*.yml', '.github/portal-deploy.request']
   pull_request:
     paths: ['.github/portal/**', '.github/workflows/portal-*.yml', '.github/portal-deploy.request']

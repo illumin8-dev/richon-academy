@@ -23,7 +23,7 @@ GCP 인증·배포를 실행하지 않습니다. 최초 연결 스크립트는 �
 
 - WIF pool `richon-github-portal`, provider `github-portal`.
 - 배포 계정 `richon-portal-deploy@richon-academy.iam.gserviceaccount.com`.
-- 신뢰: 저장소 ID 1380040761 / 소유자 ID 251193658 / `feat/backend-portal-deploy` /
+- 신뢰: 저장소 ID 1380040761 / 소유자 ID 251193658 / `main` /
   `portal-deploy.yml` / push가 모두 일치해야 합니다.
 - `richon-portal` 서비스에만 `roles/run.developer`, `roles/run.invoker`.
 - 기존 `richon-portal-ci` 이미지 저장소에만 `roles/artifactregistry.writer`.
@@ -37,7 +37,7 @@ IAM 변경은 위의 새 연결에 필요한 항목에 한정하며 공개 접�
 
 **주의:** 배포 권한을 가진 코드는 실행 계정의 DB/Secret 권한을 간접적으로 사용할 수 있습니다.
 소스의 검사 코드를 악의적으로 바꾸는 경우까지 IAM이 자동으로 막는다는 뜻이 아닙니다.
-지정 브랜치와 워크플로 변경 권한을 보호하고 사용자 승인 후 요청을 커밋해야 합니다.
+`main`과 워크플로 변경 권한을 보호하고 사용자 승인 후 요청을 커밋해야 합니다.
 상속된 조직 IAM 전체를 감사한 것으로 간주하지 않습니다.
 
 연결 성공 출력: `PORTAL AUTOMATION CONNECTED`.

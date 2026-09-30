@@ -211,7 +211,7 @@ class EdgeGuards(TestCase):
         text = (Path(__file__).resolve().parents[1]/'workflows/portal-deploy.yml').read_text()
         self.assertIn("paths: ['.github/portal-deploy.request']", text)
         self.assertIn('python3 -B .github/portal/edge_ops.py', text)
-        self.assertIn("['feat/backend-portal-deploy']", text)
+        self.assertIn('branches: [main]', text)
         self.assertNotIn('pull_request_target', text)
         self.assertNotIn('secrets: inherit', text)
         source = Path(e.__file__).read_text()

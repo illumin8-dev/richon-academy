@@ -1,10 +1,10 @@
 name: Portal operations (explicit private or edge request)
 
-# Only changing this request on the dedicated branch can request cloud work.
+# Only changing this request on the authoritative main branch can request cloud work.
 # Code/PR pushes and the initial "hold" request perform no GCP operation.
 on:
   push:
-    branches: ['feat/backend-portal-deploy']
+    branches: [main]
     paths: ['.github/portal-deploy.request']
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
     if: >-
       github.repository_id == '1380040761' &&
       github.repository_owner_id == '251193658' &&
-      github.ref == 'refs/heads/feat/backend-portal-deploy' &&
+      github.ref == 'refs/heads/main' &&
       github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 3

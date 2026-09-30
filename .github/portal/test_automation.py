@@ -308,6 +308,10 @@ class ConnectionTests(unittest.TestCase):
         import re
         for sha in re.findall(r'uses: [^@\s]+@([^\s]+)', text): self.assertRegex(sha, '^[a-f0-9]{40}$')
         self.assertIn("paths: ['.github/portal-deploy.request']", text)
+        self.assertEqual(c.BRANCH, 'main')
+        self.assertEqual(c.REF, 'refs/heads/main')
+        self.assertIn('branches: [main]', text)
+        self.assertIn("github.ref == 'refs/heads/main'", text)
         self.assertNotIn('pull_request_target', text)
         self.assertNotIn('credentials_json', text)
 

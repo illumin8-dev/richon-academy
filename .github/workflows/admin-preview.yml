@@ -1,7 +1,7 @@
 name: Build standalone admin preview (synthetic only)
 on:
   push:
-    branches: ['feat/backend-manual-registry']
+    branches: [main, 'feat/backend-manual-registry']
     paths: ['backend/portal_static/manual.*', 'backend/portal_static/ops.css', 'preview/**', '.github/workflows/admin-preview.yml']
   pull_request:
     paths: ['backend/portal_static/manual.*', 'backend/portal_static/ops.css', 'preview/**', 'admin-test.html', '.github/workflows/admin-preview.yml']

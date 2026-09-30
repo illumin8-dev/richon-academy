@@ -67,7 +67,7 @@ def setup():
     runtime_policy = c.gc('iam', 'service-accounts', 'get-iam-policy', c.RUNTIME)
     member_grants(runtime_policy, member, {'roles/iam.serviceAccountUser'})
     print('Project: richon-academy / ONLY existing service: richon-portal')
-    print('Trust ONLY illumin8-dev/richon-academy / feat/backend-portal-deploy / portal-deploy.yml / push')
+    print('Trust ONLY illumin8-dev/richon-academy / main / portal-deploy.yml / push')
     print('Adds a dedicated short-lived GitHub identity, service deploy+invoke, one image repository,')
     print('actAs on richon-portal runtime, and service usage. No Owner/Editor or account keys.')
     print('No direct Secret Accessor, public IAM, DB migrations, Cloudflare or old order-server changes.')
