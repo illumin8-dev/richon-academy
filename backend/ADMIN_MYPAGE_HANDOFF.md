@@ -292,3 +292,62 @@
   3. diagnose PASS 후 DB017 + minimal ACL owner apply.
   4. stage-legacy-admin-enabled → inspect → /portal/enrollments, /portal/manual 실화면 확인.
 
+
+
+### 체크포인트 10 / 로그인 Access 경계 전환 + legacy admin 활성화 완료
+- 사용자 Cloud Shell 실행 결과 production Neon 준비 완료:
+  - DB004=EXACT / DB005=EXACT / DB017=APPLIED.
+  - LEGACY_ADMIN_RUNTIME_GRANTS=PASS.
+  - RUNTIME_READBACK=PASS.
+  - CUSTOMER_ROWS_CHANGED=NO.
+  - Cloud Run/Worker 변경 없음.
+- 이후 protected candidate의 monthly/manual 활성화 workflow run `36663921269` 전체 PASS.
+  - 새 protected candidate: `richon-portal-legacy-36663921269-1`.
+  - `RICHON_MONTHLY_ENABLED=true / RICHON_MANUAL_ENABLED=true`.
+  - 이전 candidate: `richon-portal-handoff-36656733191-1`.
+  - default 100% serving revision은 `richon-portal-gh-35810692921-1` 그대로 유지.
+  - DB migration/customer row/IAM/Secret/default traffic 변경 없음.
+
+#### 로그인 근본 원인 재정의
+- 실제 외부 요청에서 `https://richonacademy.com/auth/login?... `이 Cloudflare Access 로그인으로 302 이동하는 것을 재현.
+- 기존 자동화는 테스트 단계 정책에 맞춰 `/auth/*`, `/portal/*`의 Access 302를 정상으로 간주했음.
+- 현재는 실제 회원 로그인 단계이므로 이 테스트용 Access 사전 인증이 고객용 OAuth/간편로그인과 충돌하는 상태로 판단.
+- 출시용 경계 결정:
+  - 고객 `/auth/*`, `/portal/*`는 Cloudflare Access 사전 인증 없이 Worker/application까지 도달해야 함.
+  - Cloud Run direct origin은 기존 `X-Richon-Edge-Key` gate로 계속 보호.
+  - 회원 API는 `require_member`, 관리자/월별/수동 API는 `require_admin` 유지.
+  - write API Origin/CSRF, OAuth state/PKCE/cookie/provider allowlist 유지.
+- Cloudflare 실제 Access application/policy는 아직 변경하지 않음. TinyFish 크레딧 없음으로 dashboard 자동점검은 사용하지 않기로 함.
+
+#### PR #94 / 고객 로그인 경계 수정
+- branch: `fix/public-auth-access-boundary-20260930`.
+- PR: `#94 fix(login): release customer auth routes from Access gate`.
+- 최신 head: `201365a9207af09a4d22401a60b98f17b93116a3`.
+- 고객 fallback UX:
+  - 기존 내부 문구 `테스트 접근 인증` / `접근 인증 후 로그인 화면 열기` 제거.
+  - 새 문구: `로그인을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.`.
+  - `다시 시도` 버튼으로 같은 modal에서 bootstrap 재요청.
+  - Chromium에서 첫 modal 요청 503 → fallback 표시 → 다시 시도 → Kakao/Naver 버튼 복구 회귀 추가.
+- 배포 가드 전환:
+  - `/auth/login` 200 HTML 요구.
+  - `/portal/mypage` 200 shell 요구.
+  - Kakao/Naver 무효 callback은 same-origin `/auth/login?error=login_failed` 303 요구.
+  - 실제 modal bootstrap `/auth/login?view=modal&return_to=/portal/mypage` 200 JSON + csrf/provider contract 요구.
+  - Cloudflare Access redirect가 남으면 fail-closed.
+  - origin edge-secret 403 검증은 별도로 유지.
+- 첫 CI에서 옛 Access 기대값을 가진 automation test 4건이 깨졌으나 실제 기능 실패가 아니라 test expectation drift였음.
+- 수정 후 최신 head 기준 5개 workflow 모두 PASS:
+  - Same-domain login edge and portal image: run `36665172185` SUCCESS.
+  - Portal automation guards: run `36665172165` SUCCESS.
+  - Backend checks: run `36665172180` SUCCESS.
+  - Portal UI synthetic: run `36665172164` SUCCESS.
+  - Login flow regression: run `36665172404` SUCCESS.
+- PR #94는 아직 병합하지 않음. Cloudflare Access 설정도 아직 변경하지 않음.
+
+#### 다음 시작 지점
+1. PR #94 최신 diff/CI 최종 확인 후 병합.
+2. 병합 뒤 protected candidate에 새 login/route-guard code rollout.
+3. Cloudflare Zero Trust에서 고객용 `/auth/*`, `/portal/*`의 기존 테스트용 Access 사전 인증을 가장 좁은 공개 예외/Bypass 방식으로 해제. 다른 WAF/BIC/Worker route/origin edge-key는 유지.
+4. 외부 무인증 readback에서 Access 302가 사라지고 새 customer-route probe가 PASS하는지 확인.
+5. 사용자 브라우저에서 마이페이지 → 간편로그인 modal → Kakao/Naver 실제 E2E 확인.
+6. 로그인 정상화 후 관리자 화면 확인 → 실제 회원 수강권 1개 부여 → 해당 회원 마이페이지 `내 강의` 확인 순서로 재개.
