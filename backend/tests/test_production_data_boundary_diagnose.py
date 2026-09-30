@@ -72,6 +72,10 @@ def test_helper_has_no_database_or_cloud_mutation_paths():
     ):
         assert re.search(pattern,source,re.I) is None, pattern
     assert 'conn.read_only=True' in source
+    assert "sslmode='verify-full'" in source
+    assert 'sslrootcert=ca_bundle()' in source
+    assert 'sslmode=require' not in source
+    assert 'sslmode=disable' not in source
     assert 'NO_CUSTOMER_ROWS=YES' in source
     assert 'COUNTS=' in source
     assert 'customer_name' not in source

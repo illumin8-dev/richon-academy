@@ -15,7 +15,6 @@ import sys
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT/'backend'),str(ROOT/'ops')]
 
-import db
 import prepare_account_lifecycle as base
 
 REQUIRED_FLAGS=(
@@ -50,6 +49,46 @@ def validate_source():
          'tracked_checkout_not_clean')
     need((ROOT/'backend/migrations/016_course_entitlements.sql').is_file(),'course_schema_source_missing')
     need((ROOT/'backend/migrations/017_monthly_runtime_hardening.sql').is_file(),'legacy_schema_source_missing')
+
+
+def ca_bundle():
+    import ssl
+    candidates=(
+        ssl.get_default_verify_paths().cafile,
+        '/etc/ssl/certs/ca-certificates.crt',
+        '/etc/pki/tls/certs/ca-bundle.crt',
+    )
+    for value in candidates:
+        if value and Path(value).is_file():
+            return value
+    raise Stop('system_ca_bundle_missing')
+
+
+def connect(url):
+    try:
+        import psycopg
+    except ImportError:
+        raise Stop('psycopg_missing') from None
+    return psycopg.connect(
+        url,
+        connect_timeout=10,
+        prepare_threshold=None,
+        sslmode='verify-full',
+        sslrootcert=ca_bundle(),
+    )
+
+
+def diagnose_connection(url,expected_role,prefix):
+    base.validate_dsn(url,expected_role)
+    try:
+        with connect(url) as conn:
+            conn.read_only=True
+            row=conn.execute('SELECT current_database(),current_user').fetchone()
+            need(row==(base.DATABASE,expected_role),prefix+'_wrong_database_identity')
+    except Stop:
+        raise
+    except Exception as exc:
+        raise Stop(base.connection_failure_code(prefix,exc)) from None
 
 
 def one(cur,statement):
@@ -208,11 +247,12 @@ def main():
         runtime_target=base.validate_dsn(runtime_url,'richon_portal_login')
         need(owner_target.hostname.replace('-pooler.','.')==
              runtime_target.hostname.replace('-pooler.','.'),'database_endpoint_mismatch')
-        base.diagnose_connection(owner_url,base.OWNER_ROLE,'owner')
-        base.diagnose_connection(runtime_url,'richon_portal_login','runtime')
+        diagnose_connection(owner_url,base.OWNER_ROLE,'owner')
+        diagnose_connection(runtime_url,'richon_portal_login','runtime')
+        print('TLS_MODE=verify-full / TLS_CA=system-file')
 
         stage='aggregate-read'
-        with db._connect(owner_url) as conn:
+        with connect(owner_url) as conn:
             conn.read_only=True
             with conn.cursor() as cur:
                 cur.execute("SET LOCAL statement_timeout='15s'")
