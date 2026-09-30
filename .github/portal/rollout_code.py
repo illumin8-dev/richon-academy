@@ -113,7 +113,7 @@ def before_checks(svc, policy):
     digest = image.get('image_summary', {}).get('digest', '')
     c.need(re.fullmatch(r'sha256:[a-f0-9]{64}', digest)
            and info['image'] == c.IMAGE + '@' + digest, 'previous_candidate_digest_changed')
-    c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(e.access_status() == e.CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     e.probe_origin(c.URL)
     e.probe_origin(e.CANDIDATE)
 
@@ -144,7 +144,7 @@ def run():
     current, current_policy = e.get_service()
     e.unchanged(svc, policy, current, current_policy)
     c.source(live=True)
-    c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(e.access_status() == e.CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     REPORT['stage'] = 'create_separate_check_candidate'
     c.gc('run', 'services', 'update', c.SERVICE, '--region=' + c.REGION,
          '--image=' + state['image'], '--revision-suffix=' + suffix,
@@ -153,7 +153,7 @@ def run():
     verify_new(state, current, current_policy)
     verify_new_revision(state, current, current_policy)
     probe_check_tag()
-    c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(e.access_status() == e.CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     fresh, fresh_policy = e.get_service()
     e.unchanged(current, current_policy, fresh, fresh_policy)
     verify_new(state, fresh, fresh_policy)
@@ -167,7 +167,7 @@ def run():
     verify_new_revision(state, current, current_policy)
     e.probe_origin(c.URL)
     e.probe_origin(e.CANDIDATE)
-    c.need(e.access_status() == 'signin-gateway-confirmed', 'access_gateway_not_confirmed')
+    c.need(e.access_status() == e.CUSTOMER_ROUTES, 'customer_routes_not_confirmed')
     fresh, fresh_policy = e.get_service()
     e.unchanged(current, current_policy, fresh, fresh_policy)
     verify_new(state, fresh, fresh_policy, switched=True)
