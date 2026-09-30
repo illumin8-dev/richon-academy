@@ -85,7 +85,19 @@ for prefix,count in (('pre',1),('study',12),('redevelopment',11),('interior',15)
         path=ROOT/'assets'/'apply'/f'{prefix}-{number:02d}.jpg'
         assert path.is_file() and path.stat().st_size > 1000
         assert f'assets/apply/{prefix}-{number:02d}.jpg' in apply
-assert apply.count('assets/apply/') == 49
+assert apply.count('assets/apply/') == 57
+for number in range(2,10):
+    path=ROOT/'assets'/'apply'/f'pre-{number:02d}.png'
+    assert path.is_file() and path.stat().st_size > 1000
+    assert f'assets/apply/pre-{number:02d}.png' in apply
+for value in (
+    '2개월(8주) 과정', '매주 목요일 저녁 9시', '온라인 ZOOM 라이브',
+    'Week 1','부동산 투자원칙','Week 2','갭투자','Week 3','서울초기재개발',
+    'Week 4','부동산 기초 및 시장구조','Week 5','분양권 전략',
+    'Week 6','지방 재개발','Week 7','경매 권리분석 및 수익화',
+    'Week 8','현장 및 멘토와의 만남',
+):
+    assert value in apply
 for copy in (
     '투자원칙, 갭투자, 서울 초기재개발, 시장구조까지. 처음 시작하는 분이 시장을 읽는 기초 프레임을 세우는 과정.',
     '현금흐름, 갭투자, 서울 초기재개발, 경매 등 매주 실전 주제로 깊이 파고드는 핵심 스터디.',
