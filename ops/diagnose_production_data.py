@@ -51,6 +51,54 @@ def validate_source():
     need((ROOT/'backend/migrations/017_monthly_runtime_hardening.sql').is_file(),'legacy_schema_source_missing')
 
 
+def gcloud_json(code,*args):
+    command=['gcloud',*args,'--project='+base.PROJECT,'--quiet','--format=json']
+    try:
+        result=subprocess.run(command,cwd=ROOT,stdin=subprocess.DEVNULL,
+                              capture_output=True,timeout=120,check=False)
+    except (OSError,subprocess.TimeoutExpired):
+        raise Stop(code) from None
+    if result.returncode:
+        raise Stop(code)
+    try:
+        return json.loads(result.stdout.decode('utf-8'))
+    except (ValueError,UnicodeError):
+        raise Stop(code+'_invalid_response') from None
+
+
+def gcloud_text(code,*args):
+    command=['gcloud',*args,'--project='+base.PROJECT,'--quiet']
+    try:
+        result=subprocess.run(command,cwd=ROOT,stdin=subprocess.DEVNULL,
+                              capture_output=True,timeout=120,check=False)
+    except (OSError,subprocess.TimeoutExpired):
+        raise Stop(code) from None
+    if result.returncode:
+        raise Stop(code)
+    try:
+        return result.stdout.decode('utf-8').strip()
+    except UnicodeError:
+        raise Stop(code+'_invalid_response') from None
+
+
+def secret_ref(service,expected_name,code):
+    svc=gcloud_json(code,'run','services','describe',service,'--region='+base.REGION)
+    env=svc['spec']['template']['spec']['containers'][0].get('env',[])
+    refs=[item.get('valueFrom',{}).get('secretKeyRef',{}) for item in env
+          if item.get('name')=='DATABASE_URL']
+    need(len(refs)==1,'database_secret_reference_missing')
+    ref=refs[0]
+    need(ref.get('name')==expected_name,'unexpected_database_secret')
+    version=str(ref.get('key',''))
+    import re
+    need(bool(re.fullmatch(r'[1-9][0-9]*',version)),'numbered_secret_version_required')
+    return svc,version
+
+
+def secret_access(name,version,code):
+    return gcloud_text(code,'secrets','versions','access',version,'--secret='+name)
+
+
 def ca_bundle():
     import ssl
     candidates=(
@@ -230,10 +278,10 @@ def main():
     try:
         validate_source()
         stage='cloud-target'
-        project=base.gj('projects','describe',base.PROJECT)
+        project=gcloud_json('project_describe_failed','projects','describe',base.PROJECT)
         need(str(project.get('projectNumber'))==base.PROJECT_NUMBER,'wrong_gcp_project')
-        _,owner_version=base.secret_ref(base.OWNER_SERVICE,base.OWNER_SECRET)
-        portal_service,runtime_version=base.secret_ref(base.PORTAL_SERVICE,base.RUNTIME_SECRET)
+        _,owner_version=secret_ref(base.OWNER_SERVICE,base.OWNER_SECRET,'owner_service_describe_failed')
+        portal_service,runtime_version=secret_ref(base.PORTAL_SERVICE,base.RUNTIME_SECRET,'portal_service_describe_failed')
         for flag in REQUIRED_FLAGS:
             need(env_value(portal_service,flag)=='true','required_feature_not_enabled_'+flag.lower())
 
@@ -241,8 +289,8 @@ def main():
         print('NO_WRITES=YES / NO_CUSTOMER_ROWS=YES / NO_IDENTIFIERS=YES / NO_SECRET_OUTPUT=YES')
 
         stage='secret-access'
-        owner_url=base.access(base.OWNER_SECRET,owner_version)
-        runtime_url=base.access(base.RUNTIME_SECRET,runtime_version)
+        owner_url=secret_access(base.OWNER_SECRET,owner_version,'owner_secret_access_failed')
+        runtime_url=secret_access(base.RUNTIME_SECRET,runtime_version,'runtime_secret_access_failed')
         owner_target=base.validate_dsn(owner_url,base.OWNER_ROLE)
         runtime_target=base.validate_dsn(runtime_url,'richon_portal_login')
         need(owner_target.hostname.replace('-pooler.','.')==
