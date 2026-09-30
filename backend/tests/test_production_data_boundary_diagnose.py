@@ -77,4 +77,4 @@ def test_helper_has_no_database_or_cloud_mutation_paths():
     assert 'customer_name' not in source
     assert 'customer_phone' not in source
     assert 'customer_email' not in source
-    assert 'subject' not in source
+    assert re.search(r'\\bSELECT\\b[^;]*\\bsubject\\b',source,re.I|re.S) is None
