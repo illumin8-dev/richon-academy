@@ -8,7 +8,7 @@ from test_course_stage import course_before
 
 
 def legacy_before():
-    before,policy,revision=legacy_before()
+    before,policy,revision=course_before()
     env=c.environment(before['spec']['template']['spec']['containers'][0])
     for name in c.LEGACY_FLAGS:
         env[name]={'name':name,'value':'false'}
