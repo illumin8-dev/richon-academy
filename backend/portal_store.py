@@ -33,6 +33,11 @@ def _row(cur):
     return dict(zip([c.name for c in cur.description], row, strict=True))
 
 
+def _rows(cur):
+    names = [c.name for c in cur.description]
+    return [dict(zip(names, row, strict=True)) for row in cur.fetchall()]
+
+
 def _page(cur, limit: int, offset: int):
     names = [c.name for c in cur.description]
     rows = cur.fetchmany(limit + 1)
