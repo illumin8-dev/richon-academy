@@ -11,14 +11,19 @@ def wrapped(name):
     value=(shared/(name+'.html')).read_text().strip()
     return '<!-- richon:shared-'+name+' -->\n'+value+'\n<!-- /richon:shared-'+name+' -->'
 
+assert wrapped('header') in index
 for page in (index,apply):
-    assert wrapped('header') in page
     assert wrapped('footer') in page
     assert 'href="frontend/shared/site.css"' in page
     assert 'src="frontend/shared/site.js"' in page
     assert 'data-account-entry="enabled"' not in page
     assert 'id="site-account-login"' in page and 'data-richon-login hidden' in page
     assert 'id="site-account-me"' in page
+for landing_only in ('/#proof','/#programs','/#instructor'):
+    assert landing_only in index
+    assert landing_only not in apply
+assert 'id="navMenu"' not in apply
+assert 'id="burger"' not in apply
 assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
 assert 'alt="리치온 초이 강사"' not in index
@@ -29,9 +34,11 @@ assert index.count('class="mentor-feature-card"') == 1
 assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
+assert '.cal-' not in index
+assert '캘린더 셀 살짝 반응' not in index
 
 assert len(apply) > 5000
-assert apply.count('id="burger"') == 1
+assert apply.count('id="burger"') == 0
 assert apply.count('class="site-footer"') == 1
 assert "briefing:" not in apply and "welcome:" not in apply
 for course in ("pre","study","redev","interior","subscription"):
@@ -138,7 +145,12 @@ footer=(shared/'footer.html').read_text()
 privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
 
-assert 'href="/signup-guide.html"' in footer
+assert 'href="/signup-guide.html"' not in footer
+assert footer.strip() in guide
+for landing_only in ('/#proof','/#programs','/#instructor'):
+    assert landing_only not in guide
+assert 'id="navMenu"' not in guide
+assert 'id="burger"' not in guide
 for value in ('회원가입 전체 절차','이름','휴대전화번호','이메일','연령대','성별',
               'CI(연계정보)','중복가입 방지'):
     assert value in guide
