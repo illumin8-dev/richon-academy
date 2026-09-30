@@ -478,3 +478,40 @@
 - merge commit: 5d4422e15bdf7172adccf0f2c6e50c08d090153c
 - 다음: merge commit 기준 Cloud Shell에서 production aggregate inventory 재실행.
 - 기대 결과는 성공 시 COUNTS, 실패 시 세분화된 safe code 중 하나.
+
+
+### 체크포인트 16 / Pre리치온 9기 program/run 생성 준비
+- production aggregate inventory PASS:
+  - course_domain program/run/session/enrollment = 0
+  - legacy monthly/manual = 0
+  - active member 1 / active admin 1
+  - Naver identity 1 / Kakao identity 0
+  - orders 2 / pending 2 / linked 0
+- 공개 기능페이지 헤더 PR #100 병합 완료.
+- 포털 기능페이지 헤더 PR #99 병합 및 protected candidate rollout 성공.
+- 공개 랜딩 실제 calendar markup/JS는 이미 없었고 dead .cal-* CSS만 존재:
+  - PR #102 CI PASS 후 병합 완료.
+  - 향후 일정은 관리자 중앙관리 캘린더에서 관리.
+- Pre리치온 운영 기준:
+  - 9기
+  - 기본 시작일 2026-10-08
+  - fixed 2 months
+  - access/run boundary 2026-10-08 ~ 2026-12-07
+  - price 176000 KRW
+  - sessions는 지금 생성하지 않음
+  - 8주차 현장 임장 포함 일정은 추후 관리자 중앙 캘린더에서 입력
+- PR #103 생성/검증/병합:
+  - owner-only helper ops/create_pre_richon_9.py
+  - course_programs + course_runs + course_domain_audit만 write
+  - course_sessions/course_enrollments/enrollment_learners/members/orders/payment write 없음
+  - DB015/016 checksum, production target, TLS verify-full, active admin exactly-one 검증
+  - 한 transaction + advisory lock
+  - exact replay NO-OP / conflict overwrite 금지
+  - CI 3개 PASS / mergeable clean
+  - merge commit: effa2e25825a9118485da8d2ac5751e7ef6c080f
+- 다음 시작 지점:
+  1. Cloud Shell에서 merge commit 기준 create_pre_richon_9.py 실행.
+  2. interactive confirmation CREATE_PRE_RICHON_9 입력.
+  3. PROGRAM/RUN 생성 + SESSIONS=0/ENROLLMENTS=0 readback 확인.
+  4. 이후 관리자 course 화면에서 9기 표시 확인.
+  5. 중앙관리 캘린더 설계/구현은 별도 단계.
