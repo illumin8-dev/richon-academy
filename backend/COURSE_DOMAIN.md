@@ -36,14 +36,12 @@ It does not seed real programs, members or enrollments, and it does not rewrite 
 
 ## Central calendar decisions / 2026-10-01
 - Calendar is the next product work; login-provider lifecycle and payment remain deferred.
+- Phase 1 is admin-first: validate the central calendar in `/portal/calendar` before exposing any calendar data on the public landing page.
 - Real class meetings continue to use canonical `course_sessions`; they are not duplicated into a second schedule table.
 - Non-course schedules use `calendar_events` with types BRIEFING / STUDY_ALL / SPECIAL / FIELD_TRIP / OTHER.
-- Admin management surface: `/portal/calendar`.
-- Admin stores exact Seoul date/time. Public landing calendar intentionally omits clock time.
+- Admin stores exact Seoul date/time.
 - "다음 주로 복제" creates a new draft from the selected event with date +7 days; course sessions also propose the next sequence number.
-- Landing placement is between Programs and Mentors.
-- Landing defaults to the current Seoul month. Previous/next arrows are exposed only when the directly adjacent month contains public calendar data.
-- Public calendar reads are same-origin through `/portal/api/public/calendar`, strip auth cookies at the Worker, and use a 60-second edge cache. Browser max-age remains zero.
-- Public calendar PNG export renders a fixed 1200×1200 image and copies it to the clipboard where supported, with file download fallback.
-- DB018 `calendar_events` and exact runtime grants must be prepared before rolling out the new portal image.
+- DB018 `calendar_events` and exact runtime grants must be prepared before rolling out the admin calendar image.
+- After owner validation of admin behavior, Phase 2 may expose the same data on the landing page between Programs and Mentors.
+- Approved Phase 2 behavior is preserved but not implemented in this PR: current Seoul month by default / adjacent arrows only when that adjacent month has public data / clock time hidden publicly / 60-second edge cache / 1200×1200 PNG clipboard copy with download fallback.
 - No payment, OAuth provider, member identity, or entitlement semantics are changed by the calendar work.
