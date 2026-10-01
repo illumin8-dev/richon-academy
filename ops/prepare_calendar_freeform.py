@@ -79,7 +79,7 @@ def apply(owner_url,runtime_url):
         with db._connect(runtime_url) as conn:
             conn.read_only=True
             with conn.cursor() as cur:
-                cur.execute('SELECT event_id,event_date FROM (SELECT event_id,starts_at::date AS event_date FROM richon.calendar_events) x LIMIT 0')
+                cur.execute('SELECT event_id,course_label,content_text,color_hex FROM richon.calendar_events LIMIT 0')
                 ready.check_cursor(cur)
     except (Stop,ValueError):
         raise
