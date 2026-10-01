@@ -1192,3 +1192,34 @@
   3. 첫 production deployment 성공 후 `*.pages.dev` URL 전달.
   4. GPT가 pages.dev의 landing/apply/privacy/terms/signup-guide/assets/mobile을 외부에서 검증.
   5. pages.dev PASS 뒤 custom domain cutover 단계로 이동.
+
+
+
+### 체크포인트 30 / custom domain cutover 전 Cloudflare route 제약 확인
+- 새 Pages project `richon-academy-main` pages.dev 검증:
+  - 사용자 확인 기준 landing/apply/privacy/terms/signup-guide 모두 정상.
+  - mobile full-page 캡처도 실제 화면에서는 중간 콘텐츠 정상 표시 확인.
+- 저장소 route 구조 재확인:
+  - Worker source: `edge/worker.mjs`
+  - intended live routes:
+    - `https://richonacademy.com/auth/*`
+    - `https://richonacademy.com/portal/*`
+  - Worker는 해당 두 path만 Cloud Run portal로 proxy하고 public root/apply 등은 대상 아님.
+  - latest dynamic production readback에서도 customer routes / current protected candidate PASS 확인 이력 있음.
+- Cloudflare 공식 문서 2026-10-01 확인:
+  - Pages known issues: Worker가 이미 routed된 domain에는 Pages custom domain을 새로 추가할 수 없음.
+  - 같은 hostname에서 Worker Route는 origin보다 앞에서 실행되고, route 복원 후 가장 구체적인 route가 우선.
+- 따라서 custom domain cutover를 바로 실행하지 않음.
+- 안전한 전환 전 필수 readback:
+  1. 현재 `richon-account-router` Worker의 실제 Domains & Routes 화면에서 live route 2개 정확한 pattern 확인.
+  2. 기존 marururu00 기반 Pages project의 custom domain binding 상태 확인.
+  3. apex richonacademy.com DNS record 현재 target/proxy 상태 확인.
+- 예상 cutover 구조:
+  - 기존 route 2개를 정확히 기록.
+  - 기존 Pages custom domain binding과 새 Pages binding 전환.
+  - Worker route 2개를 동일 pattern으로 즉시 복원.
+  - 복원 후 /auth/* /portal/*는 Worker, 나머지는 새 Pages로 분기되는지 E2E 확인.
+- cutover 전까지:
+  - 기존 marururu00 Pages/richonacademy.com 유지.
+  - 새 richon-academy-main.pages.dev 유지.
+  - 기존 Worker route/Cloud Run portal 변경 없음.
