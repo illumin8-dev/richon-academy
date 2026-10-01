@@ -10,7 +10,7 @@ const PALETTE=[
   ['#C000DB','color-purple','스터디 전체'],
 ];
 const COLOR=new Map(PALETTE.map(x=>[x[0],{cls:x[1],label:x[2]}]));
-const state={month:null,items:[],selected:null,kind:'EVENT',bannerAnchor:null};
+const state={month:null,items:[],selected:null,kind:'EVENT',bannerAnchor:null,pngResetTimer:null};
 const requestId=()=>crypto.randomUUID();
 const text=(id,v)=>{if($(id))$(id).textContent=String(v??'');};
 const el=(tag,value,cls)=>{const x=document.createElement(tag);if(value!==undefined)x.textContent=String(value);if(cls)x.className=cls;return x;};
@@ -92,20 +92,25 @@ function monthGrid(){
   for(let i=0;i<total;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);dates.push(isoDate(d));}
   return dates;
 }
+function holidaySegment(item,weekDates){
+  const itemEnd=item.end_date||item.event_date;
+  const rangeStart=item.event_date>weekDates[0]?item.event_date:weekDates[0];
+  const rangeEnd=itemEnd<weekDates[6]?itemEnd:weekDates[6];
+  if(rangeStart>rangeEnd)return null;
+  const startIndex=weekDates.indexOf(rangeStart),endIndex=weekDates.indexOf(rangeEnd);
+  if(startIndex<0||endIndex<startIndex)return null;
+  return {startIndex,endIndex,count:endIndex-startIndex+1};
+}
 function bannerPlacement(item,dates){
   let best=null;
   for(let offset=0;offset<dates.length;offset+=7){
-    const week=dates.slice(offset,offset+7),rangeStart=item.event_date>week[0]?item.event_date:week[0];
-    const itemEnd=item.end_date||item.event_date,rangeEnd=itemEnd<week[6]?itemEnd:week[6];
-    if(rangeStart>rangeEnd)continue;
-    const startIndex=week.indexOf(rangeStart),endIndex=week.indexOf(rangeEnd),count=endIndex-startIndex+1;
-    if(!best||count>best.count)best={weekIndex:offset/7,startIndex,endIndex,count};
+    const segment=holidaySegment(item,dates.slice(offset,offset+7));
+    if(!segment)continue;
+    const currentCount=dates.slice(offset+segment.startIndex,offset+segment.endIndex+1).filter(key=>key.startsWith(state.month)).length;
+    if(!currentCount)continue;
+    if(!best||currentCount>best.currentCount)best={weekIndex:offset/7,...segment,currentCount};
   }
-  if(!best)return null;
-  const span=Math.min(7,Math.max(best.count,3));
-  let startIndex=best.startIndex-Math.floor((span-best.count)/2);
-  startIndex=Math.max(0,Math.min(startIndex,7-span));
-  return {weekIndex:best.weekIndex,startIndex,span,count:best.count};
+  return best;
 }
 function bannerForDate(key,banners){
   return banners.find(item=>key>=item.event_date&&key<=(item.end_date||item.event_date))||null;
@@ -119,26 +124,33 @@ function renderDesktop(){
     const weekIndex=w/7,weekDates=dates.slice(w,w+7),week=el('section',undefined,'calendar-week'),grid=el('div',undefined,'calendar-week-grid');
     weekDates.forEach((key,index)=>{
       const current=key.startsWith(state.month),items=by[key]||[],holiday=bannerForDate(key,banners),day=Number(key.slice(8));
-      const classes='calendar-day'+(current?'':' outside')+(index===0?' sunday':'')+(index===6?' saturday':'')+(items.length?' has-event':'')+(holiday?' holiday-day '+colorClass(holiday.color_hex):'');
+      let holidayEdge='';
+      if(holiday){
+        const previous=index>0?bannerForDate(weekDates[index-1],banners):null;
+        const next=index<6?bannerForDate(weekDates[index+1],banners):null;
+        const left=previous&&previous.event_id===holiday.event_id,right=next&&next.event_id===holiday.event_id;
+        holidayEdge=left?(right?' holiday-middle':' holiday-end'):(right?' holiday-start':' holiday-single');
+      }
+      const classes='calendar-day'+(current?'':' outside')+(index===0?' sunday':'')+(index===6?' saturday':'')+(items.length?' has-event':'')+(holiday?' holiday-day '+colorClass(holiday.color_hex)+holidayEdge:'');
       const cell=el('div',undefined,classes);cell.dataset.date=key;cell.setAttribute('aria-label',key);
       const dateNode=el('div',day,'calendar-date'+(items.length?' '+colorClass(items[0].color_hex):''));
       cell.append(dateNode);
       if(current)cell.addEventListener('click',()=>resetEditor(key));
       for(const item of items)cell.append(eventButton(item));
+      if(holiday){
+        const placement=placements.get(holiday.event_id);
+        if(placement&&placement.weekIndex===weekIndex&&placement.startIndex===index){
+          cell.classList.add('holiday-label-host');
+          const itemEnd=holiday.end_date||holiday.event_date;
+          const label=el('button',holiday.course_label,'calendar-banner '+colorClass(holiday.color_hex));label.type='button';
+          label.style.setProperty('--holiday-span',String(placement.count));
+          label.setAttribute('aria-label',holiday.course_label+' '+holiday.event_date+'부터 '+itemEnd+'까지');
+          label.addEventListener('click',event=>{event.stopPropagation();edit(holiday);});cell.append(label);
+        }
+      }
       grid.append(cell);
     });
-    week.append(grid);
-    const bannerGrid=el('div',undefined,'calendar-banner-grid');
-    let count=0;
-    for(const item of banners){
-      const placement=placements.get(item.event_id);
-      if(!placement||placement.weekIndex!==weekIndex)continue;
-      const itemEnd=item.end_date||item.event_date;
-      const b=el('button',item.course_label,'calendar-banner '+colorClass(item.color_hex)+' start-'+(placement.startIndex+1)+' span-'+placement.span);
-      b.type='button';b.setAttribute('aria-label',item.course_label+' '+item.event_date+'부터 '+itemEnd+'까지');b.addEventListener('click',()=>edit(item));bannerGrid.append(b);count++;
-    }
-    if(count)week.append(bannerGrid);
-    root.append(week);
+    week.append(grid);root.append(week);
   }
 }
 function renderMobile(){
@@ -201,10 +213,18 @@ function drawCalendarPng(){
   for(const item of events)(by[item.event_date]??=[]).push(item);
   const placements=new Map(banners.map(item=>[item.event_id,bannerPlacement(item,dates)]));
   for(let row=0;row<rows;row++){
-    const rowY=gridTop+row*rowH;if(row){ctx.save();ctx.strokeStyle='#c7c7c7';ctx.lineWidth=2;ctx.setLineDash([5,6]);ctx.beginPath();ctx.moveTo(x0,rowY);ctx.lineTo(x0+gridWidth,rowY);ctx.stroke();ctx.restore();}
+    const rowY=gridTop+row*rowH,weekDates=dates.slice(row*7,row*7+7);
+    if(row){ctx.save();ctx.strokeStyle='#c7c7c7';ctx.lineWidth=2;ctx.setLineDash([5,6]);ctx.beginPath();ctx.moveTo(x0,rowY);ctx.lineTo(x0+gridWidth,rowY);ctx.stroke();ctx.restore();}
+    for(const item of banners){
+      const segment=holidaySegment(item,weekDates);if(!segment)continue;
+      const segmentKeys=weekDates.slice(segment.startIndex,segment.endIndex+1),currentKeys=segmentKeys.filter(key=>key.startsWith(state.month));
+      if(!currentKeys.length)continue;
+      const firstIndex=weekDates.indexOf(currentKeys[0]),lastIndex=weekDates.indexOf(currentKeys[currentKeys.length-1]);
+      const segmentX=x0+firstIndex*colW+5,segmentW=(lastIndex-firstIndex+1)*colW-10;
+      fillRound(ctx,segmentX,rowY+5,segmentW,rowH-10,13,hexRgba(item.color_hex,.055),null);
+    }
     for(let col=0;col<7;col++){
-      const key=dates[row*7+col],current=key.startsWith(state.month),items=by[key]||[],holiday=bannerForDate(key,banners),cx=x0+colW*(col+.5),cellX=x0+colW*col;
-      if(holiday&&current){fillRound(ctx,cellX+6,rowY+6,colW-12,rowH-12,12,hexRgba(holiday.color_hex,.055),null);}
+      const key=weekDates[col],current=key.startsWith(state.month),items=by[key]||[],holiday=bannerForDate(key,banners),cx=x0+colW*(col+.5),cellX=x0+colW*col;
       const dateY=rowY+34,day=Number(key.slice(8));
       if(items.length){fillRound(ctx,cx-25,dateY-25,50,50,10,items[0].color_hex,null);ctx.fillStyle='#fff';ctx.font='650 25px Pretendard, Arial, sans-serif';}
       else if(holiday&&current){fillRound(ctx,cx-25,dateY-25,50,50,10,hexRgba(holiday.color_hex,.12),null);ctx.fillStyle=holiday.color_hex;ctx.font='700 23px Pretendard, Arial, sans-serif';}
@@ -219,9 +239,9 @@ function drawCalendarPng(){
     }
     for(const item of banners){
       const placement=placements.get(item.event_id);if(!placement||placement.weekIndex!==row)continue;
-      const spanWidth=placement.span*colW-18,ribbonX=x0+placement.startIndex*colW+9,ribbonY=rowY+rowH-31;
-      fillRound(ctx,ribbonX,ribbonY,spanWidth,24,12,hexRgba(item.color_hex,.11),hexRgba(item.color_hex,.32));
-      ctx.fillStyle=item.color_hex;ctx.textAlign='center';ctx.font='800 15px Pretendard, Arial, sans-serif';const label=fitCanvasLines(ctx,item.course_label,spanWidth-24,1)[0]||'';ctx.fillText(label,ribbonX+spanWidth/2,ribbonY+12);
+      const labelX=x0+placement.startIndex*colW+8,labelW=placement.count*colW-16,labelY=rowY+rowH-34;
+      fillRound(ctx,labelX,labelY,labelW,26,13,hexRgba(item.color_hex,.11),hexRgba(item.color_hex,.32));
+      ctx.fillStyle=item.color_hex;ctx.textAlign='center';ctx.font='800 15px Pretendard, Arial, sans-serif';const label=fitCanvasLines(ctx,item.course_label,labelW-20,1)[0]||'';ctx.fillText(label,labelX+labelW/2,labelY+13);
     }
   }
   return canvas;
@@ -233,16 +253,24 @@ function savePng(blob){
   const href=URL.createObjectURL(blob),a=document.createElement('a');a.href=href;a.download=state.month+'-richon-calendar.png';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),1000);
 }
 async function copyCalendarPng(){
-  const button=$('copy-png'),original=button.textContent;button.disabled=true;button.textContent='PNG 생성 중';text('action-status','');
+  const button=$('copy-png');if(state.pngResetTimer){clearTimeout(state.pngResetTimer);state.pngResetTimer=null;}
+  button.disabled=true;button.classList.remove('is-success','is-error');button.textContent='PNG 생성 중';text('action-status','');
+  let finalLabel='PNG 복사',finalClass='';
   try{
     const blob=await canvasBlob(drawCalendarPng());let copied=false;
     if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){
       try{await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);copied=true;}catch{}
     }
-    if(copied)text('action-status','1200×1200 PNG 이미지를 클립보드에 복사했습니다.');
-    else{savePng(blob);text('action-status','이미지 클립보드를 지원하지 않아 1200×1200 PNG 파일로 저장했습니다.');}
-  }catch{text('action-status','PNG 이미지를 만들지 못했습니다.');}
-  finally{button.disabled=false;button.textContent=original;}
+    if(copied){
+      finalLabel='✓ 복사 완료';finalClass='is-success';text('action-status','1200×1200 PNG 이미지를 클립보드에 복사했습니다.');
+    }else{
+      savePng(blob);finalLabel='✓ PNG 저장';finalClass='is-success';text('action-status','이미지 클립보드를 지원하지 않아 1200×1200 PNG 파일로 저장했습니다.');
+    }
+  }catch{
+    finalLabel='복사 실패';finalClass='is-error';text('action-status','PNG 이미지를 만들지 못했습니다.');
+  }
+  button.disabled=false;button.textContent=finalLabel;if(finalClass)button.classList.add(finalClass);
+  state.pngResetTimer=setTimeout(()=>{button.classList.remove('is-success','is-error');button.textContent='PNG 복사';state.pngResetTimer=null;},2200);
 }
 
 function renderCalendar(){
