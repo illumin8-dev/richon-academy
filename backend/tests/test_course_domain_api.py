@@ -28,7 +28,7 @@ def app(monkeypatch):
     monkeypatch.setenv('RICHON_PORTAL_ENABLED','true')
     # course_domain_portal.make_router is tested in isolation; portal install state
     # is represented by the actual admin route required by install_if_enabled tests.
-    a.include_router(portal.make_router(auth_http.AuthSettings(frozenset({ORIGIN}))))
+    a.include_router(portal.make_router(auth_http.AuthSettings(frozenset({ORIGIN})),calendar_enabled=True))
     return a
 
 
@@ -72,7 +72,7 @@ def test_calendar_event_is_freeform_and_color_validated():
 @pytest.mark.parametrize('path',[
     '/portal/api/me/courses','/portal/api/admin/learning/programs',
     '/portal/api/admin/learning/runs','/portal/api/admin/learning/enrollments',
-    '/portal/api/admin/learning/targets'
+    '/portal/api/admin/learning/targets','/portal/api/admin/learning/calendar'
 ])
 def test_unauthenticated_reads_never_reach_store(app,monkeypatch,path):
     blocked=Mock(side_effect=AssertionError('must not query'))
@@ -81,12 +81,14 @@ def test_unauthenticated_reads_never_reach_store(app,monkeypatch,path):
     monkeypatch.setattr(portal.store,'enrollments',blocked)
     monkeypatch.setattr(portal.store,'targets',blocked)
     monkeypatch.setattr(portal.store,'my_courses',blocked)
+    monkeypatch.setattr(portal.store,'admin_calendar',blocked)
     assert TestClient(app).get(path).status_code==401
     assert not any(x.called for x in [blocked]) 
 
 
 @pytest.mark.parametrize('path',[
-    'programs','programs/update','runs','runs/update','sessions','enrollments','enrollments/cancel'
+    'programs','programs/update','runs','runs/update','sessions',
+    'calendar-events','calendar-events/update','enrollments','enrollments/cancel'
 ])
 def test_non_admin_writes_never_reach_store(app,monkeypatch,path):
     app.dependency_overrides[auth_http.require_member]=lambda:principal('member')
