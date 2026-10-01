@@ -7,6 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 RunStatus=Literal['OPEN','WAITLIST','UPCOMING','CLOSED']
+CalendarDisplayKind=Literal['EVENT','BANNER']
+CalendarColor=Literal['#3978F6','#FF9F26','#D8BD78','#FF5757','#00B622','#C000DB']
 
 class Input(BaseModel):
     model_config=ConfigDict(extra='forbid',hide_input_in_errors=True)
@@ -125,18 +127,24 @@ class SessionUpdate(Write):
 
 
 class CalendarEventCreate(Write):
+    display_kind: CalendarDisplayKind='EVENT'
     event_date: date
-    color_hex: str=Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    end_date: date|None=None
+    color_hex: CalendarColor
     course_label: str=Field(min_length=1,max_length=200)
-    content_text: str=Field(min_length=1,max_length=500)
+    content_text: str=Field(default='',max_length=500)
 
-class CalendarEventUpdate(Write):
+    @model_validator(mode='after')
+    def calendar_range(self):
+        if self.display_kind=='EVENT':
+            if self.end_date is not None: raise ValueError('event_end_date_not_allowed')
+        elif self.end_date is None or self.end_date<self.event_date:
+            raise ValueError('invalid_banner_range')
+        return self
+
+class CalendarEventUpdate(CalendarEventCreate):
     event_id: UUID
     version: int=Field(ge=1)
-    event_date: date
-    color_hex: str=Field(pattern=r'^#[0-9A-Fa-f]{6}$')
-    course_label: str=Field(min_length=1,max_length=200)
-    content_text: str=Field(min_length=1,max_length=500)
     deleted: bool=False
 
 
