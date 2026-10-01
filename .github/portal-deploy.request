@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "rollout-sticky-shared-footer-20261001-a"
+  "operation": "inspect-legacy-admin-enabled",
+  "request_id": "post-sticky-shared-footer-inspect-20261001-a"
 }
