@@ -142,10 +142,6 @@ def course_enabled():
     return os.getenv('RICHON_COURSE_DOMAIN_ENABLED','false') == 'true'
 
 
-def calendar_enabled():
-    return os.getenv('RICHON_CALENDAR_ENABLED','false') == 'true'
-
-
 def monthly_enabled():
     return os.getenv('RICHON_MONTHLY_ENABLED','false') == 'true'
 
@@ -263,7 +259,7 @@ def check_role(cur):
     profile_active = member_profile.enabled()
     marketing_active = marketing_enabled()
     course_active = course_enabled()
-    calendar_active = calendar_enabled()
+    calendar_active = course_active
     monthly_active = monthly_enabled()
     manual_active = manual_enabled()
     if account and not profile_active:
@@ -272,8 +268,6 @@ def check_role(cur):
         raise ValueError('marketing_requires_member_profile_policy')
     if course_active and not account:
         raise ValueError('course_requires_account_feature')
-    if calendar_active and not course_active:
-        raise ValueError('calendar_requires_course_feature')
     if manual_active and not monthly_active:
         raise ValueError('manual_requires_monthly_feature')
     if profile_active and not provider_profile_schema_ready(cur):
