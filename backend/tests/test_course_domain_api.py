@@ -60,6 +60,14 @@ def test_session_links_are_https_only(bad):
             sequence_no=1,title='1회',starts_at=datetime.now(timezone.utc),video_url=bad)
 
 
+def test_calendar_event_range_validation():
+    base=dict(request_id=uuid4(),reason='가상 일정',event_type='BRIEFING',title='무료 브리핑',
+              starts_at=datetime.now(timezone.utc))
+    assert model.CalendarEventCreate(**base).is_public is True
+    with pytest.raises(ValidationError):
+        model.CalendarEventCreate(**base,ends_at=base['starts_at'])
+
+
 @pytest.mark.parametrize('path',[
     '/portal/api/me/courses','/portal/api/admin/learning/programs',
     '/portal/api/admin/learning/runs','/portal/api/admin/learning/enrollments',
@@ -121,3 +129,19 @@ def test_course_admin_reserves_session_editing_for_central_calendar():
         assert forbidden not in html
     for forbidden in ("$('session-form')","$('session-run')",'loadSessions','resetSessionForm','isoLocal('):
         assert forbidden not in js
+
+
+def test_public_calendar_route_is_login_free_only_when_enabled(monkeypatch):
+    a=FastAPI();a.add_exception_handler(RequestValidationError,invalid_request)
+    a.include_router(auth_http.make_router(auth_http.AuthSettings(frozenset({ORIGIN}))))
+    fake={'items':[],'previous_exists':False,'next_exists':True}
+    monkeypatch.setattr(portal.store,'public_calendar',Mock(return_value=fake))
+    a.include_router(portal.make_router(auth_http.AuthSettings(frozenset({ORIGIN})),calendar_enabled=True))
+    r=TestClient(a).get('/portal/api/public/calendar?month=2026-10')
+    assert r.status_code==200 and r.json()['month']=='2026-10'
+    assert r.json()['prev_month'] is None and r.json()['next_month']=='2026-11'
+    assert r.headers['cache-control']=='public, max-age=60, s-maxage=60'
+
+
+def test_calendar_routes_default_off_in_router_fixture(app):
+    assert TestClient(app).get('/portal/api/public/calendar?month=2026-10').status_code==404
