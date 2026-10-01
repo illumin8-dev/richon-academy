@@ -93,13 +93,6 @@ function monthGrid(){
   for(let i=0;i<total;i++){const d=new Date(start);d.setUTCDate(start.getUTCDate()+i);dates.push(isoDate(d));}
   return dates;
 }
-function bannerSegments(weekDates){
-  const out=[];
-  for(const item of state.items.filter(x=>x.display_kind==='BANNER')){
-    const begin=item.event_date>end=weekDates[0]?item.event_date:weekDates[0];
-  }
-  return out;
-}
 function renderDesktop(){
   const dates=monthGrid(),events=state.items.filter(x=>x.display_kind!=='BANNER'),banners=state.items.filter(x=>x.display_kind==='BANNER'),by={};
   for(const item of events)(by[item.event_date]??=[]).push(item);
