@@ -1250,3 +1250,26 @@
   2. Cloud Run startup CPU boost 현재 상태를 read-only 확인 후 필요 시 별도 승인 변경.
   3. 여전히 느린 경우에만 minScale=1 검토. 이는 scale-to-zero를 포기하고 idle 비용 가능성이 있어 첫 선택 아님.
 - hosting cutover와 login cold-start 개선은 별도 작업/PR로 분리.
+
+
+
+### 체크포인트 32 / 로그인 modal bootstrap PR #109 병합 완료
+- PR #109 `fix: bootstrap login modal from static Pages assets`
+  - branch: `fix/static-login-modal-bootstrap`
+  - head: `96c4449f463ba05c4665255d8850a4887b838921`
+  - Public UI CI PASS
+  - Portal UI CI PASS
+  - Cloudflare Pages branch preview deploy PASS
+  - merge commit: `07d7f7165a060478d79a4f41697aa82c01b38d53`
+- 변경:
+  - public `index.html`, `apply.html`, `signup-guide.html`에서 `frontend/shared/login.js`를 정적으로 로드.
+  - `tools/build_public_pages.sh`가 `login.js`를 allowlisted Pages output에 포함.
+  - login modal client는 클릭 즉시 dialog를 열고 `불러오는 중입니다.`를 표시한 뒤 `/auth/login?view=modal`을 fetch.
+  - CSRF/provider config는 계속 Cloud Run backend에서만 생성/응답.
+- 미변경:
+  - Worker routes / Cloud Run / OAuth callback / Neon / minScale=0.
+  - public account entry 자체의 공개 여부는 기존 정책 유지.
+- 다음:
+  1. richon-academy-main main production deployment가 최신 merge commit을 반영했는지 Cloudflare dashboard에서 확인.
+  2. custom domain cutover: Pages known issue 때문에 existing auth/portal Worker routes를 잠깐 제거한 후 richonacademy.com custom domain 연결, Active 확인 후 동일 route 2개 복원.
+  3. E2E: /, /apply.html, /auth/login, /portal/mypage, 카카오/네이버 로그인 진입 확인.
