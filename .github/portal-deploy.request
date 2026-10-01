@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-unified-main-current-candidate-hold-20261001-a"
+  "operation": "inspect-legacy-admin-enabled",
+  "request_id": "pre-admin-css-rollout-inspect-20261001-a"
 }
