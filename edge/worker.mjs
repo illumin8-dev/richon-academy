@@ -76,12 +76,6 @@ export async function handle(request, env, fetcher = fetch, cacheStore = globalT
   if (env.PORTAL_ENABLED !== 'true') return failure(503, 'portal_not_enabled');
   const publicCalendar = request.method === 'GET' && url.pathname === '/portal/api/public/calendar';
   const cacheKey = publicCalendar ? new Request(url.href, {method:'GET'}) : null;
-  if (publicCalendar && cacheStore) {
-    try {
-      const cached = await cacheStore.match(cacheKey);
-      if (cached) return cached;
-    } catch { /* cache failure must not take the public calendar down */ }
-  }
   let upstream;
   try {
     upstream = new URL(env.PORTAL_UPSTREAM);
@@ -90,6 +84,12 @@ export async function handle(request, env, fetcher = fetch, cacheStore = globalT
       || upstream.port || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash
       || !/^[A-Za-z0-9_-]{43,128}$/.test(env.RICHON_EDGE_SECRET || '')) throw new Error('invalid_config');
   } catch { return failure(503, 'portal_not_configured'); }
+  if (publicCalendar && cacheStore) {
+    try {
+      const cached = await cacheStore.match(cacheKey);
+      if (cached) return cached;
+    } catch { /* cache failure must not take the public calendar down */ }
+  }
   const length = request.headers.get('content-length');
   if (length !== null && (!/^\d+$/.test(length) || Number(length) > LIMIT)) return failure(413, 'request_too_large');
   let body;
