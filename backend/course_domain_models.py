@@ -124,6 +124,38 @@ class SessionUpdate(Write):
         return self
 
 
+CalendarEventType=Literal['BRIEFING','STUDY_ALL','SPECIAL','FIELD_TRIP','OTHER']
+
+class CalendarEventCreate(Write):
+    event_type: CalendarEventType
+    title: str=Field(min_length=1,max_length=200)
+    presenter_name: str|None=Field(default=None,max_length=80)
+    starts_at: datetime
+    ends_at: datetime|None=None
+    is_public: bool=True
+
+    @model_validator(mode='after')
+    def time(self):
+        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_calendar_event_range')
+        return self
+
+class CalendarEventUpdate(Write):
+    event_id: UUID
+    version: int=Field(ge=1)
+    event_type: CalendarEventType
+    title: str=Field(min_length=1,max_length=200)
+    presenter_name: str|None=Field(default=None,max_length=80)
+    starts_at: datetime
+    ends_at: datetime|None=None
+    is_public: bool=True
+    cancelled: bool=False
+
+    @model_validator(mode='after')
+    def time(self):
+        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_calendar_event_range')
+        return self
+
+
 class TargetProfile(Input):
     name: str=Field(min_length=1,max_length=80)
     email: str|None=Field(default=None,max_length=254)
