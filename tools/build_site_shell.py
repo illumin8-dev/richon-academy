@@ -1,8 +1,7 @@
-"""Render the approved Richon public-site chrome into private account pages.
+"""Render canonical Richon shared chrome/assets into private portal pages.
 
-The current public landing/application files are intentionally untouched in this PR.
-The shared fragments are copied only to the portal image and used by the fallback
-OAuth pages + mypage. No deployment, credentials, network or data migration.
+The editable header/footer sources live under frontend/shared. This renderer
+creates the portal/admin variants while preserving page-specific application UI.
 """
 from pathlib import Path
 import argparse
