@@ -171,7 +171,7 @@ def install_if_enabled(app:FastAPI):
         or not any(getattr(r,'path',None)=='/portal/api/admin/summary' for r in app.routes)):
         raise ValueError('course_domain_requires_private_portal')
     origins=frozenset(x.strip() for x in os.getenv('RICHON_AUTH_ALLOWED_ORIGINS','').split(',') if x.strip())
-    calendar_enabled=os.getenv('RICHON_CALENDAR_ENABLED','false')=='true'
+    calendar_enabled=True
     app.include_router(make_router(AuthSettings(origins),calendar_enabled=calendar_enabled))
 
     if calendar_enabled:
