@@ -25,7 +25,7 @@ COURSES=[{'course_id':x['course_id'],'title':x['course_title'],'cohort':x['cohor
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        name={'/portal/mypage':'mypage.html','/portal/admin':'admin.html','/portal/assets/site.css':'site.css','/portal/assets/site.js':'site.js','/portal/assets/portal.css':'portal.css','/portal/assets/portal.js':'portal.js'}.get(urlsplit(self.path).path)
+        name={'/portal/mypage':'mypage.html','/portal/admin':'admin.html','/portal/assets/site.css':'site.css','/portal/assets/site.js':'site.js','/portal/assets/ops.css':'ops.css','/portal/assets/portal.css':'portal.css','/portal/assets/portal.js':'portal.js'}.get(urlsplit(self.path).path)
         if not name: self.send_error(404);return
         content=(STATIC/name).read_bytes()
         self.send_response(200)
