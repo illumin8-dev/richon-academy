@@ -143,7 +143,7 @@ def test_public_calendar_route_is_login_free_only_when_enabled(monkeypatch):
     r=TestClient(a).get('/portal/api/public/calendar?month=2026-10')
     assert r.status_code==200 and r.json()['month']=='2026-10'
     assert r.json()['prev_month'] is None and r.json()['next_month']=='2026-11'
-    assert r.headers['cache-control']=='public, max-age=60, s-maxage=60'
+    assert r.headers['cache-control']=='public, max-age=0, s-maxage=60'
 
 
 def test_calendar_routes_default_off_in_router_fixture(app):
