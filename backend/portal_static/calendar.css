@@ -22,7 +22,7 @@
 .calendar-event-item{display:block;width:100%;border:0;background:transparent;padding:0;margin:6px 0 0;text-align:left;color:#171717;cursor:pointer;font:inherit}
 .calendar-event-item:hover .event-course{text-decoration:underline;text-underline-offset:2px}
 .event-label-line{display:flex;align-items:center;gap:6px;min-width:0}.event-course{font-size:14px;font-weight:750;line-height:1.22;white-space:normal;word-break:keep-all}.event-content{display:block;margin:3px 0 0 14px;color:#424242;font-size:13px;line-height:1.28;word-break:keep-all}
-.calendar-banner{position:absolute;left:8px;bottom:7px;width:calc(var(--holiday-span)*100% - 16px);box-sizing:border-box;z-index:4;border:1px solid color-mix(in srgb,var(--calendar-color) 28%,#fff);border-radius:999px;background:color-mix(in srgb,var(--calendar-color) 13%,#fff);color:var(--calendar-color);padding:5px 12px;text-align:center;font-size:14px;line-height:1.2;font-weight:820;letter-spacing:.01em;cursor:pointer;word-break:keep-all;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calendar-banner{position:absolute;left:8px;bottom:7px;width:auto;box-sizing:border-box;z-index:4;border:1px solid color-mix(in srgb,var(--calendar-color) 28%,#fff);border-radius:999px;background:color-mix(in srgb,var(--calendar-color) 13%,#fff);color:var(--calendar-color);padding:5px 12px;text-align:center;font-size:14px;line-height:1.2;font-weight:820;letter-spacing:.01em;cursor:pointer;word-break:keep-all;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .calendar-banner:hover{background:color-mix(in srgb,var(--calendar-color) 18%,#fff)}
 .calendar-status{min-height:22px;margin:14px 0 0;text-align:center;color:#8d857c;font-size:13px}
 .calendar-mobile-list{display:none}
