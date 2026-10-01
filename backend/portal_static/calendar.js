@@ -83,9 +83,8 @@ function eventButton(item){
   b.addEventListener('click',event=>{event.stopPropagation();edit(item);});return b;
 }
 function renderLegend(){
-  const used=new Set(state.items.filter(x=>x.display_kind!=='BANNER'&&x.event_date.startsWith(state.month)).map(x=>x.color_hex));
   const root=$('calendar-legend');root.replaceChildren();
-  for(const [hex,cls,label] of PALETTE){if(!used.has(hex))continue;const row=el('span',undefined,'calendar-legend-item');row.append(el('i',undefined,'calendar-legend-dot '+cls),document.createTextNode(label));root.append(row);}
+  for(const [,cls,label] of PALETTE){const row=el('span',undefined,'calendar-legend-item');row.append(el('i',undefined,'calendar-legend-dot '+cls),document.createTextNode(label));root.append(row);}
 }
 function monthGrid(){
   const [y,m]=state.month.split('-').map(Number),first=new Date(Date.UTC(y,m-1,1)),firstDow=first.getUTCDay(),days=new Date(Date.UTC(y,m,0)).getUTCDate();
