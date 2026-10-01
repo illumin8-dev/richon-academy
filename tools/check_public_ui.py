@@ -5,6 +5,9 @@ import shared_chrome as chrome
 ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
 apply=(ROOT/'apply.html').read_text()
+guide=(ROOT/'signup-guide.html').read_text()
+privacy=(ROOT/'privacy.html').read_text()
+terms=(ROOT/'terms.html').read_text()
 shared=ROOT/'frontend'/'shared'
 work=(ROOT/'CURRENT_WORK.md').read_text()
 
@@ -142,10 +145,6 @@ assert '.hero-js .site-nav' in hero
 
 print('PASS: public landing uses shared chrome, external images and approved mentor layout')
 
-
-guide=(ROOT/'signup-guide.html').read_text()
-privacy=(ROOT/'privacy.html').read_text()
-terms=(ROOT/'terms.html').read_text()
 
 assert 'href="/signup-guide.html"' not in footer
 assert chrome.wrapped('header',chrome.render_header('portal')) in guide
