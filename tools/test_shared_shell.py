@@ -89,7 +89,7 @@ class SharedShellTests(unittest.TestCase):
 
     def test_admin_shell_owns_outer_spacing(self):
         css=(build.SOURCE/'admin.css').read_text()
-        for rule in ('body{padding-top:74px}', '.sidebar{border:0}', '.main{padding:0;max-width:none}', '.sidebar{top:98px}'):
+        for rule in ('body{padding-top:74px}', '.sidebar{border:0}', '.main{padding:0;max-width:none}', '.sidebar{top:98px}', 'width:100%;min-width:0;max-width:1360px'):
             self.assertIn(rule,css)
         for name in ('admin.html','courses.html','enrollments.html','manual.html'):
             page=(build.STATIC/name).read_text()
