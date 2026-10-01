@@ -19,9 +19,15 @@ import portal_store as store
 logger = logging.getLogger("richon.portal")
 STATIC = Path(__file__).parent / "portal_static"
 HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+PRETENDARD_CSS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+PRETENDARD_FONT = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/"
 PAGE_HEADERS = {
     **HEADERS,
-    "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    "Content-Security-Policy": (
+        "default-src 'none'; script-src 'self'; "
+        f"style-src 'self' {PRETENDARD_CSS}; font-src 'self' {PRETENDARD_FONT}; "
+        "connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    ),
     "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
 }
 
@@ -29,8 +35,7 @@ PAGE_HEADERS = {
 MEMBER_PAGE_HEADERS = {
     **PAGE_HEADERS, "Referrer-Policy": "same-origin",
     "Content-Security-Policy": PAGE_HEADERS["Content-Security-Policy"].replace(
-        "style-src 'self';",
-        "style-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/;").replace("form-action 'self';", "form-action 'self' https://kauth.kakao.com https://nid.naver.com;"),
+        "form-action 'self';", "form-action 'self' https://kauth.kakao.com https://nid.naver.com;"),
 }
 
 
