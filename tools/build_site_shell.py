@@ -55,7 +55,7 @@ def outputs():
 
     admin_header=(SOURCE/'admin-header.html').read_text()
     admin_sidebar=(SOURCE/'admin-sidebar.html').read_text()
-    admin_footer=(SOURCE/'admin-footer.html').read_text()
+    admin_footer=footer
     for filename,active in {
         'admin.html':None,
         'courses.html':'courses',

@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>강의 / 수강권 | 리치온아카데미</title>
-<link rel="stylesheet" href="/portal/assets/ops.css">
+<link rel="stylesheet" href="/portal/assets/site.css"><script defer src="/portal/assets/site.js"></script><link rel="stylesheet" href="/portal/assets/ops.css">
 <link rel="stylesheet" href="/portal/assets/portal.css">
 <link rel="stylesheet" href="/portal/course-assets/courses.css">
 <script defer src="/portal/course-assets/courses.js"></script>
@@ -12,14 +12,14 @@
 <body>
 <a class="skip" href="#main">본문으로 이동</a>
 <!-- richon:shared-admin-header -->
-<header class="topbar">
-  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>리치온아카데미</a>
-  <div class="top-actions">
-    <a class="home-link" href="/portal/admin?tab=orders">운영 홈</a>
-    <a href="/portal/mypage">마이페이지</a>
-    <button class="plain" id="logout" type="button" hidden>로그아웃</button>
+<nav class="site-nav admin-site-nav" id="siteNav" aria-label="리치온 아카데미 관리자 메뉴">
+  <a class="site-logo" href="/#top" aria-label="리치온 아카데미 홈"><span class="r">RICH</span><span class="o">ON</span><small>ESTATE STUDY</small></a>
+  <div class="site-nav-right">
+    <a class="site-account-link" href="/portal/admin?tab=orders">운영 홈</a>
+    <a class="site-account-link" href="/portal/mypage">마이페이지</a>
+    <button class="site-account-link" id="logout" type="button" hidden>로그아웃</button>
   </div>
-</header>
+</nav>
 <!-- /richon:shared-admin-header -->
 <div class="layout">
 <!-- richon:shared-admin-sidebar -->
@@ -92,8 +92,27 @@
 <div class="table-wrap"><table><thead><tr><th>수강생</th><th>강의 / 기수</th><th>기간</th><th>상태</th><th>출처</th><th></th></tr></thead><tbody id="enrollment-body"></tbody></table></div><p id="enrollment-status" class="status"></p></section>
 </div>
 <p id="action-status" class="status" role="status"></p>
-<!-- richon:shared-admin-footer -->
-<footer class="ops-footer">RICHON ACADEMY</footer>
-<!-- /richon:shared-admin-footer -->
+
 </main></div>
+<!-- richon:shared-admin-footer -->
+<footer class="site-footer">
+  <div class="site-wrap">
+    <div class="site-footer-top">
+      <a class="site-logo" href="/#top" aria-label="리치온 아카데미 홈"><span class="r">RICH</span><span class="o">ON</span></a>
+      <div class="site-footer-links">
+        <a href="https://blog.naver.com/zzang092121" target="_blank" rel="noopener noreferrer">블로그</a>
+        <a href="https://cafe.naver.com/richonacademy1" target="_blank" rel="noopener noreferrer">카페</a>
+        <a href="https://www.youtube.com/channel/UCtU94tFmH_DL1i7uszY40PA" target="_blank" rel="noopener noreferrer">유튜브</a>
+        <a href="/privacy.html">개인정보처리방침</a>
+        <a href="/terms.html">이용약관</a>
+      </div>
+    </div>
+    <div class="site-legal">
+      상호: 리치온 아카데미 ｜ 대표: 장순호 ｜ 사업자등록번호: 175-01-03647 ｜ 전화: 032-236-8944<br>
+      주소: 경기도 부천시 소사구 송내대로 42번길 81, 1층 1호 (송내동)<br>
+      © <span data-site-year>2026</span> RICHON Academy.
+    </div>
+  </div>
+</footer>
+<!-- /richon:shared-admin-footer -->
 </body></html>

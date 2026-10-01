@@ -80,7 +80,7 @@ class SharedShellTests(unittest.TestCase):
 
     def test_admin_shell_owns_outer_spacing(self):
         css=(build.SOURCE/'admin.css').read_text()
-        for rule in ('.topbar .brand::before{content:none}', '.sidebar{border:0}', '.main{padding:0;max-width:none}'):
+        for rule in ('body{padding-top:74px}', '.sidebar{border:0}', '.main{padding:0;max-width:none}', '.sidebar{top:98px}'):
             self.assertIn(rule,css)
         for name in ('admin.html','courses.html','enrollments.html','manual.html'):
             page=(build.STATIC/name).read_text()
@@ -101,16 +101,25 @@ class SharedShellTests(unittest.TestCase):
 
     def test_admin_pages_render_one_shared_shell(self):
         header=(build.SOURCE/'admin-header.html').read_text().strip()
-        footer=(build.SOURCE/'admin-footer.html').read_text().strip()
+        footer=(build.SOURCE/'footer.html').read_text().strip()
         sidebar=(build.SOURCE/'admin-sidebar.html').read_text()
+        self.assertIn('class="site-nav admin-site-nav"',header)
+        self.assertIn('class="site-logo"',header)
+        self.assertNotIn('brand-mark',header)
+        self.assertNotIn('class="topbar"',header)
         for name in ('admin.html','courses.html','enrollments.html','manual.html'):
             page=(build.STATIC/name).read_text()
             with self.subTest(name=name):
                 self.assertEqual(page.count(header),1)
                 self.assertEqual(page.count(footer),1)
+                self.assertIn('/portal/assets/site.css',page)
+                self.assertIn('/portal/assets/site.js',page)
                 self.assertEqual(page.count('data-admin-tab-link="orders"'),1)
                 self.assertEqual(page.count('data-admin-tab-link="members"'),1)
                 self.assertNotIn('side-bottom',page)
+                self.assertNotIn('class="ops-footer"',page)
+                self.assertNotIn('brand-mark',page)
+                self.assertGreater(page.find('class="site-footer"'),page.find('</main></div>'))
         self.assertIn('신청·주문',sidebar)
         self.assertIn('회원 관리',sidebar)
 
