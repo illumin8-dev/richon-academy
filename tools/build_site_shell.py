@@ -32,7 +32,6 @@ def outputs():
     result[STATIC / 'portal.css'] = (SOURCE / 'admin.css').read_bytes()
     result[STATIC / 'site-header.html'] = (header + '\n').encode()
     result[STATIC / 'site-footer.html'] = (footer + '\n').encode()
-    result[STATIC / 'site-font.html'] = (chrome.font_link() + '\n').encode()
     mypage = (SOURCE / 'mypage.html').read_text()
     mypage = mypage.replace('{{SITE_HEADER}}', chrome.wrapped('header', header))
     mypage = mypage.replace('{{SITE_FOOTER}}', chrome.wrapped('footer', footer))
