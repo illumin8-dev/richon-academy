@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-admin-css-rollout-hold-20261001-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "rollout-admin-site-chrome-20261001-a"
 }
