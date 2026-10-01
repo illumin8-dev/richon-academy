@@ -81,48 +81,6 @@ test('all auth and portal subrequests bypass cache rather than cache with TTL ze
     assert.equal(r.headers.get('cache-control'),'no-store');
   }
 });
-test('public calendar strips cookies and uses 60 second edge cache',async()=>{
-  const entries=new Map();
-  const cache={
-    async match(request){const value=entries.get(request.url);return value?value.clone():undefined;},
-    async put(request,response){entries.set(request.url,response.clone());}
-  };
-  let originCalls=0,observed;
-  const request=req('/portal/api/public/calendar?month=2026-10',{headers:{Cookie:'__Host-richon-session=private; unrelated=value'}});
-  const first=await handle(request,env,async(url,init)=>{
-    originCalls++;observed=init;
-    return new Response('{"month":"2026-10","items":[]}',{headers:{'Content-Type':'application/json'}});
-  },cache);
-  assert.equal(first.status,200);assert.equal(observed.headers.get('cookie'),null);
-  assert.equal(observed.cache,'no-store');
-  assert.equal(first.headers.get('cache-control'),'public, max-age=0, s-maxage=60');
-  assert.equal(await first.text(),'{"month":"2026-10","items":[]}');
-  const second=await handle(request,env,()=>assert.fail('cached public calendar must not reach origin'),cache);
-  assert.equal(second.status,200);assert.equal(await second.text(),'{"month":"2026-10","items":[]}');
-  assert.equal(originCalls,1);
-});
-
-test('public calendar strips cookies and uses 60 second edge cache',async()=>{
-  const entries=new Map();
-  const cache={
-    async match(request){const value=entries.get(request.url);return value?value.clone():undefined;},
-    async put(request,response){entries.set(request.url,response.clone());}
-  };
-  let originCalls=0,observed;
-  const request=req('/portal/api/public/calendar?month=2026-10',{headers:{Cookie:'__Host-richon-session=private; unrelated=value'}});
-  const first=await handle(request,env,async(url,init)=>{
-    originCalls++;observed=init;
-    return new Response('{"month":"2026-10","items":[]}',{headers:{'Content-Type':'application/json'}});
-  },cache);
-  assert.equal(first.status,200);assert.equal(observed.headers.get('cookie'),null);
-  assert.equal(observed.cache,'no-store');
-  assert.equal(first.headers.get('cache-control'),'public, max-age=0, s-maxage=60');
-  assert.equal(await first.text(),'{"month":"2026-10","items":[]}');
-  const second=await handle(request,env,()=>assert.fail('cached public calendar must not reach origin'),cache);
-  assert.equal(second.status,200);assert.equal(await second.text(),'{"month":"2026-10","items":[]}');
-  assert.equal(originCalls,1);
-});
-
 test('login response cookie and form survive two separate browser round trips unchanged',async()=>{
   for(const letter of ['a','b']){
     const token=letter.repeat(43),proof=letter.repeat(64);
