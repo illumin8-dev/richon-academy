@@ -25,7 +25,7 @@ COURSES=[{'course_id':x['course_id'],'title':x['course_title'],'cohort':x['cohor
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        name={'/portal/mypage':'mypage.html','/portal/admin':'admin.html','/portal/assets/portal.css':'portal.css','/portal/assets/portal.js':'portal.js'}.get(urlsplit(self.path).path)
+        name={'/portal/mypage':'mypage.html','/portal/admin':'admin.html','/portal/assets/site.css':'site.css','/portal/assets/site.js':'site.js','/portal/assets/portal.css':'portal.css','/portal/assets/portal.js':'portal.js'}.get(urlsplit(self.path).path)
         if not name: self.send_error(404);return
         content=(STATIC/name).read_bytes()
         self.send_response(200)
@@ -90,8 +90,13 @@ def main():
             if output:page.screenshot(path=str(output/'admin-mobile.png'),full_page=True)
             scenario['fail_list']=True;page.locator('#refresh').click();expect(page.locator('#list-status')).to_contain_text('목록을 불러오지 못했습니다.');expect(page.locator('#table-body tr')).to_have_count(0)
             scenario['fail_list']=False;page.locator('#retry-list').click();expect(page.locator('#table-body tr')).to_have_count(2)
-            scenario['role']='member';calls.clear();page.goto(origin+'/portal/admin');expect(page.locator('#gate-title')).to_have_text('관리자만 이용할 수 있습니다.')
+            scenario['role']='member';calls.clear();page.set_viewport_size({'width':1440,'height':1400});page.goto(origin+'/portal/admin');expect(page.locator('#gate-title')).to_have_text('관리자만 이용할 수 있습니다.')
             assert not any(path.startswith('/portal/api/admin/') for path,_,_ in calls)
+            # A short admin screen must push the shared footer to the viewport bottom
+            # without fixing it over content.
+            footer_bottom=page.locator('.site-footer').evaluate('(el)=>el.getBoundingClientRect().bottom')
+            assert abs(footer_bottom-page.evaluate('innerHeight')) <= 2
+            assert page.locator('.site-footer').evaluate("(el)=>getComputedStyle(el).position")!='fixed'
             # Member regressions moved to account_browser.py; admin cases remain here.
             browser.close()
         print('PASS: admin desktop/mobile, tabs, search, pagination, errors/retry and non-admin access gate; synthetic only.')
