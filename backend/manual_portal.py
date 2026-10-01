@@ -7,7 +7,7 @@ from fastapi import APIRouter,Depends,FastAPI,HTTPException,Request,Response
 from fastapi.responses import FileResponse
 from auth_core import Principal
 from auth_http import require_admin,AuthSettings,_origin,_csrf,cookie_token
-from portal import PAGE_HEADERS,HEADERS
+from portal import UI_PAGE_HEADERS,HEADERS
 import monthly_store
 import manual_models as model
 import manual_store as store
@@ -70,7 +70,7 @@ def install_if_enabled(app:FastAPI):
     origins=frozenset(x.strip() for x in os.getenv('RICHON_AUTH_ALLOWED_ORIGINS','').split(',') if x.strip())
     app.include_router(make_router(AuthSettings(origins)))
     @app.get('/portal/manual',include_in_schema=False)
-    def page(): return FileResponse(STATIC/'manual.html',headers=PAGE_HEADERS)
+    def page(): return FileResponse(STATIC/'manual.html',headers=UI_PAGE_HEADERS)
     @app.get('/portal/manual-assets/{asset}',include_in_schema=False)
     def asset(asset:str):
         if asset not in {'manual.css','manual.js'}: raise HTTPException(404,'not_found',headers=HEADERS)
