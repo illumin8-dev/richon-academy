@@ -1325,3 +1325,32 @@
   - Cloudflare Pages preview deploy PASS
 - 이 PR은 selector/property/URL/backend/auth 변경 없음.
 - 다음 짧은 작업: enrollments/manual의 legacy generic CSS가 공용 admin shell에 남기는 잔여 스타일(브랜드 pseudo mark, manual sidebar border, main padding/max-width)을 공용 admin.css에서 명시적으로 reset하여 메뉴/페이지 외곽 여백을 통일.
+
+
+
+### 체크포인트 35 / 관리자 shell 여백 정규화 코드 병합
+- PR #111 `fix: normalize admin shell spacing` 병합 완료.
+- merge commit: `abf37d8911be1fb4be9b9bf5fb9699ec0ef455ee`
+- 변경:
+  - shared admin shell이 legacy page CSS의 잔여 효과를 마지막 cascade에서 명시적으로 reset.
+  - monthly legacy `.brand:before` 추가 장식 제거: `.topbar .brand::before{content:none}`
+  - manual legacy sidebar border 제거: `.sidebar{border:0}`
+  - manual에만 남던 main padding/max-width 제거: `.main{padding:0;max-width:none}`
+  - enrollments/manual은 legacy page CSS 뒤에 shared portal.css가 로드되어 shell 기준을 소유하는지 테스트.
+  - courses.css는 이미 course-specific scope라 shared shell 뒤 로드되는 기존 순서를 유지.
+- PR 중 초기 browser CI 1회 실패:
+  - 원인: 새 테스트가 courses.css도 portal.css보다 먼저여야 한다고 잘못 가정.
+  - 실제 의도에 맞게 테스트 수정 후 재실행.
+- 최종 PR CI 전부 PASS:
+  - Cloudflare Pages preview
+  - static-contract
+  - portal browser
+  - edge-and-image
+  - backend Python/PostgreSQL
+  - browser-and-policy
+  - Docker/Gcloud build checks
+- merge 후 main CI도 전부 PASS.
+- 중요 runtime 상태:
+  - public Cloudflare Pages는 main을 자동 배포하므로 최신 main 상태.
+  - admin/auth/portal 정적 자산은 Cloud Run 이미지가 서빙하므로 이번 시각적 shell reset은 아직 운영 Cloud Run 재배포 전.
+  - production Cloud Run rollout은 별도 승인/운영 단계로 남김.
