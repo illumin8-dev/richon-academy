@@ -113,6 +113,7 @@ class SharedShellTests(unittest.TestCase):
                 self.assertEqual(page.count(header),1)
                 self.assertEqual(page.count(footer),1)
                 self.assertIn('/portal/assets/site.css',page)
+                self.assertIn('/portal/assets/site.js',page)
                 self.assertEqual(page.count('data-admin-tab-link="orders"'),1)
                 self.assertEqual(page.count('data-admin-tab-link="members"'),1)
                 self.assertNotIn('side-bottom',page)
