@@ -83,13 +83,21 @@ function eventButton(item){
   b.addEventListener('click',event=>{event.stopPropagation();edit(item);});return b;
 }
 function activeLegendItems(){
-  const used=new Set(state.items.filter(item=>item.display_kind!=='BANNER'&&item.event_date.startsWith(state.month)).map(item=>item.color_hex));
-  return PALETTE.filter(([hex])=>used.has(hex));
+  const seen=new Set(),items=[];
+  const events=state.items
+    .filter(item=>item.display_kind!=='BANNER'&&item.event_date.startsWith(state.month))
+    .slice().sort((a,b)=>a.event_date.localeCompare(b.event_date)||a.course_label.localeCompare(b.course_label));
+  for(const item of events){
+    const label=String(item.course_label||'').trim();if(!label)continue;
+    const key=item.color_hex+'\u0000'+label;if(seen.has(key))continue;seen.add(key);
+    items.push({hex:item.color_hex,cls:colorClass(item.color_hex),label});
+  }
+  return items;
 }
 function renderLegend(){
   const root=$('calendar-legend'),items=activeLegendItems();root.replaceChildren();root.hidden=!items.length;
   root.closest('.calendar-paper-head')?.classList.toggle('legend-empty',!items.length);
-  for(const [,cls,label] of items){const row=el('span',undefined,'calendar-legend-item');row.append(el('i',undefined,'calendar-legend-dot '+cls),document.createTextNode(label));root.append(row);}
+  for(const item of items){const row=el('span',undefined,'calendar-legend-item');row.dataset.color=item.hex;row.append(el('i',undefined,'calendar-legend-dot '+item.cls),document.createTextNode(item.label));root.append(row);}
 }
 function monthGrid(){
   const [y,m]=state.month.split('-').map(Number),first=new Date(Date.UTC(y,m-1,1)),firstDow=first.getUTCDay(),days=new Date(Date.UTC(y,m,0)).getUTCDate();
@@ -207,7 +215,7 @@ function drawCalendarPng(){
   drawCalendarSymbol(ctx,510,34);
   ctx.fillStyle='#111';ctx.textAlign='center';ctx.font='800 38px Pretendard, Arial, sans-serif';ctx.fillText(year+'년 '+month+'월',510,158);ctx.fillText('리치온 캘린더',510,203);
   ctx.textAlign='left';ctx.font='600 17px Pretendard, Arial, sans-serif';
-  activeLegendItems().forEach((item,index)=>{const y=58+index*29;ctx.fillStyle=item[0];ctx.beginPath();ctx.arc(850,y,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#222';ctx.fillText(item[2],865,y);});
+  activeLegendItems().forEach((item,index)=>{const y=58+index*29;ctx.fillStyle=item.hex;ctx.beginPath();ctx.arc(850,y,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#222';ctx.fillText(item.label,865,y);});
   const dates=monthGrid(),rows=dates.length/7,x0=90,gridWidth=1020,colW=gridWidth/7,gridTop=322,gridBottom=1122,rowH=(gridBottom-gridTop)/rows;
   const weekdays=['Su','Mo','Tu','We','Th','Fr','Sa'];ctx.textAlign='center';ctx.font='500 22px Pretendard, Arial, sans-serif';
   weekdays.forEach((name,index)=>{ctx.fillStyle=index===0?'#ff5257':index===6?'#178de5':'#b9b9b9';ctx.fillText(name,x0+colW*(index+.5),285);});
