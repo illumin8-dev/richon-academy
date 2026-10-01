@@ -1402,3 +1402,48 @@
 - User-visible follow-up:
   - verify admin page spacing visually across admin / courses / enrollments / manual.
   - verify first login/modal now shows shell immediately while Cloud Run wakes from minScale=0.
+
+
+
+### 체크포인트 37 / 관리자 헤더·푸터 공용 site chrome 통일 및 운영 반영
+- 사용자 피드백: 여백은 개선됐으나 관리자 헤더의 별도 로고 처리와 단순 푸터가 다른 화면과 달라 보임.
+- PR #113 `fix: unify admin header and footer with site chrome`
+  - branch: `fix/unify-admin-site-chrome`
+  - head: `6b75a6d04f89c15e13900ff8d3a1577138306aac`
+  - merge commit: `1a375f2c0c13a63b91d6ba78d12d458db5a10595`
+  - PR CI / browser / preview / backend regression / Cloudflare Pages checks 모두 PASS.
+- 관리자 헤더:
+  - 기존 별도 `topbar`, 한글 브랜드명, `brand-mark` 제거.
+  - public/member와 동일한 `site-nav` / `site-logo` 기반 RICH/ON + ESTATE STUDY 스타일 사용.
+  - 관리자 기능 링크는 `운영 홈 / 마이페이지 / 로그아웃` 그대로 유지.
+- 관리자 푸터:
+  - 기존 `<footer class="ops-footer">RICHON ACADEMY</footer>` 제거.
+  - canonical `frontend/shared/footer.html`을 admin / courses / enrollments / manual 모두에 재사용.
+  - 블로그 / 카페 / 유튜브 / 개인정보처리방침 / 이용약관 / 사업자 정보 동일.
+  - footer를 sidebar/content grid 바깥 full-width 영역으로 이동.
+- 공용 chrome:
+  - 관리자 4개 페이지에서 `/portal/assets/site.css`, `/portal/assets/site.js` 로드.
+  - footer year 등 shared chrome behavior 동일 적용.
+  - fixed site header에 맞춰 admin body top padding 및 sticky sidebar top offset 정리.
+- backend/API/auth/DB/Worker/Cloudflare route 변경 없음.
+- 운영 rollout:
+  - request source commit: `00a818015fcf9c8083d41a23b2f1f04ecb33ffc6`
+  - workflow run: `36810983256`
+  - result: SUCCESS
+  - previous candidate: `richon-portal-handoff-36807214303-1`
+  - new candidate: `richon-portal-handoff-36810983256-1`
+  - image digest: `sha256:1b0ae82451a62aa1e90114f3cbf6c6902039f1b2d8be9d9c9905e0198db0b1c4`
+  - default 100% revision unchanged: `richon-portal-gh-35810692921-1`
+  - IAM unchanged / EDGE_GATE PASS / ACCESS_GATE PASS.
+  - customer probes: `/auth/login` 200 / `/portal/mypage` 200 / login-modal 200.
+- post-rollout inspect:
+  - request commit: `30b31d0bed3c7a5ff9b6d4c5a74611a0f2104362`
+  - `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+- deployment request returned to hold:
+  - commit: `ea6d1c6b3c9cdc651e22f1c2aa593d86d45b88ae`
+- 다음 사용자 확인:
+  - /portal/admin
+  - /portal/courses
+  - /portal/enrollments
+  - /portal/manual
+  - header RICH/ON 정렬 / 우측 운영 링크 / full-width 공용 footer를 육안 확인.
