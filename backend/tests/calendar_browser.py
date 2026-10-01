@@ -101,7 +101,8 @@ def main():
             expect(page.locator('#month-label')).to_have_text('2026년 10월')
             expect(page.locator('.calendar-week')).to_have_count(5)
             expect(page.locator('.calendar-event-item')).to_have_count(3)
-            expect(page.locator('.calendar-banner')).to_have_text('연휴')
+            expect(page.locator('.calendar-banner')).to_have_count(2)
+            assert all(value=='연휴' for value in page.locator('.calendar-banner').all_text_contents())
             expect(page.locator('#calendar-legend')).to_contain_text('무료 브리핑')
             expect(page.locator('#calendar-legend')).to_contain_text('리치온 스터디')
             expect(page.locator('#calendar-legend')).to_contain_text('Pre리치온')
@@ -142,7 +143,7 @@ def main():
             page.locator('[name=color_hex]').select_option('#FF5757')
             page.locator('[name=course_label]').fill('추석연휴')
             page.locator('#save-event').click()
-            expect(page.locator('.calendar-banner')).to_have_text('추석연휴')
+            assert '추석연휴' in page.locator('.calendar-banner').all_text_contents()
             assert posts[-1][1]['display_kind']=='BANNER'
             assert posts[-1][1]['end_date']=='2026-11-26'
 
