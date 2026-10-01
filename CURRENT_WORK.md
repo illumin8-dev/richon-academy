@@ -173,6 +173,8 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] 빈 날짜 클릭 → 날짜가 채워진 편집창
 - [x] 기존 일정 클릭 → 수정 / 임의 날짜 복사 / 삭제
 - [x] 연휴 / 강조 문구: 시작일 / 종료일 / 문구 / 색상
+- [x] 연휴 날짜 전체는 연한 색으로 강조 / 문구 리본은 주를 넘어도 자르거나 반복하지 않고 1회만 표시
+- [x] 리본 위치는 연휴 날짜가 가장 많이 포함된 주 / 동률이면 시작 주
 - [x] +7일 고정 복사 / 반복 규칙 없음
 - [x] 10월 owner 제공 캘린더를 단일 시각 기준으로 사용
 - [x] 세로 격자 대신 주차 점선 / 컬러 날짜 블록 / 색상점+과정+선택 내용
@@ -190,7 +192,9 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] DB019 final free-form grants 적용
 - [x] PR #118 자유형 캘린더 병합
 - [x] PR #119 DB019 rollout 호환성 수정 병합
-- [x] protected candidate richon-portal-handoff-36884928672-1 rollout PASS
+- [x] PR #120 10월 visual editor 병합
+- [x] protected candidate richon-portal-handoff-36899480371-1 rollout PASS
+- [x] visual banner ends_at 최소 쓰기권한 적용 / RUNTIME_READBACK PASS
 - [x] deploy request hold
 - [x] 랜딩 footer 하단 74px gap 제거 확인
 
