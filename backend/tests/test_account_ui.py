@@ -86,12 +86,12 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
     fallback=client().get('/auth/login')
     portal_header=(ROOT/'backend/portal_static/site-header.html').read_text().strip()
     shared_footer=(ROOT/'frontend/shared/footer.html').read_text().strip()
-    font_link=(ROOT/'backend/portal_static/site-font.html').read_text().strip()
+    font_href='https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css'
     for response in (page,fallback):
         assert portal_header in response.text
         assert shared_footer in response.text
-        assert response.text.count(font_link)==1
-        assert 'pretendard@v1.3.9' in response.headers['content-security-policy']
+        assert response.text.count(font_href)==1
+        assert font_href in response.headers['content-security-policy']
         assert 'frame-ancestors \'none\'' in response.headers['content-security-policy']
         assert "script-src 'self'" in response.headers['content-security-policy']
     for forbidden in ('홈페이지로','MY LEARNING JOURNEY','조회 버전','계정으로 계속해서 이용하세요','카카오 회원님'):
