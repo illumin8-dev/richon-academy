@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-sticky-shared-footer-hold-20261001-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "calendar-admin-candidate-20261001-a"
 }
