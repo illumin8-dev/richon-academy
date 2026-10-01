@@ -145,7 +145,7 @@ def main():
             page.locator('[name=color_hex]').select_option('#FF5757')
             page.locator('[name=course_label]').fill('추석연휴')
             page.locator('#save-event').click()
-            assert '추석연휴' in page.locator('.calendar-banner').all_text_contents()
+            expect(page.locator('.calendar-banner').filter(has_text='추석연휴')).to_have_count(1)
             assert posts[-1][1]['display_kind']=='BANNER'
             assert posts[-1][1]['end_date']=='2026-11-26'
 
