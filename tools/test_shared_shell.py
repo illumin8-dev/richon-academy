@@ -91,7 +91,7 @@ class SharedShellTests(unittest.TestCase):
         css=(build.SOURCE/'admin.css').read_text()
         for rule in ('body{padding-top:74px}', '.sidebar{border:0}', '.main{padding:0;max-width:none}', '.sidebar{top:98px}', 'width:100%;min-width:0;max-width:1360px'):
             self.assertIn(rule,css)
-        for name in ('admin.html','courses.html','enrollments.html','manual.html'):
+        for name in ('admin.html','courses.html','calendar.html','enrollments.html','manual.html'):
             page=(build.STATIC/name).read_text()
             with self.subTest(name=name):
                 self.assertIn('/portal/assets/portal.css',page)
@@ -116,7 +116,7 @@ class SharedShellTests(unittest.TestCase):
         self.assertIn('class="site-logo"',header)
         self.assertNotIn('brand-mark',header)
         self.assertNotIn('class="topbar"',header)
-        for name in ('admin.html','courses.html','enrollments.html','manual.html'):
+        for name in ('admin.html','courses.html','calendar.html','enrollments.html','manual.html'):
             page=(build.STATIC/name).read_text()
             with self.subTest(name=name):
                 self.assertEqual(page.count(header),1)
@@ -133,6 +133,8 @@ class SharedShellTests(unittest.TestCase):
                 self.assertGreater(page.find('class="site-footer"'),page.find('</main></div>'))
         self.assertIn('신청·주문',sidebar)
         self.assertIn('회원 관리',sidebar)
+        self.assertIn('캘린더',sidebar)
+        self.assertIn('/portal/calendar',sidebar)
 
     def test_admin_member_list_hides_internal_uuid_and_tmi(self):
         js=(build.STATIC/'portal.js').read_text()
