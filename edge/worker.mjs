@@ -69,11 +69,19 @@ export function responseReferrerPolicy(path, method, status, type) {
     && status === 200 && type?.toLowerCase().split(';')[0].trim() === 'text/html'
     ? 'same-origin' : 'no-referrer';
 }
-export async function handle(request, env, fetcher = fetch) {
+export async function handle(request, env, fetcher = fetch, cacheStore = globalThis.caches?.default) {
   const url = new URL(request.url);
   if (url.origin !== ORIGIN || !allowed(url.pathname, request.method) || url.pathname.includes('%') || url.pathname.includes('\\')) return failure(404, 'not_found');
   if (url.search.length > 8192) return failure(414, 'request_too_large');
   if (env.PORTAL_ENABLED !== 'true') return failure(503, 'portal_not_enabled');
+  const publicCalendar = request.method === 'GET' && url.pathname === '/portal/api/public/calendar';
+  const cacheKey = publicCalendar ? new Request(url.href, {method:'GET'}) : null;
+  if (publicCalendar && cacheStore) {
+    try {
+      const cached = await cacheStore.match(cacheKey);
+      if (cached) return cached;
+    } catch { /* cache failure must not take the public calendar down */ }
+  }
   let upstream;
   try {
     upstream = new URL(env.PORTAL_UPSTREAM);
@@ -96,7 +104,7 @@ export async function handle(request, env, fetcher = fetch) {
     if (previous) headers.set('Referer', previous);
   }
   const cookies = (request.headers.get('cookie') || '').split(';').map(x => x.trim()).filter(x => COOKIES.has(x.split('=',1)[0]));
-  if (cookies.length) headers.set('Cookie', cookies.join('; '));
+  if (!publicCalendar && cookies.length) headers.set('Cookie', cookies.join('; '));
   headers.set('X-Richon-Edge-Key', env.RICHON_EDGE_SECRET);
   const destination = new URL(url.pathname + url.search, upstream.origin);
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 30000);
@@ -105,7 +113,7 @@ export async function handle(request, env, fetcher = fetch) {
     // responses must bypass the CDN cache, not enter it with immediate expiry.
     const result = await fetcher(destination.href, {method: request.method, headers, body,
       redirect: 'manual', signal: controller.signal, cache: 'no-store'});
-    const output = new Headers({'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
+    const output = new Headers({'Cache-Control':publicCalendar?'public, max-age=60, s-maxage=60':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
     for (const key of ['content-type', 'content-security-policy', 'retry-after']) {
       const value = result.headers.get(key); if (value) output.set(key, value);
     }
@@ -117,6 +125,7 @@ export async function handle(request, env, fetcher = fetch) {
     }
     const setCookies = typeof result.headers.getSetCookie === 'function'
       ? result.headers.getSetCookie() : result.headers.getAll('Set-Cookie');
+    if (publicCalendar && setCookies.length) throw new Error('public_calendar_cookie_not_allowed');
     for (const cookie of setCookies) {
       const parts = cookie.split(';').map(x => x.trim());
       const attrs = parts.slice(1).map(x => x.toLowerCase());
@@ -124,7 +133,12 @@ export async function handle(request, env, fetcher = fetch) {
         || !attrs.includes('path=/') || !attrs.includes('samesite=lax') || attrs.some(x => /^domain\s*=/.test(x))) throw new Error('invalid_cookie');
       output.append('Set-Cookie', cookie);
     }
-    return new Response(result.body, {status: result.status, headers: output});
+    const response = new Response(result.body, {status: result.status, headers: output});
+    if (publicCalendar && result.status === 200 && cacheStore) {
+      try { await cacheStore.put(cacheKey, response.clone()); }
+      catch { /* origin response remains usable even if cache storage fails */ }
+    }
+    return response;
   } catch { return failure(502, 'portal_unavailable'); }
   finally { clearTimeout(timer); }
 }
