@@ -1223,3 +1223,30 @@
   - 기존 marururu00 Pages/richonacademy.com 유지.
   - 새 richon-academy-main.pages.dev 유지.
   - 기존 Worker route/Cloud Run portal 변경 없음.
+
+
+
+### 체크포인트 31 / 현재 아키텍처 유지 + 로그인 cold start 후속 개선 결정
+- 사용자 결정: 현재 구조 유지.
+  - public static: Cloudflare Pages
+  - /auth/*, /portal/*: 기존 richon-account-router Worker Route 유지
+  - backend: Google Cloud Run richon-portal 유지
+  - DB: Neon 유지
+- 별도 Pages Functions 통합 / auth·portal URL namespace 제거 / Cloud Run 제거는 현재 하지 않음.
+- Cloudflare Workers Free 범위에서 현재 Worker 유지 자체를 비용 절감 목적으로 바꿀 이유 없음.
+- public hosting cutover 목표는 기존 GitHub Pages origin(marururu00.github.io)만 새 richon-academy-main Pages로 교체하는 것.
+- 현재 DNS apex: richonacademy.com CNAME marururu00.github.io / Cloudflare proxied.
+- existing live Worker routes:
+  - https://richonacademy.com/auth/*
+  - https://richonacademy.com/portal/*
+- Pages known issue 때문에 custom domain 추가 시 existing Worker route가 있으면 먼저 짧게 route를 분리해야 할 수 있음. route exact values는 이미 캡처 확인 완료.
+- 로그인 UX 후속 이슈:
+  - 사용자가 첫 로그인 시 간편 로그인 팝업이 가끔 늦게 뜨거나 안 뜨는 체감을 보고함.
+  - current deploy validator는 Cloud Run service/revision minScale=0, maxScale=1을 명시적으로 강제함. scale-to-zero cold start가 가능한 설정.
+  - backend/portal_static/login.js는 dialog shell을 먼저 띄운 뒤 /auth/login?view=modal을 fetch하는 구조이나, public index/apply/shared site.js에는 login.js가 포함돼 있지 않음.
+  - mypage는 /portal/assets/login.js를 Cloud Run 경로에서 로드함.
+- 후속 개선 우선순위 제안:
+  1. public login trigger에서 modal shell/client JS를 static Pages 자산으로 제공해 클릭 즉시 UI가 보이게 하고, CSRF/provider config만 /auth/login?view=modal에서 비동기 fetch.
+  2. Cloud Run startup CPU boost 현재 상태를 read-only 확인 후 필요 시 별도 승인 변경.
+  3. 여전히 느린 경우에만 minScale=1 검토. 이는 scale-to-zero를 포기하고 idle 비용 가능성이 있어 첫 선택 아님.
+- hosting cutover와 login cold-start 개선은 별도 작업/PR로 분리.
