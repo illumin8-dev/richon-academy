@@ -101,6 +101,7 @@ function renderDesktop(){
     const weekDates=dates.slice(w,w+7),week=el('section',undefined,'calendar-week'),grid=el('div',undefined,'calendar-week-grid');
     weekDates.forEach((key,index)=>{
       const current=key.startsWith(state.month),items=by[key]||[],day=Number(key.slice(8)),cell=el('div',undefined,'calendar-day'+(current?'':' outside')+(index===0?' sunday':'')+(index===6?' saturday':'')+(items.length?' has-event':''));
+      cell.dataset.date=key;cell.setAttribute('aria-label',key);
       const dateNode=el('div',day,'calendar-date'+(items.length?' '+colorClass(items[0].color_hex):''));
       cell.append(dateNode);
       if(current)cell.addEventListener('click',()=>resetEditor(key));
