@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "rollout-admin-css-shell-20261001-a"
+  "operation": "inspect-legacy-admin-enabled",
+  "request_id": "post-admin-css-rollout-inspect-20261001-a"
 }
