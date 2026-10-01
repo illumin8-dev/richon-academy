@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-admin-site-chrome-hold-20261001-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "rollout-single-shared-site-chrome-20261001-a"
 }
