@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-calendar-png-holiday-ribbon-hold-20261002-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "calendar-holiday-exact-range-feedback-20261002-a"
 }
