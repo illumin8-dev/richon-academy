@@ -119,6 +119,8 @@ def main():
             expect(page.locator('[name=course_label]')).to_have_value('Pre리치온')
             page.locator('[name=event_date]').fill('2026-10-21')
             page.locator('#copy-event').click()
+            expect(page.locator('#editor-status')).to_have_text('선택한 날짜에 복사했습니다.')
+            expect(page.locator('.calendar-event-item')).to_have_count(4)
             assert posts[-1][1]['event_date']=='2026-10-21'
             assert posts[-1][1]['display_kind']=='EVENT'
             expect(page.locator('[name=event_date]')).to_have_value('2026-10-21')
