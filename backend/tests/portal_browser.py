@@ -86,7 +86,21 @@ def main():
             page.locator('#search').fill('검색결과없음');page.locator('#search').press('Enter');expect(page.locator('#table-body')).to_contain_text('조건에 맞는 내역이 없습니다.')
             page.locator('#search').fill('');page.locator('#search').press('Enter');expect(page.locator('#table-body tr')).to_have_count(2)
             scenario['more']=True;page.locator('#refresh').click();expect(page.locator('#next')).to_be_enabled();page.locator('#next').click();expect(page.locator('#page-info')).to_contain_text('21–22');scenario['more']=False
-            page.set_viewport_size({'width':390,'height':844});assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.set_viewport_size({'width':390,'height':844})
+            mobile_width=page.evaluate("""() => ({
+                scrollWidth:document.documentElement.scrollWidth,
+                innerWidth:innerWidth,
+                offenders:[...document.querySelectorAll('body *')].map(el=>({
+                    tag:el.tagName,
+                    cls:el.className,
+                    id:el.id,
+                    left:el.getBoundingClientRect().left,
+                    right:el.getBoundingClientRect().right,
+                    width:el.getBoundingClientRect().width,
+                    scrollWidth:el.scrollWidth,
+                })).filter(x=>x.right>innerWidth+1 || x.left<-1).slice(0,12)
+            })""")
+            assert mobile_width['scrollWidth'] <= mobile_width['innerWidth'], mobile_width
             if output:page.screenshot(path=str(output/'admin-mobile.png'),full_page=True)
             scenario['fail_list']=True;page.locator('#refresh').click();expect(page.locator('#list-status')).to_contain_text('목록을 불러오지 못했습니다.');expect(page.locator('#table-body tr')).to_have_count(0)
             scenario['fail_list']=False;page.locator('#retry-list').click();expect(page.locator('#table-body tr')).to_have_count(2)
