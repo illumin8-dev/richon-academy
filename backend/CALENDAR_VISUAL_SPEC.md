@@ -15,7 +15,9 @@ The owner-provided October 2026 Richon calendar is the visual reference.
 - event copy appears below the date with a same-color dot, course label, then optional content
 - no spreadsheet-style vertical cell borders
 - week separation uses horizontal dotted rules
-- holiday/emphasis copy may span a date range as a large colored banner
+- holiday/emphasis ranges tint every covered date, but the label is rendered as one complete soft ribbon only once
+- if a holiday crosses week rows, the ribbon is placed on the row containing the most covered dates; ties use the earlier row
+- the ribbon is never split or repeated across week rows
 - mobile may use an agenda representation while preserving the same palette/content hierarchy
 
 ## Canonical October palette / legend
@@ -46,8 +48,11 @@ Holiday / emphasis fields:
 Interaction:
 - clicking an empty date opens the editor with that date prefilled
 - clicking an event/banner opens edit mode
-- copy uses the dates currently chosen by the operator; no +7-day or recurrence rule
-- copied items remain independently editable
+- event duplication uses the dates currently chosen by the operator; no +7-day or recurrence rule
+- duplicated items remain independently editable
+- the editor labels this action as `일정 복제` so it cannot be confused with image copying
+- `PNG 복사` renders the current month as a standalone 1200×1200 PNG without admin chrome and writes it to the image clipboard
+- if image clipboard writing is unavailable, PNG file save is the fallback
 - delete is soft delete
 - course label suggestions are convenience only and never constrain free text
 

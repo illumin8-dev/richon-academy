@@ -61,6 +61,15 @@ def main():
             kwargs={'headless':True}
             if os.environ.get('RICHON_BROWSER_EXECUTABLE'):kwargs['executable_path']=os.environ['RICHON_BROWSER_EXECUTABLE']
             browser=p.chromium.launch(**kwargs);context=browser.new_context(viewport={'width':1440,'height':1100},locale='ko-KR')
+            context.add_init_script("""
+                Object.defineProperty(window,'ClipboardItem',{value:class ClipboardItem {
+                  constructor(data){this.data=data;this.types=Object.keys(data);}
+                }});
+                Object.defineProperty(navigator,'clipboard',{value:{write:async items=>{
+                  window.__clipboardItems=items;
+                  window.__clipboardBlob=items[0].data['image/png'];
+                }}});
+            """)
             def api_route(route):
                 u=urlsplit(route.request.url)
                 if u.netloc!=urlsplit(origin).netloc:return route.abort()
@@ -101,11 +110,24 @@ def main():
             expect(page.locator('#month-label')).to_have_text('2026년 10월')
             expect(page.locator('.calendar-week')).to_have_count(5)
             expect(page.locator('.calendar-event-item')).to_have_count(3)
-            expect(page.locator('.calendar-banner')).to_have_count(2)
-            assert all(value=='연휴' for value in page.locator('.calendar-banner').all_text_contents())
+            # A cross-week holiday highlights every covered date but shows one unbroken ribbon only once.
+            expect(page.locator('.calendar-banner')).to_have_count(1)
+            expect(page.locator('.calendar-banner')).to_have_text('연휴')
+            expect(page.locator('.holiday-day')).to_have_count(4)
             expect(page.locator('#calendar-legend')).to_contain_text('무료 브리핑')
             expect(page.locator('#calendar-legend')).to_contain_text('리치온 스터디')
             expect(page.locator('#calendar-legend')).to_contain_text('Pre리치온')
+            expect(page.locator('#copy-event')).to_have_text('일정 복제')
+
+            # Export is a 1200x1200 PNG copied to the image clipboard, not a screenshot of admin chrome.
+            page.locator('#copy-png').click()
+            expect(page.locator('#action-status')).to_have_text('1200×1200 PNG 이미지를 클립보드에 복사했습니다.')
+            png=page.evaluate("""async()=>{
+              const blob=window.__clipboardBlob;
+              const bitmap=await createImageBitmap(blob);
+              return {type:blob.type,width:bitmap.width,height:bitmap.height,size:blob.size};
+            }""")
+            assert png['type']=='image/png' and png['width']==1200 and png['height']==1200 and png['size']>1000
 
             # Empty date click opens the compact editor with that date prefilled.
             page.locator('[data-date="2026-10-15"]').click()
@@ -157,7 +179,7 @@ def main():
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'calendar-mobile.png'),full_page=True)
             browser.close()
-        print('PASS: October-style calendar, canonical legend, date-click editor, arbitrary copy, banner range, XSS-safe text and mobile view; synthetic only.')
+        print('PASS: October-style calendar, single cross-week holiday ribbon, date-click editor, arbitrary event duplication, 1200px PNG clipboard export, XSS-safe text and mobile view; synthetic only.')
     finally:
         server.shutdown();server.server_close()
 
