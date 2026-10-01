@@ -112,19 +112,30 @@ def main():
             expect(page.locator('.calendar-week')).to_have_count(5)
             expect(page.locator('.calendar-event-item')).to_have_count(3)
             # Exact regression: 9~12 must never visually expand to the 8th.
-            expect(page.locator('.calendar-banner')).to_have_count(1)
-            expect(page.locator('.calendar-banner')).to_have_text('리치온 아카데미')
             expect(page.locator('.holiday-day')).to_have_count(4)
             expect(page.locator('[data-date="2026-10-08"]')).not_to_have_class(re.compile(r'holiday-day'))
-            expect(page.locator('[data-date="2026-10-09"]')).to_have_class(re.compile(r'holiday-start'))
-            expect(page.locator('[data-date="2026-10-10"]')).to_have_class(re.compile(r'holiday-end'))
-            expect(page.locator('[data-date="2026-10-11"]')).to_have_class(re.compile(r'holiday-start'))
-            expect(page.locator('[data-date="2026-10-12"]')).to_have_class(re.compile(r'holiday-end'))
-            expect(page.locator('[data-date="2026-10-09"] .calendar-banner')).to_have_count(1)
-            assert page.locator('[data-date="2026-10-09"] .calendar-banner').evaluate("(el)=>el.style.getPropertyValue('--holiday-span')")=='2'
+            # Proposal B: plain colored dates + one labeled ribbon on the first tied row + one blank continuation ribbon.
+            expect(page.locator('.calendar-holiday-ribbon')).to_have_count(2)
+            expect(page.locator('.calendar-holiday-ribbon.has-label')).to_have_count(1)
+            expect(page.locator('.calendar-holiday-ribbon.has-label')).to_have_text('리치온 아카데미')
+            expect(page.locator('.calendar-holiday-ribbon.is-continuation')).to_have_count(1)
+            expect(page.locator('.calendar-holiday-ribbon.is-continuation')).to_have_text('')
+            labeled=page.locator('.calendar-holiday-ribbon.has-label')
+            assert labeled.evaluate("(el)=>el.style.gridColumnStart")=='6'
+            assert labeled.evaluate("(el)=>el.style.gridColumnEnd")=='span 2'
+            continuation=page.locator('.calendar-holiday-ribbon.is-continuation')
+            assert continuation.evaluate("(el)=>el.style.gridColumnStart")=='1'
+            assert continuation.evaluate("(el)=>el.style.gridColumnEnd")=='span 2'
+            assert page.locator('[data-date="2026-10-09"]').evaluate("(el)=>getComputedStyle(el).backgroundColor")=='rgba(0, 0, 0, 0)'
+            assert page.locator('[data-date="2026-10-09"] .calendar-date').evaluate("(el)=>getComputedStyle(el).backgroundColor")=='rgba(0, 0, 0, 0)'
+            # Legend is monthly and lecture-driven: holiday colors do not create legend items.
+            expect(page.locator('#calendar-legend .calendar-legend-item')).to_have_count(3)
             expect(page.locator('#calendar-legend')).to_contain_text('무료 브리핑')
             expect(page.locator('#calendar-legend')).to_contain_text('리치온 스터디')
             expect(page.locator('#calendar-legend')).to_contain_text('Pre리치온')
+            expect(page.locator('#calendar-legend')).not_to_contain_text('재개발중급반')
+            expect(page.locator('#calendar-legend')).not_to_contain_text('리치온 인테리어')
+            expect(page.locator('#calendar-legend')).not_to_contain_text('스터디 전체')
             expect(page.locator('#copy-event')).to_have_text('일정 복제')
 
             # Export is a 1200x1200 PNG copied to the image clipboard, not a screenshot of admin chrome.
@@ -177,7 +188,7 @@ def main():
             page.locator('[name=color_hex]').select_option('#FF5757')
             page.locator('[name=course_label]').fill('추석연휴')
             page.locator('#save-event').click()
-            expect(page.locator('.calendar-banner').filter(has_text='추석연휴')).to_have_count(1)
+            expect(page.locator('.calendar-holiday-ribbon.has-label').filter(has_text='추석연휴')).to_have_count(1)
             assert posts[-1][1]['display_kind']=='BANNER'
             assert posts[-1][1]['end_date']=='2026-11-26'
 
@@ -189,7 +200,7 @@ def main():
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'calendar-mobile.png'),full_page=True)
             browser.close()
-        print('PASS: exact 9-12 holiday shading, integrated one-time ribbon, visible PNG copy success, arbitrary event duplication, 1200px PNG clipboard export, XSS-safe text and mobile view; synthetic only.')
+        print('PASS: proposal-B holiday ribbons, plain holiday dates, dynamic monthly legend, visible PNG copy success, arbitrary event duplication, 1200px PNG clipboard export, XSS-safe text and mobile view; synthetic only.')
     finally:
         server.shutdown();server.server_close()
 
