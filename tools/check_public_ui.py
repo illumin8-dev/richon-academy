@@ -132,7 +132,7 @@ for name in images:
 css=(shared/'site.css').read_text()
 js=(shared/'site.js').read_text()
 assert '.site-footer-links a{color:inherit;' in css
-assert 'body.richon-page{padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}' in css
+assert 'body.richon-page{box-sizing:border-box;padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}' in css
 assert '.site-footer{margin-top:auto;flex-shrink:0;' in css
 for page in (apply,guide,privacy,terms):
     assert '<body class="richon-page' in page
