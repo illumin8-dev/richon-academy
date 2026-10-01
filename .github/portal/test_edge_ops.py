@@ -124,6 +124,39 @@ class EdgeGuards(TestCase):
         with patch.object(e, 'request', side_effect=response):
             self.assertEqual(e.access_status(), e.CUSTOMER_ROUTES)
 
+    def test_pages_apply_canonical_redirect_is_a_pass_but_other_redirects_are_not(self):
+        modal = json.dumps({
+            'csrf': 'a' * 64,
+            'return_to': '/portal/mypage',
+            'providers': ['kakao', 'naver'],
+            'collect_profile': True,
+            'notice': None,
+        }).encode()
+        def good(url, **kw):
+            if url == e.LOGIN_MODAL:
+                return 200, {'Content-Type': 'application/json'}, modal
+            path = url.removeprefix(e.ORIGIN)
+            if path in e.CALLBACKS:
+                return 303, {'Location': e.ORIGIN + '/auth/login?error=login_failed'}, b''
+            if path == '/apply.html':
+                return 308, {'Location': '/apply'}, b''
+            return 200, {'Content-Type': 'text/html'}, b''
+        with patch.object(e, 'request', side_effect=good):
+            self.assertEqual(e.access_status(), e.CUSTOMER_ROUTES)
+
+        for location in ('https://evil.invalid/apply', '/other', e.ORIGIN + '/apply?x=1'):
+            def bad(url, **kw):
+                if url == e.LOGIN_MODAL:
+                    return 200, {'Content-Type': 'application/json'}, modal
+                path = url.removeprefix(e.ORIGIN)
+                if path in e.CALLBACKS:
+                    return 303, {'Location': e.ORIGIN + '/auth/login?error=login_failed'}, b''
+                if path == '/apply.html':
+                    return 308, {'Location': location}, b''
+                return 200, {'Content-Type': 'text/html'}, b''
+            with self.subTest(location=location), patch.object(e, 'request', side_effect=bad):
+                self.assertEqual(e.access_status(), 'inconclusive')
+
     def test_cloudflare_access_redirect_on_customer_route_is_not_a_pass(self):
         def response(url, **kw):
             if url == e.LOGIN_MODAL:
