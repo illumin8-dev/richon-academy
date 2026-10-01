@@ -28,7 +28,7 @@ PAGE_HEADERS = {
 }
 PUBLIC_CALENDAR_HEADERS = {
     **HEADERS,
-    "Cache-Control": "public, max-age=60, s-maxage=60",
+    "Cache-Control": "public, max-age=0, s-maxage=60",
     "Referrer-Policy": "no-referrer",
 }
 
