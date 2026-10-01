@@ -1,31 +1,15 @@
-"""Render the approved Richon public-site chrome into private account pages.
+"""Render canonical Richon shared chrome/assets into private portal pages.
 
-The current public landing/application files are intentionally untouched in this PR.
-The shared fragments are copied only to the portal image and used by the fallback
-OAuth pages + mypage. No deployment, credentials, network or data migration.
+The editable header/footer sources live under frontend/shared. This renderer
+creates the portal/admin variants while preserving page-specific application UI.
 """
 from pathlib import Path
 import argparse
-import re
+import shared_chrome as chrome
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'frontend/shared'
 STATIC = ROOT / 'backend/portal_static'
-
-
-def wrapped(name: str, value: str) -> str:
-    return '<!-- richon:shared-' + name + ' -->\n' + value.strip() + '\n<!-- /richon:shared-' + name + ' -->'
-
-
-def replace_wrapped(page: str, name: str, value: str) -> str:
-    start='<!-- richon:shared-' + name + ' -->'
-    end='<!-- /richon:shared-' + name + ' -->'
-    pattern=re.escape(start)+r'.*?'+re.escape(end)
-    replacement=wrapped(name,value)
-    rendered,count=re.subn(pattern,replacement,page,count=1,flags=re.S)
-    if count!=1:
-        raise ValueError('missing_shared_marker_'+name)
-    return rendered
 
 
 def render_admin_sidebar(raw: str, active: str | None) -> str:
@@ -38,22 +22,22 @@ def render_admin_sidebar(raw: str, active: str | None) -> str:
 
 
 def outputs():
-    header = (SOURCE / 'portal-header.html').read_text()
-    footer = (SOURCE / 'footer.html').read_text()
+    header = chrome.render_header('portal')
+    footer = chrome.footer()
     result = {}
     for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'auth.css', 'ops.css', 'account.css', 'account.js'):
         result[STATIC / name] = (SOURCE / name).read_bytes()
     # Keep the deployed /portal/assets/portal.css URL stable while making
     # frontend/shared/admin.css the single editable source for the admin shell.
     result[STATIC / 'portal.css'] = (SOURCE / 'admin.css').read_bytes()
-    result[STATIC / 'site-header.html'] = header.encode()
-    result[STATIC / 'site-footer.html'] = footer.encode()
+    result[STATIC / 'site-header.html'] = (header + '\n').encode()
+    result[STATIC / 'site-footer.html'] = (footer + '\n').encode()
     mypage = (SOURCE / 'mypage.html').read_text()
-    mypage = mypage.replace('{{SITE_HEADER}}', wrapped('header', header))
-    mypage = mypage.replace('{{SITE_FOOTER}}', wrapped('footer', footer))
+    mypage = mypage.replace('{{SITE_HEADER}}', chrome.wrapped('header', header))
+    mypage = mypage.replace('{{SITE_FOOTER}}', chrome.wrapped('footer', footer))
     result[STATIC / 'mypage.html'] = mypage.encode()
 
-    admin_header=(SOURCE/'admin-header.html').read_text()
+    admin_header=chrome.render_header('admin')
     admin_sidebar=(SOURCE/'admin-sidebar.html').read_text()
     admin_footer=footer
     for filename,active in {
@@ -63,9 +47,9 @@ def outputs():
         'manual.html':'manual',
     }.items():
         page=(STATIC/filename).read_text()
-        page=replace_wrapped(page,'admin-header',admin_header)
-        page=replace_wrapped(page,'admin-sidebar',render_admin_sidebar(admin_sidebar,active))
-        page=replace_wrapped(page,'admin-footer',admin_footer)
+        page=chrome.replace_wrapped(page,'admin-header',admin_header)
+        page=chrome.replace_wrapped(page,'admin-sidebar',render_admin_sidebar(admin_sidebar,active))
+        page=chrome.replace_wrapped(page,'admin-footer',admin_footer)
         result[STATIC/filename]=page.encode()
     return result
 

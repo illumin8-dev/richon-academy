@@ -1,19 +1,21 @@
 """Static public UI contract checks; no network, credentials, or deployment."""
 from pathlib import Path
+import shared_chrome as chrome
 
 ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
 apply=(ROOT/'apply.html').read_text()
+guide=(ROOT/'signup-guide.html').read_text()
+privacy=(ROOT/'privacy.html').read_text()
+terms=(ROOT/'terms.html').read_text()
 shared=ROOT/'frontend'/'shared'
 work=(ROOT/'CURRENT_WORK.md').read_text()
 
-def wrapped(name):
-    value=(shared/(name+'.html')).read_text().strip()
-    return '<!-- richon:shared-'+name+' -->\n'+value+'\n<!-- /richon:shared-'+name+' -->'
-
-assert wrapped('header') in index
+footer=chrome.footer()
+assert chrome.wrapped('header',chrome.render_header('landing')) in index
+assert chrome.wrapped('header',chrome.render_header('portal')) in apply
 for page in (index,apply):
-    assert wrapped('footer') in page
+    assert chrome.wrapped('footer',footer) in page
     assert 'href="frontend/shared/site.css"' in page
     assert 'src="frontend/shared/site.js"' in page
     assert 'src="frontend/shared/login.js"' in page
@@ -130,6 +132,9 @@ for name in images:
 css=(shared/'site.css').read_text()
 js=(shared/'site.js').read_text()
 assert '.site-footer-links a{color:inherit;' in css
+assert css.startswith("@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');")
+for page in (index,apply,guide,privacy,terms):
+    assert 'pretendard@v1.3.9' not in page
 assert 'html.site-menu-open{overflow:hidden}' in css
 assert "document.documentElement.classList.toggle('site-menu-open', open)" in js
 
@@ -141,13 +146,13 @@ assert '.hero-js .site-nav' in hero
 print('PASS: public landing uses shared chrome, external images and approved mentor layout')
 
 
-guide=(ROOT/'signup-guide.html').read_text()
-footer=(shared/'footer.html').read_text()
-privacy=(ROOT/'privacy.html').read_text()
-terms=(ROOT/'terms.html').read_text()
-
 assert 'href="/signup-guide.html"' not in footer
-assert footer.strip() in guide
+assert chrome.wrapped('header',chrome.render_header('portal')) in guide
+assert chrome.wrapped('footer',footer) in guide
+assert chrome.wrapped('header',chrome.render_header('document')) in privacy
+assert chrome.wrapped('header',chrome.render_header('document')) in terms
+assert chrome.wrapped('footer',footer) in privacy
+assert chrome.wrapped('footer',footer) in terms
 for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only not in guide
 assert 'id="navMenu"' not in guide

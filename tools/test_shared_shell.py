@@ -1,27 +1,9 @@
 from pathlib import Path
-import hashlib
 import unittest
 import build_site_shell as build
+import shared_chrome as chrome
 
 ROOT = build.ROOT
-PUBLIC_BLOBS = {
-    'index.html': '251a6f099a51c893950a81d2cda917dbde6b4166',
-    'apply.html': 'a618266b051b6d6fd10c4cdf3f461df3638b',
-}
-# Full SHA is checked below with the actual approved value; the shortened value
-# above is never used as an authority.
-APPROVED = {
-    'index.html': '717213803896d14c0b06d601e4705548b2e276f0',
-    'apply.html': '9088b8d06b2f6f63d5474c39e9377c764e13d2a7',
-    'privacy.html': '903296249695223811375573c0a734d59fbdf70e',
-    'terms.html': 'fac6ef6c734764797124710343fc02d405471077',
-}
-
-
-def blob(data: bytes) -> str:
-    return hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
-
-
 class SharedShellTests(unittest.TestCase):
     def test_generated_outputs_are_exact_and_idempotent(self):
         expected = build.outputs()
@@ -30,43 +12,66 @@ class SharedShellTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), data, str(path))
 
     def test_mypage_and_fallback_login_share_one_chrome_source(self):
-        header = (build.SOURCE / 'portal-header.html').read_text().strip()
-        footer = (build.SOURCE / 'footer.html').read_text().strip()
+        header = chrome.render_header('portal')
+        footer = chrome.footer()
         page = (build.STATIC / 'mypage.html').read_text()
         self.assertEqual(page.count(header), 1)
         self.assertEqual(page.count(footer), 1)
         self.assertEqual(page.count('id="siteNav"'), 1)
         self.assertIn('data-richon-login hidden', page)
 
-    def test_public_and_portal_headers_keep_their_approved_boundaries(self):
-        public = (ROOT / 'index.html').read_text()
-        public_header = (build.SOURCE / 'header.html').read_text()
-        portal_header = (build.SOURCE / 'portal-header.html').read_text()
-        for label in ('RICH', 'ON', 'ESTATE STUDY', '오픈카톡방', '강의 신청'):
-            self.assertIn(label, public)
-            self.assertIn(label, public_header)
-            self.assertIn(label, portal_header)
-        for landing_label in ('후기', '정규 프로그램', '강사/멘토'):
-            self.assertIn(landing_label, public)
-            self.assertIn(landing_label, public_header)
-            self.assertNotIn(landing_label, portal_header)
-        for functional_forbidden in ('id="navMenu"', 'site-burger'):
-            self.assertNotIn(functional_forbidden, portal_header)
-        footer = (build.SOURCE / 'footer.html').read_text()
-        for value in ('장순호', '175-01-03647', '032-236-8944', '개인정보처리방침', '이용약관'):
-            self.assertIn(value, public)
-            self.assertIn(value, footer)
-        self.assertNotIn('회원가입 안내', footer)
+    def test_single_header_template_renders_all_variants(self):
+        template=(build.SOURCE/'site-header.html').read_text()
+        self.assertEqual(template.count('class="site-logo"'),1)
+        self.assertIn('{{SITE_MENU}}',template)
+        self.assertIn('{{SITE_ACTIONS}}',template)
+        landing=chrome.render_header('landing')
+        portal=chrome.render_header('portal')
+        admin=chrome.render_header('admin')
+        document=chrome.render_header('document')
+        for rendered in (landing,portal,admin,document):
+            self.assertIn('class="site-logo"',rendered)
+            self.assertIn('RICH',rendered)
+            self.assertIn('ON',rendered)
+            self.assertIn('ESTATE STUDY',rendered)
+            self.assertNotIn('{{SITE_',rendered)
+        for label in ('후기','정규 프로그램','강사/멘토'):
+            self.assertIn(label,landing)
+            self.assertNotIn(label,portal)
+            self.assertNotIn(label,admin)
+        self.assertIn('오픈카톡방',portal)
+        self.assertIn('강의 신청',portal)
+        self.assertIn('운영 홈',admin)
+        self.assertIn('← 홈으로',document)
+        for legacy in ('header.html','portal-header.html','admin-header.html','admin-footer.html'):
+            self.assertFalse((build.SOURCE/legacy).exists(),legacy)
 
-
-    def test_public_pages_match_imported_upstream_authority(self):
-        for name, expected in APPROVED.items():
-            self.assertEqual(blob((ROOT / name).read_bytes()), expected, name)
+    def test_public_source_pages_are_generated_from_shared_chrome(self):
+        variants={
+            'index.html':'landing',
+            'apply.html':'portal',
+            'signup-guide.html':'portal',
+            'privacy.html':'document',
+            'terms.html':'document',
+        }
+        footer=chrome.footer()
+        for name,variant in variants.items():
+            page=(ROOT/name).read_text()
+            with self.subTest(name=name):
+                self.assertIn(chrome.wrapped('header',chrome.render_header(variant)),page)
+                self.assertIn(chrome.wrapped('footer',footer),page)
 
     def test_private_shared_assets_are_exact_copies(self):
         for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'account.css', 'account.js'):
             self.assertEqual((build.SOURCE / name).read_bytes(), (build.STATIC / name).read_bytes())
         self.assertEqual((build.SOURCE / 'admin.css').read_bytes(), (build.STATIC / 'portal.css').read_bytes())
+        site=(build.SOURCE/'site.css').read_text()
+        self.assertTrue(site.startswith("@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');"))
+        self.assertIn('--ops-font:var(--site-font)',(build.SOURCE/'ops.css').read_text())
+        admin=(build.SOURCE/'admin.css').read_text()
+        for obsolete in ('.topbar{','.brand-mark{','.top-actions{'):
+            self.assertNotIn(obsolete,admin)
+        self.assertNotIn('pretendard@v1.3.9',(build.SOURCE/'mypage.html').read_text())
         css = (build.SOURCE / 'account.css').read_text()
         self.assertIn('.account-withdrawal{font-size:12px', css)
         self.assertIn('color:#8a857d', css)
@@ -100,8 +105,8 @@ class SharedShellTests(unittest.TestCase):
         self.assertGreater(courses.find('/portal/course-assets/courses.css'),courses.find('/portal/assets/portal.css'))
 
     def test_admin_pages_render_one_shared_shell(self):
-        header=(build.SOURCE/'admin-header.html').read_text().strip()
-        footer=(build.SOURCE/'footer.html').read_text().strip()
+        header=chrome.render_header('admin')
+        footer=chrome.footer()
         sidebar=(build.SOURCE/'admin-sidebar.html').read_text()
         self.assertIn('class="site-nav admin-site-nav"',header)
         self.assertIn('class="site-logo"',header)

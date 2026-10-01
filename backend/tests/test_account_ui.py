@@ -84,7 +84,7 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
     assert c.get('/portal/admin').headers['referrer-policy']=='no-referrer'
     assert c.get('/portal/api/me').headers['referrer-policy']=='no-referrer'
     fallback=client().get('/auth/login')
-    portal_header=(ROOT/'frontend/shared/portal-header.html').read_text().strip()
+    portal_header=(ROOT/'backend/portal_static/site-header.html').read_text().strip()
     shared_footer=(ROOT/'frontend/shared/footer.html').read_text().strip()
     for response in (page,fallback):
         assert portal_header in response.text
