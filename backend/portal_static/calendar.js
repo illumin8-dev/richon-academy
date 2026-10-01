@@ -76,7 +76,7 @@ function edit(item){
   $('copy-event').hidden=false;$('delete-event').hidden=false;text('editor-status','');openDialog();
 }
 function eventButton(item){
-  const b=el('button',undefined,'calendar-event-item');b.type='button';
+  const b=el('button',undefined,'calendar-event-item');b.type='button';b.setAttribute('aria-label',item.course_label+(item.content_text?' / '+item.content_text:''));
   const line=el('span',undefined,'event-label-line'),dot=el('i',undefined,'event-dot '+colorClass(item.color_hex));
   line.append(dot,el('span',item.course_label,'event-course'));b.append(line);
   if(item.content_text)b.append(el('span',item.content_text,'event-content'));
@@ -116,7 +116,7 @@ function renderDesktop(){
       if(rangeStart>rangeEnd)continue;
       const startIndex=weekDates.findIndex(x=>x===rangeStart),endIndex=weekDates.findIndex(x=>x===rangeEnd);
       if(startIndex<0||endIndex<startIndex)continue;
-      const b=el('button',item.course_label,'calendar-banner '+colorClass(item.color_hex)+' start-'+(startIndex+1)+' span-'+(endIndex-startIndex+1));b.type='button';b.addEventListener('click',()=>edit(item));bannerGrid.append(b);count++;
+      const b=el('button',item.course_label,'calendar-banner '+colorClass(item.color_hex)+' start-'+(startIndex+1)+' span-'+(endIndex-startIndex+1));b.type='button';b.setAttribute('aria-label',item.course_label+' '+item.event_date+'부터 '+itemEnd+'까지');b.addEventListener('click',()=>edit(item));bannerGrid.append(b);count++;
     }
     if(count)week.append(bannerGrid);
     root.append(week);
