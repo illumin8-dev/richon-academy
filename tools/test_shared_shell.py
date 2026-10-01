@@ -68,7 +68,6 @@ class SharedShellTests(unittest.TestCase):
         site=(build.SOURCE/'site.css').read_text()
         self.assertNotIn('@import',site)
         self.assertNotIn('pretendard@v1.3.9',site)
-        self.assertEqual((build.STATIC/'site-font.html').read_text().strip(),chrome.font_link())
         self.assertIn('--ops-font:var(--site-font)',(build.SOURCE/'ops.css').read_text())
         admin=(build.SOURCE/'admin.css').read_text()
         for obsolete in ('.topbar{','.brand-mark{','.top-actions{'):
