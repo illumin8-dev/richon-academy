@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 
 from auth_core import Principal
 from auth_http import require_member,require_admin,AuthSettings,_origin,_csrf,cookie_token
-from portal import UI_PAGE_HEADERS,HEADERS,PUBLIC_CALENDAR_HEADERS,PageQuery
+from portal import UI_PAGE_HEADERS,HEADERS,PageQuery
 import course_domain_models as model
 import course_domain_store as store
 
@@ -92,22 +92,6 @@ def make_router(settings:AuthSettings,calendar_enabled=False):
         return read(response,store.enrollments,run_id,limit,offset)
 
     if calendar_enabled:
-        @router.get('/public/calendar')
-        def public_calendar(response:Response,month:str|None=Query(default=None,max_length=7)):
-            label,previous_start,start_at,end_at,next_end=_month_parts(month)
-            try:
-                data=store.public_calendar(start_at,end_at,previous_start,next_end)
-            except Exception:
-                logger.warning('public_calendar_store_unavailable')
-                raise HTTPException(503,'calendar_unavailable',headers=HEADERS) from None
-            data['month']=label
-            data['prev_month']=(previous_start.astimezone(SEOUL).strftime('%Y-%m')
-                                if data.pop('previous_exists') else None)
-            data['next_month']=(end_at.astimezone(SEOUL).strftime('%Y-%m')
-                                if data.pop('next_exists') else None)
-            response.headers.update(PUBLIC_CALENDAR_HEADERS)
-            return data
-
         @router.get('/admin/learning/calendar')
         def admin_calendar(response:Response,admin:Annotated[Principal,Depends(require_admin)],
                            month:str|None=Query(default=None,max_length=7)):
