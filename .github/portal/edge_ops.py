@@ -98,10 +98,17 @@ def access_status():
                 and not target.username and target.path == '/auth/login'
                 and target.query == 'error=login_failed'
             )
+            # Cloudflare Pages canonicalizes top-level HTML files to extensionless
+            # URLs. Accept only the exact observed/supported /apply.html -> /apply
+            # permanent redirect; no other public redirect is treated as healthy.
+            pages_canonical_redirect = (
+                path == '/apply.html' and status == 308
+                and headers.get('Location') in ('/apply', ORIGIN + '/apply')
+            )
             if path in CALLBACKS:
                 passed = callback_fallback
             else:
-                passed = html_page
+                passed = html_page or pages_canonical_redirect
             op.summary('CUSTOMER ROUTE PROBE ' + path + ': ' + json.dumps({
                 'status': status, 'expected_response': passed,
                 'access_redirect': access_redirect,
