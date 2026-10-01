@@ -132,6 +132,10 @@ for name in images:
 css=(shared/'site.css').read_text()
 js=(shared/'site.js').read_text()
 assert '.site-footer-links a{color:inherit;' in css
+assert 'body.richon-page{padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}' in css
+assert '.site-footer{margin-top:auto;flex-shrink:0;' in css
+for page in (apply,guide,privacy,terms):
+    assert '<body class="richon-page' in page
 assert '@import' not in css and 'pretendard@v1.3.9' not in css
 font_link=chrome.font_link()
 for page in (index,apply,guide,privacy,terms):
