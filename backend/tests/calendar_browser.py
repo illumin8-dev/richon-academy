@@ -1,6 +1,7 @@
 """Synthetic visual calendar regression. No real login, DB, provider or customer data."""
 import json
 import os
+import re
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
@@ -52,8 +53,8 @@ def main():
          'display_kind':'EVENT','event_date':'2026-10-04','end_date':None,'color_hex':'#FF5757',
          'course_label':'리치온 실전투자','content_text':'멘토 키네스트','version':1},
         {'item_id':'00000000-0000-4000-8000-000000000023','event_id':'00000000-0000-4000-8000-000000000023',
-         'display_kind':'BANNER','event_date':'2026-10-23','end_date':'2026-10-26','color_hex':'#FF5757',
-         'course_label':'연휴','content_text':'','version':1},
+         'display_kind':'BANNER','event_date':'2026-10-09','end_date':'2026-10-12','color_hex':'#FF5757',
+         'course_label':'리치온 아카데미','content_text':'','version':1},
     ]
     posts=[];counter=[30]
     try:
@@ -110,10 +111,17 @@ def main():
             expect(page.locator('#month-label')).to_have_text('2026년 10월')
             expect(page.locator('.calendar-week')).to_have_count(5)
             expect(page.locator('.calendar-event-item')).to_have_count(3)
-            # A cross-week holiday highlights every covered date but shows one unbroken ribbon only once.
+            # Exact regression: 9~12 must never visually expand to the 8th.
             expect(page.locator('.calendar-banner')).to_have_count(1)
-            expect(page.locator('.calendar-banner')).to_have_text('연휴')
+            expect(page.locator('.calendar-banner')).to_have_text('리치온 아카데미')
             expect(page.locator('.holiday-day')).to_have_count(4)
+            expect(page.locator('[data-date="2026-10-08"]')).not_to_have_class(re.compile(r'holiday-day'))
+            expect(page.locator('[data-date="2026-10-09"]')).to_have_class(re.compile(r'holiday-start'))
+            expect(page.locator('[data-date="2026-10-10"]')).to_have_class(re.compile(r'holiday-end'))
+            expect(page.locator('[data-date="2026-10-11"]')).to_have_class(re.compile(r'holiday-start'))
+            expect(page.locator('[data-date="2026-10-12"]')).to_have_class(re.compile(r'holiday-end'))
+            expect(page.locator('[data-date="2026-10-09"] .calendar-banner')).to_have_count(1)
+            assert page.locator('[data-date="2026-10-09"] .calendar-banner').evaluate("(el)=>el.style.getPropertyValue('--holiday-span')")=='2'
             expect(page.locator('#calendar-legend')).to_contain_text('무료 브리핑')
             expect(page.locator('#calendar-legend')).to_contain_text('리치온 스터디')
             expect(page.locator('#calendar-legend')).to_contain_text('Pre리치온')
@@ -121,6 +129,8 @@ def main():
 
             # Export is a 1200x1200 PNG copied to the image clipboard, not a screenshot of admin chrome.
             page.locator('#copy-png').click()
+            expect(page.locator('#copy-png')).to_have_text('✓ 복사 완료')
+            expect(page.locator('#copy-png')).to_have_class(re.compile(r'is-success'))
             expect(page.locator('#action-status')).to_have_text('1200×1200 PNG 이미지를 클립보드에 복사했습니다.')
             png=page.evaluate("""async()=>{
               const blob=window.__clipboardBlob;
@@ -179,7 +189,7 @@ def main():
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'calendar-mobile.png'),full_page=True)
             browser.close()
-        print('PASS: October-style calendar, single cross-week holiday ribbon, date-click editor, arbitrary event duplication, 1200px PNG clipboard export, XSS-safe text and mobile view; synthetic only.')
+        print('PASS: exact 9-12 holiday shading, integrated one-time ribbon, visible PNG copy success, arbitrary event duplication, 1200px PNG clipboard export, XSS-safe text and mobile view; synthetic only.')
     finally:
         server.shutdown();server.server_close()
 
