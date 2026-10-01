@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-calendar-admin-candidate-hold-20261001-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "calendar-freeform-candidate-20261002-a"
 }
