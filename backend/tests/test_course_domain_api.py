@@ -60,13 +60,22 @@ def test_session_links_are_https_only(bad):
             sequence_no=1,title='1회',starts_at=datetime.now(timezone.utc),video_url=bad)
 
 
-def test_calendar_event_is_freeform_and_color_validated():
+def test_calendar_event_is_freeform_and_uses_october_palette():
     base=dict(request_id=uuid4(),reason='가상 일정',event_date=date(2026,10,8),
-              color_hex='#00B622',course_label='자유 과정',content_text='자유 내용')
+              color_hex='#00B622',course_label='자유 과정')
     value=model.CalendarEventCreate(**base)
-    assert value.course_label=='자유 과정' and value.event_date==date(2026,10,8)
+    assert value.course_label=='자유 과정' and value.content_text=='' and value.display_kind=='EVENT'
     with pytest.raises(ValidationError):
-        model.CalendarEventCreate(**{**base,'color_hex':'green'})
+        model.CalendarEventCreate(**{**base,'color_hex':'#123456'})
+
+
+def test_calendar_banner_requires_valid_end_date():
+    base=dict(request_id=uuid4(),reason='가상 연휴',display_kind='BANNER',event_date=date(2026,9,23),
+              color_hex='#FF5757',course_label='추석연휴')
+    assert model.CalendarEventCreate(**base,end_date=date(2026,9,26)).end_date==date(2026,9,26)
+    for invalid in (None,date(2026,9,22)):
+        with pytest.raises(ValidationError):
+            model.CalendarEventCreate(**base,end_date=invalid)
 
 
 @pytest.mark.parametrize('path',[
