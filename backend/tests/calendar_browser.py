@@ -153,7 +153,7 @@ def main():
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
             expect(page.locator('.calendar-weeks')).to_be_hidden()
             expect(page.locator('#calendar-mobile-list')).to_be_visible()
-            expect(page.locator('.mobile-banner')).to_have_text('추석연휴')
+            expect(page.locator('.mobile-banner')).to_contain_text('11/23–11/26 추석연휴')
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'calendar-mobile.png'),full_page=True)
             browser.close()
