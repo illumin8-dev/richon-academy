@@ -11,6 +11,8 @@ SOURCE = ROOT / "frontend" / "shared"
 
 HEADER_TEMPLATE = SOURCE / "site-header.html"
 FOOTER = SOURCE / "footer.html"
+PRETENDARD_STYLESHEET = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+PRETENDARD_LINK = '<link rel="stylesheet" as="style" crossorigin href="' + PRETENDARD_STYLESHEET + '">'
 
 PUBLIC_ACTIONS = """    <a class="site-btn site-btn-line site-chat" href="https://open.kakao.com/o/gPdQcklh" target="_blank" rel="noopener noreferrer">오픈카톡방</a>
     <a class="site-btn site-btn-o" href="/apply.html">강의 신청</a>
@@ -88,3 +90,26 @@ def replace_wrapped(page: str, name: str, value: str) -> str:
     if count != 1:
         raise ValueError("missing_shared_marker_" + name)
     return rendered
+
+
+def font_link() -> str:
+    """Return the exact font link used by the original public homepage."""
+    return PRETENDARD_LINK
+
+
+def ensure_font_link(page: str) -> str:
+    """Keep one canonical Pretendard link in the page head without CSS @import."""
+    import re
+    page = re.sub(r'\s*<link[^>]+pretendard@v1\.3\.9[^>]*>\s*', '\n', page, flags=re.I)
+    positions = [position for position in (
+        page.find('<style'),
+        page.find('<link rel="stylesheet" href="frontend/shared/site.css">'),
+        page.find('<link rel="stylesheet" href="/frontend/shared/site.css">'),
+        page.find('<link rel="stylesheet" href="/portal/assets/site.css">'),
+        page.find('<link rel="stylesheet" href="/auth/assets/site.css">'),
+        page.find('</head>'),
+    ) if position >= 0]
+    if not positions:
+        raise ValueError("missing_head_font_anchor")
+    at = min(positions)
+    return page[:at] + font_link() + '\n' + page[at:]
