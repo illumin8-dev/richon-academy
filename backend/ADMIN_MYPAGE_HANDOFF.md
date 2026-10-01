@@ -1309,3 +1309,19 @@
 - 다음 구조 작업은 owner 승인 후 별도 PR:
   - hosting cutover 이후로 미뤄둔 shared CSS/source consolidation
   - 실제 cold-start 체감 재확인 후 startup CPU boost/minScale 검토
+
+
+
+### 체크포인트 34 / shared admin CSS 정본화 완료
+- PR #110 `refactor: make admin CSS a shared source` 병합 완료.
+- merge commit: `00f9c219d90b36712d6509debd4159e7d14e2e3d`
+- `frontend/shared/admin.css`가 관리자 공통 shell CSS의 editable canonical source.
+- 기존 runtime URL `/portal/assets/portal.css`와 파일명은 유지.
+- `tools/build_site_shell.py`가 `frontend/shared/admin.css -> backend/portal_static/portal.css`를 생성.
+- shared shell test가 두 파일의 byte-for-byte 동일성을 강제.
+- PR CI:
+  - static-contract PASS
+  - portal browser PASS
+  - Cloudflare Pages preview deploy PASS
+- 이 PR은 selector/property/URL/backend/auth 변경 없음.
+- 다음 짧은 작업: enrollments/manual의 legacy generic CSS가 공용 admin shell에 남기는 잔여 스타일(브랜드 pseudo mark, manual sidebar border, main padding/max-width)을 공용 admin.css에서 명시적으로 reset하여 메뉴/페이지 외곽 여백을 통일.
