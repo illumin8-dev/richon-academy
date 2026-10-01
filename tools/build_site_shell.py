@@ -6,23 +6,11 @@ OAuth pages + mypage. No deployment, credentials, network or data migration.
 """
 from pathlib import Path
 import argparse
-import re
 import shared_chrome as chrome
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'frontend/shared'
 STATIC = ROOT / 'backend/portal_static'
-
-
-def replace_wrapped(page: str, name: str, value: str) -> str:
-    start='<!-- richon:shared-' + name + ' -->'
-    end='<!-- /richon:shared-' + name + ' -->'
-    pattern=re.escape(start)+r'.*?'+re.escape(end)
-    replacement=chrome.wrapped(name,value)
-    rendered,count=re.subn(pattern,replacement,page,count=1,flags=re.S)
-    if count!=1:
-        raise ValueError('missing_shared_marker_'+name)
-    return rendered
 
 
 def render_admin_sidebar(raw: str, active: str | None) -> str:
@@ -60,9 +48,9 @@ def outputs():
         'manual.html':'manual',
     }.items():
         page=(STATIC/filename).read_text()
-        page=replace_wrapped(page,'admin-header',admin_header)
-        page=replace_wrapped(page,'admin-sidebar',render_admin_sidebar(admin_sidebar,active))
-        page=replace_wrapped(page,'admin-footer',admin_footer)
+        page=chrome.replace_wrapped(page,'admin-header',admin_header)
+        page=chrome.replace_wrapped(page,'admin-sidebar',render_admin_sidebar(admin_sidebar,active))
+        page=chrome.replace_wrapped(page,'admin-footer',admin_footer)
         result[STATIC/filename]=page.encode()
     return result
 
