@@ -16,6 +16,7 @@ for page in (index,apply):
     assert wrapped('footer') in page
     assert 'href="frontend/shared/site.css"' in page
     assert 'src="frontend/shared/site.js"' in page
+    assert 'src="frontend/shared/login.js"' in page
     assert 'data-account-entry="enabled"' not in page
     assert 'id="site-account-login"' in page and 'data-richon-login hidden' in page
     assert 'id="site-account-me"' in page
@@ -151,6 +152,7 @@ for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only not in guide
 assert 'id="navMenu"' not in guide
 assert 'id="burger"' not in guide
+assert 'src="/frontend/shared/login.js"' in guide
 for value in ('회원가입 전체 절차','이름','휴대전화번호','이메일','연령대','성별',
               'CI(연계정보)','중복가입 방지'):
     assert value in guide
@@ -160,3 +162,8 @@ assert '원문 CI는 저장하지 않고 단방향 변환값' in privacy
 assert '비밀번호, 이름, 닉네임, 생년월일' not in privacy
 assert '본인확인값(CI,DI)' not in privacy
 assert '중복 회원가입 방지 및 기존 회원 비교 식별' in terms
+
+login_js=(shared/'login.js').read_text()
+assert "dialog.showModal()" in login_js
+assert "fetch('/auth/login?view=modal&return_to='" in login_js
+assert "'불러오는 중입니다.'" in login_js

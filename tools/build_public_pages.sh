@@ -24,7 +24,7 @@ for relative in "${PUBLIC_ROOT_FILES[@]}"; do
   cp "$source" "$OUT/$relative"
 done
 
-for relative in site.css site.js; do
+for relative in site.css site.js login.js; do
   source="$ROOT/frontend/shared/$relative"
   [[ -f "$source" && ! -L "$source" ]] || {
     echo "Unsafe or missing shared public asset: $relative" >&2
