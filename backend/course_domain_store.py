@@ -3,14 +3,17 @@
 Legacy monthly/manual records remain untouched. Member linkage is explicit only.
 """
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 import hashlib
 import json
 import re
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import auth_core
 from portal_store import read_cursor, _literal_search
+
+SEOUL=ZoneInfo('Asia/Seoul')
 
 
 class Rejected(Exception):
@@ -65,7 +68,7 @@ def mutate(actor,operation,payload):
                 if handler is None: raise Rejected('unsupported_operation',404)
                 result=handler(cur,actor,payload)
                 _audit(cur,actor,request_id,fingerprint,operation,
-                       result.get('enrollment_id',result.get('run_id',result.get('program_id',result.get('session_id','')))),
+                       result.get('enrollment_id',result.get('run_id',result.get('program_id',result.get('session_id',result.get('event_id',''))))),
                        payload.reason,result)
     except Rejected:
         raise
@@ -156,12 +159,17 @@ def _session_update(cur,actor,body):
     return {'session_id':str(body.session_id),'run_id':str(run_id),'version':version,'cancelled':body.cancelled}
 
 
+def _calendar_start(event_date):
+    return datetime.combine(event_date,time.min,tzinfo=SEOUL).astimezone(timezone.utc)
+
+
 def _calendar_event_create(cur,actor,body):
     eid=uuid4()
     cur.execute('''INSERT INTO richon.calendar_events
-      (event_id,event_type,title,presenter_name,starts_at,ends_at,is_public)
-      VALUES(%s,%s,%s,%s,%s,%s,%s) RETURNING version''',
-      (eid,body.event_type,body.title,body.presenter_name,body.starts_at,body.ends_at,body.is_public))
+      (event_id,event_type,title,starts_at,is_public,course_label,content_text,color_hex)
+      VALUES(%s,'OTHER',%s,%s,TRUE,%s,%s,%s) RETURNING version''',
+      (eid,body.course_label,_calendar_start(body.event_date),
+       body.course_label,body.content_text,body.color_hex))
     return {'event_id':str(eid),'version':cur.fetchone()[0]}
 
 
@@ -171,12 +179,14 @@ def _calendar_event_update(cur,actor,body):
     if row is None: raise Rejected('calendar_event_not_found',404)
     if row[0]!=body.version: raise Rejected('stale_record')
     cur.execute('''UPDATE richon.calendar_events
-      SET event_type=%s,title=%s,presenter_name=%s,starts_at=%s,ends_at=%s,is_public=%s,
+      SET event_type='OTHER',title=%s,starts_at=%s,is_public=TRUE,
+          course_label=%s,content_text=%s,color_hex=%s,
           cancelled_at=%s,version=version+1,updated_at=CURRENT_TIMESTAMP
       WHERE event_id=%s RETURNING version''',
-      (body.event_type,body.title,body.presenter_name,body.starts_at,body.ends_at,body.is_public,
-       datetime.now(timezone.utc) if body.cancelled else None,body.event_id))
-    return {'event_id':str(body.event_id),'version':cur.fetchone()[0],'cancelled':body.cancelled}
+      (body.course_label,_calendar_start(body.event_date),body.course_label,
+       body.content_text,body.color_hex,
+       datetime.now(timezone.utc) if body.deleted else None,body.event_id))
+    return {'event_id':str(body.event_id),'version':cur.fetchone()[0],'deleted':body.deleted}
 
 
 def _resolve_learner(cur,body):
@@ -286,29 +296,12 @@ def sessions(run_id,include_cancelled=False):
 
 def admin_calendar(start_at,end_at):
     with read_cursor() as cur:
-        cur.execute('''SELECT * FROM (
-          SELECT 'session'::text AS kind,s.session_id::text AS item_id,s.session_id,
-                 NULL::uuid AS event_id,s.run_id,s.sequence_no,p.program_id,p.title AS category_label,
-                 r.cohort_label,NULL::varchar AS event_type,s.title,s.mentor_name AS presenter_name,
-                 s.starts_at,s.ends_at,TRUE AS is_public,(s.cancelled_at IS NOT NULL) AS cancelled,
-                 s.version,s.video_url,s.material_url
-            FROM richon.course_sessions s
-            JOIN richon.course_runs r USING(run_id) JOIN richon.course_programs p USING(program_id)
-           WHERE s.starts_at >= %s AND s.starts_at < %s
-          UNION ALL
-          SELECT 'event'::text,e.event_id::text,NULL::uuid,e.event_id,NULL::uuid,NULL::integer,
-                 NULL::varchar,
-                 CASE e.event_type
-                   WHEN 'BRIEFING' THEN '무료 브리핑'
-                   WHEN 'STUDY_ALL' THEN '스터디 전체'
-                   WHEN 'SPECIAL' THEN '특강'
-                   WHEN 'FIELD_TRIP' THEN '임장'
-                   ELSE '기타' END,
-                 NULL::varchar,e.event_type,e.title,e.presenter_name,e.starts_at,e.ends_at,e.is_public,
-                 (e.cancelled_at IS NOT NULL),e.version,NULL::varchar,NULL::varchar
-            FROM richon.calendar_events e
-           WHERE e.starts_at >= %s AND e.starts_at < %s
-        ) x ORDER BY starts_at,item_id''',(start_at,end_at,start_at,end_at))
+        cur.execute('''SELECT event_id::text AS item_id,event_id,
+                 to_char(starts_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD') AS event_date,
+                 color_hex,course_label,content_text,version
+            FROM richon.calendar_events
+           WHERE starts_at >= %s AND starts_at < %s AND cancelled_at IS NULL
+           ORDER BY starts_at,event_id''',(start_at,end_at))
         return _rows(cur)
 
 

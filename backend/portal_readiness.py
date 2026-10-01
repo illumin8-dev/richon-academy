@@ -93,10 +93,12 @@ COURSE_UPDATE = {
 
 CALENDAR_READ = ('calendar_events',)
 CALENDAR_INSERT = {
-    'calendar_events': ('event_id','event_type','title','presenter_name','starts_at','ends_at','is_public'),
+    'calendar_events': ('event_id','event_type','title','starts_at','is_public',
+                        'course_label','content_text','color_hex'),
 }
 CALENDAR_UPDATE = {
-    'calendar_events': ('event_type','title','presenter_name','starts_at','ends_at','is_public',
+    'calendar_events': ('event_type','title','starts_at','is_public',
+                        'course_label','content_text','color_hex',
                         'cancelled_at','version','updated_at'),
 }
 
@@ -192,12 +194,19 @@ def course_grants_prepared(cur):
     return cur.fetchone()==(True,True)
 
 
+def calendar_schema_ready(cur):
+    cur.execute("""SELECT count(*) FROM pg_attribute
+        WHERE attrelid='richon.calendar_events'::regclass AND attnum>0 AND NOT attisdropped
+          AND attname=ANY(ARRAY['course_label','content_text','color_hex'])""")
+    return cur.fetchone()==(3,)
+
+
 def calendar_grants_prepared(cur):
     cur.execute("SELECT to_regclass('richon.calendar_events') IS NOT NULL")
-    if cur.fetchone()!=(True,): return False
+    if cur.fetchone()!=(True,) or not calendar_schema_ready(cur): return False
     cur.execute("""SELECT
         has_table_privilege(%s,'richon.calendar_events','SELECT'),
-        has_column_privilege(%s,'richon.calendar_events','event_id','INSERT')""",(ROLE,ROLE))
+        has_column_privilege(%s,'richon.calendar_events','color_hex','INSERT')""",(ROLE,ROLE))
     return cur.fetchone()==(True,True)
 
 
@@ -270,6 +279,8 @@ def check_role(cur):
         raise ValueError('course_requires_account_feature')
     if manual_active and not monthly_active:
         raise ValueError('manual_requires_monthly_feature')
+    if calendar_active and not calendar_schema_ready(cur):
+        raise ValueError('calendar_schema_required')
     if profile_active and not provider_profile_schema_ready(cur):
         raise ValueError('provider_profile_schema_required')
     provider_profile_grants = profile_active or provider_profile_grants_prepared(cur)

@@ -163,24 +163,39 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [ ] 주문 이력과 수강권 관계 정리
 - [ ] 결제는 이후 '수강권 생성 입력 경로'로 연결
 
-## 3-1. 중앙 캘린더 / 2026-10-01 관리자 우선 검증
+## 3-1. 중앙 캘린더 / 2026-10-01 자유형으로 단순화
 
-확정:
-- [x] 로그인/결제보다 중앙 캘린더를 먼저 진행
-- [x] 강의 회차는 기존 course_sessions를 정본으로 유지
-- [x] 무료 브리핑 / 스터디 전체 / 특강 / 임장 / 기타는 calendar_events로 분리
-- [x] 관리자 화면 /portal/calendar 구현
-- [x] 관리자에는 정확한 시작·종료시간 저장
-- [x] 반복 일정은 recurrence rule 대신 "다음 주로 복제"
-- [x] PC 월간 달력 / 모바일 agenda 구조
-- [x] 랜딩 footer 아래 74px 잔여 body padding 원인 확인 및 코드 제거
-- [ ] 변경된 admin-first 범위 PR CI 재확인
-- [ ] DB018 + 최소권한 운영 적용
-- [ ] protected portal candidate rollout
-- [ ] 실제 관리자에서 일정 생성 / 수정 / 취소 / 다음 주 복제 owner E2E
-- [ ] 관리자 검증 완료 후 랜딩 캘린더를 별도 PR로 이식
+최종 관리자 입력:
+- [x] 날짜
+- [x] 색상 드롭다운
+- [x] 과정 자유 텍스트
+- [x] 내용 자유 텍스트
+- [x] 저장 / 복사 / 삭제
+- [x] 빈 날짜 클릭 시 해당 날짜로 새 일정 입력
+- [x] 기존 일정 선택 → 원하는 날짜 선택 → 복사
+- [x] +7일 고정 복사 / 반복 규칙 제거
+- [x] 복사본도 다시 임의 날짜로 연속 복사 가능
+- [x] PC 월간 달력 / 모바일 agenda 유지
 
-랜딩 2단계 확정안(이번 PR에서는 미구현):
+분리 원칙:
+- [x] 캘린더는 course_programs / course_runs / course_sessions와 데이터 연동하지 않음
+- [x] 새 과정 추가 시 캘린더 코드/DB 변경 불필요
+- [x] course_sessions는 내 강의 / 영상 / 자료용 별도 도메인으로 유지
+- [x] 기존 DB018 calendar_events는 유지하고 DB019에서 자유형 필드만 추가
+- [x] runtime DELETE 권한 없이 soft-delete 유지
+
+운영 상태:
+- [x] DB018 + 최소권한 운영 적용
+- [x] PR #117 admin-first 캘린더 병합
+- [x] protected candidate richon-portal-handoff-36841505878-1 rollout PASS
+- [x] 랜딩 footer 아래 74px 잔여 공간 제거 확인
+- [ ] 자유형 캘린더 PR CI
+- [ ] DB019 + 새 최소권한 운영 적용
+- [ ] 자유형 캘린더 protected candidate rollout
+- [ ] 실제 관리자에서 생성 / 임의 날짜 복사 / 수정 / 삭제 owner E2E
+- [ ] 관리자 UX 승인 후 랜딩 캘린더 별도 PR
+
+랜딩 2단계 확정안(아직 미구현):
 - 정규 프로그램 아래 / 멘토진 위
 - 현재 달 기본 표시
 - 바로 이전/다음 달에 공개 일정이 있을 때만 해당 방향 화살표 표시
