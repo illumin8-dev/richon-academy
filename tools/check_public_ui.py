@@ -37,6 +37,7 @@ assert index.count('class="mentor-feature-card"') == 1
 assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
+assert 'body{padding-bottom:74px}' not in index
 assert '.cal-' not in index
 assert '캘린더 셀 살짝 반응' not in index
 

@@ -32,3 +32,16 @@ It does not seed real programs, members or enrollments, and it does not rewrite 
 - Default 100% Cloud Run serving revision remains `richon-portal-gh-35810692921-1`; course enablement did not promote default traffic.
 - Payment remains outside this implementation. Manual ADMIN grants are the first entitlement creation path.
 - Real program/run/session data entry and authenticated owner-browser E2E remain operational follow-up, not schema implementation work.
+
+
+## Central calendar decisions / 2026-10-01
+- Calendar is the next product work; login-provider lifecycle and payment remain deferred.
+- Phase 1 is admin-first: validate the central calendar in `/portal/calendar` before exposing any calendar data on the public landing page.
+- Real class meetings continue to use canonical `course_sessions`; they are not duplicated into a second schedule table.
+- Non-course schedules use `calendar_events` with types BRIEFING / STUDY_ALL / SPECIAL / FIELD_TRIP / OTHER.
+- Admin stores exact Seoul date/time.
+- "다음 주로 복제" creates a new draft from the selected event with date +7 days; course sessions also propose the next sequence number.
+- DB018 `calendar_events` and exact runtime grants must be prepared before rolling out the admin calendar image.
+- After owner validation of admin behavior, Phase 2 may expose the same data on the landing page between Programs and Mentors.
+- Approved Phase 2 behavior is preserved but not implemented in this PR: current Seoul month by default / adjacent arrows only when that adjacent month has public data / clock time hidden publicly / 60-second edge cache / 1200×1200 PNG clipboard copy with download fallback.
+- No payment, OAuth provider, member identity, or entitlement semantics are changed by the calendar work.

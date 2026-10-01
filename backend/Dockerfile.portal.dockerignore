@@ -52,5 +52,8 @@ backend/portal_static/*
 !backend/portal_static/courses.html
 !backend/portal_static/courses.css
 !backend/portal_static/courses.js
+!backend/portal_static/calendar.html
+!backend/portal_static/calendar.css
+!backend/portal_static/calendar.js
 !backend/portal_static/site-header.html
 !backend/portal_static/site-footer.html

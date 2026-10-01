@@ -2,9 +2,9 @@ name: Portal UI checks (synthetic data only)
 on:
   push:
     branches: [main, 'feat/backend-*', 'fix/backend-*']
-    paths: ['backend/portal_static/**', 'frontend/shared/**', 'tools/build_site_shell.py', 'tools/shared_chrome.py', 'tools/test_shared_shell.py', 'backend/tests/portal_browser.py', 'backend/tests/account_browser.py', '.github/workflows/portal-ui-ci.yml']
+    paths: ['backend/portal_static/**', 'frontend/shared/**', 'tools/build_site_shell.py', 'tools/shared_chrome.py', 'tools/test_shared_shell.py', 'backend/tests/portal_browser.py', 'backend/tests/account_browser.py', 'backend/tests/calendar_browser.py', '.github/workflows/portal-ui-ci.yml']
   pull_request:
-    paths: ['backend/portal_static/**', 'frontend/shared/**', 'tools/build_site_shell.py', 'tools/shared_chrome.py', 'tools/test_shared_shell.py', 'backend/tests/portal_browser.py', 'backend/tests/account_browser.py', '.github/workflows/portal-ui-ci.yml']
+    paths: ['backend/portal_static/**', 'frontend/shared/**', 'tools/build_site_shell.py', 'tools/shared_chrome.py', 'tools/test_shared_shell.py', 'backend/tests/portal_browser.py', 'backend/tests/account_browser.py', 'backend/tests/calendar_browser.py', '.github/workflows/portal-ui-ci.yml']
 permissions:
   contents: read
 concurrency:
@@ -32,7 +32,9 @@ jobs:
           node --check backend/portal_static/login.js
           node --check backend/portal_static/signup.js
           node --check backend/portal_static/handoff.js
+          node --check backend/portal_static/calendar.js
           python tools/build_site_shell.py --check
           python -m unittest discover -s tools -p 'test_*.py' -v
           python backend/tests/portal_browser.py
           python backend/tests/account_browser.py
+          python backend/tests/calendar_browser.py

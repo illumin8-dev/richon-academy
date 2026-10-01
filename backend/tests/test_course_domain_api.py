@@ -60,6 +60,14 @@ def test_session_links_are_https_only(bad):
             sequence_no=1,title='1회',starts_at=datetime.now(timezone.utc),video_url=bad)
 
 
+def test_calendar_event_range_validation():
+    base=dict(request_id=uuid4(),reason='가상 일정',event_type='BRIEFING',title='무료 브리핑',
+              starts_at=datetime.now(timezone.utc))
+    assert model.CalendarEventCreate(**base).is_public is True
+    with pytest.raises(ValidationError):
+        model.CalendarEventCreate(**base,ends_at=base['starts_at'])
+
+
 @pytest.mark.parametrize('path',[
     '/portal/api/me/courses','/portal/api/admin/learning/programs',
     '/portal/api/admin/learning/runs','/portal/api/admin/learning/enrollments',
@@ -107,10 +115,13 @@ def test_default_off_and_dependency_gate(monkeypatch):
 
 
 def test_static_assets_have_no_token_storage_or_html_injection():
-    js=(portal.STATIC/'courses.js').read_text()
-    for forbidden in ('innerHTML','insertAdjacentHTML','document.cookie','localStorage.','sessionStorage.','eval('):
-        assert forbidden not in js
-    assert "textContent" in js and "credentials:'same-origin'" in js
+    for name in ('courses.js','calendar.js'):
+        js=(portal.STATIC/name).read_text()
+        for forbidden in ('innerHTML','insertAdjacentHTML','document.cookie','localStorage.','sessionStorage.','eval('):
+            assert forbidden not in js
+        assert "textContent" in js or "replaceChildren" in js
+    assert "credentials:'same-origin'" in (portal.STATIC/'courses.js').read_text()
+    assert "credentials:'same-origin'" in (portal.STATIC/'calendar.js').read_text()
 
 
 def test_course_admin_reserves_session_editing_for_central_calendar():

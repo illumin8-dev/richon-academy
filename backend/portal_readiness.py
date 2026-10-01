@@ -91,6 +91,15 @@ COURSE_UPDATE = {
     'course_enrollments': ('status','cancelled_at','suspended_at','version','updated_at'),
 }
 
+CALENDAR_READ = ('calendar_events',)
+CALENDAR_INSERT = {
+    'calendar_events': ('event_id','event_type','title','presenter_name','starts_at','ends_at','is_public'),
+}
+CALENDAR_UPDATE = {
+    'calendar_events': ('event_type','title','presenter_name','starts_at','ends_at','is_public',
+                        'cancelled_at','version','updated_at'),
+}
+
 LEGACY_READ = ('course_month_rules','monthly_enrollments','monthly_enrollment_terms',
                'manual_learners','manual_enrollments','manual_terms')
 LEGACY_WRITE_ONLY = ('manual_audit',)
@@ -183,6 +192,15 @@ def course_grants_prepared(cur):
     return cur.fetchone()==(True,True)
 
 
+def calendar_grants_prepared(cur):
+    cur.execute("SELECT to_regclass('richon.calendar_events') IS NOT NULL")
+    if cur.fetchone()!=(True,): return False
+    cur.execute("""SELECT
+        has_table_privilege(%s,'richon.calendar_events','SELECT'),
+        has_column_privilege(%s,'richon.calendar_events','event_id','INSERT')""",(ROLE,ROLE))
+    return cur.fetchone()==(True,True)
+
+
 def legacy_grants_prepared(cur):
     cur.execute("""SELECT
         to_regclass('richon.monthly_enrollments') IS NOT NULL,
@@ -241,6 +259,7 @@ def check_role(cur):
     profile_active = member_profile.enabled()
     marketing_active = marketing_enabled()
     course_active = course_enabled()
+    calendar_active = course_active
     monthly_active = monthly_enabled()
     manual_active = manual_enabled()
     if account and not profile_active:
@@ -257,8 +276,9 @@ def check_role(cur):
     account_grants = account or account_grants_prepared(cur)
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
     course_grants = course_active or course_grants_prepared(cur)
+    calendar_grants = calendar_active or calendar_grants_prepared(cur)
     legacy_grants = monthly_active or manual_active or legacy_grants_prepared(cur)
-    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ()) + ((COURSE_READ + COURSE_WRITE_ONLY) if course_grants else ()) + ((LEGACY_READ + LEGACY_WRITE_ONLY) if legacy_grants else ())
+    tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ()) + ((COURSE_READ + COURSE_WRITE_ONLY) if course_grants else ()) + (CALENDAR_READ if calendar_grants else ()) + ((LEGACY_READ + LEGACY_WRITE_ONLY) if legacy_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
     select_columns = {table: tuple(columns) for table,columns in ACCOUNT_SELECT_COLUMNS.items()}
     if provider_profile_grants:
@@ -287,6 +307,9 @@ def check_role(cur):
         write_only.add('enrollment_learners')
         for table,columns in COURSE_SELECT_COLUMNS.items():
             select_columns[table] = tuple(dict.fromkeys((*select_columns.get(table,()), *columns)))
+    if calendar_grants:
+        inserts = merged_grants(inserts, CALENDAR_INSERT)
+        updates = merged_grants(updates, CALENDAR_UPDATE)
     if legacy_grants:
         inserts = merged_grants(inserts, LEGACY_INSERT)
         updates = merged_grants(updates, LEGACY_UPDATE)

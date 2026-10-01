@@ -13,7 +13,7 @@ class Input(BaseModel):
 
     @field_validator(
         'reason','program_id','title','description','access_mode','cohort_label','status',
-        'mentor_name','video_url','material_url','name','email','phone','note',
+        'mentor_name','presenter_name','video_url','material_url','name','email','phone','note',
         mode='before',check_fields=False)
     @classmethod
     def clean_text(cls,value):
@@ -121,6 +121,38 @@ class SessionUpdate(Write):
     @model_validator(mode='after')
     def time(self):
         if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_session_range')
+        return self
+
+
+CalendarEventType=Literal['BRIEFING','STUDY_ALL','SPECIAL','FIELD_TRIP','OTHER']
+
+class CalendarEventCreate(Write):
+    event_type: CalendarEventType
+    title: str=Field(min_length=1,max_length=200)
+    presenter_name: str|None=Field(default=None,max_length=80)
+    starts_at: datetime
+    ends_at: datetime|None=None
+    is_public: bool=True
+
+    @model_validator(mode='after')
+    def time(self):
+        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_calendar_event_range')
+        return self
+
+class CalendarEventUpdate(Write):
+    event_id: UUID
+    version: int=Field(ge=1)
+    event_type: CalendarEventType
+    title: str=Field(min_length=1,max_length=200)
+    presenter_name: str|None=Field(default=None,max_length=80)
+    starts_at: datetime
+    ends_at: datetime|None=None
+    is_public: bool=True
+    cancelled: bool=False
+
+    @model_validator(mode='after')
+    def time(self):
+        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_calendar_event_range')
         return self
 
 

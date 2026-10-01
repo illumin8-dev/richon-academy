@@ -1,6 +1,9 @@
 """Feature-gated canonical course/run/session/enrollment portal."""
+from datetime import datetime, timezone
 import logging
 import os
+import re
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -18,7 +21,24 @@ logger=logging.getLogger('richon.course_domain')
 STATIC=Path(__file__).parent/'portal_static'
 
 
-def make_router(settings:AuthSettings):
+SEOUL=ZoneInfo('Asia/Seoul')
+
+def _month_parts(value):
+    if value is None:
+        now=datetime.now(SEOUL);year,month=now.year,now.month
+    else:
+        if not re.fullmatch(r'\d{4}-(?:0[1-9]|1[0-2])',value):
+            raise HTTPException(422,'invalid_month',headers=HEADERS)
+        year,month=map(int,value.split('-'))
+    def shifted(delta):
+        n=year*12+(month-1)+delta
+        return n//12,n%12+1
+    def utc_first(delta):
+        y,m=shifted(delta)
+        return datetime(y,m,1,tzinfo=SEOUL).astimezone(timezone.utc)
+    return f'{year:04d}-{month:02d}',utc_first(-1),utc_first(0),utc_first(1),utc_first(2)
+
+def make_router(settings:AuthSettings,calendar_enabled=False):
     router=APIRouter(prefix='/portal/api')
 
     def read(response,fn,*args):
@@ -71,6 +91,13 @@ def make_router(settings:AuthSettings):
                     run_id:UUID|None=None,limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0,le=10000)):
         return read(response,store.enrollments,run_id,limit,offset)
 
+    if calendar_enabled:
+        @router.get('/admin/learning/calendar')
+        def admin_calendar(response:Response,admin:Annotated[Principal,Depends(require_admin)],
+                           month:str|None=Query(default=None,max_length=7)):
+            label,_,start_at,end_at,_=_month_parts(month)
+            return {'month':label,'items':read(response,store.admin_calendar,start_at,end_at)}
+
     @router.get('/admin/learning/targets')
     def targets(response:Response,admin:Annotated[Principal,Depends(require_admin)],
                 q:str=Query(default='',max_length=200),limit:int=Query(20,ge=1,le=50)):
@@ -100,6 +127,17 @@ def make_router(settings:AuthSettings):
     def update_session(body:model.SessionUpdate,response:Response,admin:Annotated[Principal,Depends(permitted)]):
         return write(response,admin,'session.update',body)
 
+    if calendar_enabled:
+        @router.post('/admin/learning/calendar-events')
+        def create_calendar_event(body:model.CalendarEventCreate,response:Response,
+                                  admin:Annotated[Principal,Depends(permitted)]):
+            return write(response,admin,'calendar_event.create',body)
+
+        @router.post('/admin/learning/calendar-events/update')
+        def update_calendar_event(body:model.CalendarEventUpdate,response:Response,
+                                  admin:Annotated[Principal,Depends(permitted)]):
+            return write(response,admin,'calendar_event.update',body)
+
     @router.post('/admin/learning/enrollments')
     def grant(body:model.EnrollmentGrant,response:Response,admin:Annotated[Principal,Depends(permitted)]):
         return write(response,admin,'enrollment.grant',body)
@@ -117,7 +155,17 @@ def install_if_enabled(app:FastAPI):
         or not any(getattr(r,'path',None)=='/portal/api/admin/summary' for r in app.routes)):
         raise ValueError('course_domain_requires_private_portal')
     origins=frozenset(x.strip() for x in os.getenv('RICHON_AUTH_ALLOWED_ORIGINS','').split(',') if x.strip())
-    app.include_router(make_router(AuthSettings(origins)))
+    calendar_enabled=True
+    app.include_router(make_router(AuthSettings(origins),calendar_enabled=calendar_enabled))
+
+    if calendar_enabled:
+        @app.get('/portal/calendar',include_in_schema=False)
+        def calendar_page():return FileResponse(STATIC/'calendar.html',headers=UI_PAGE_HEADERS)
+
+        @app.get('/portal/calendar-assets/{asset}',include_in_schema=False)
+        def calendar_asset(asset:str):
+            if asset not in {'calendar.css','calendar.js'}:raise HTTPException(404,'not_found',headers=HEADERS)
+            return FileResponse(STATIC/asset,headers=HEADERS)
 
     @app.get('/portal/courses',include_in_schema=False)
     def page():return FileResponse(STATIC/'courses.html',headers=UI_PAGE_HEADERS)

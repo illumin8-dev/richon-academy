@@ -250,7 +250,7 @@ def install_if_enabled(app: FastAPI) -> bool:
     async def private_portal_headers(request: Request, call_next):
         response = await call_next(request)
         if request.url.path.startswith("/portal/"):
-            page_headers = MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" else (UI_PAGE_HEADERS if request.url.path in {"/portal/admin", "/portal/courses", "/portal/enrollments", "/portal/manual"} else PAGE_HEADERS)
+            page_headers = MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" else (UI_PAGE_HEADERS if request.url.path in {"/portal/admin", "/portal/courses", "/portal/calendar", "/portal/enrollments", "/portal/manual"} else PAGE_HEADERS)
             response.headers.update(page_headers if response.status_code == 200 else PAGE_HEADERS)
         return response
 
