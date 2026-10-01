@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/.pages-dist"
 
+python3 "$ROOT/tools/render_public_chrome.py" --check
+
 rm -rf "$OUT"
 mkdir -p "$OUT/frontend/shared"
 
