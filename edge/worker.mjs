@@ -113,7 +113,7 @@ export async function handle(request, env, fetcher = fetch, cacheStore = globalT
     // responses must bypass the CDN cache, not enter it with immediate expiry.
     const result = await fetcher(destination.href, {method: request.method, headers, body,
       redirect: 'manual', signal: controller.signal, cache: 'no-store'});
-    const output = new Headers({'Cache-Control':publicCalendar?'public, max-age=60, s-maxage=60':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
+    const output = new Headers({'Cache-Control':publicCalendar?'public, max-age=0, s-maxage=60':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
     for (const key of ['content-type', 'content-security-policy', 'retry-after']) {
       const value = result.headers.get(key); if (value) output.set(key, value);
     }
