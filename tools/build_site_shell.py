@@ -13,7 +13,7 @@ STATIC = ROOT / 'backend/portal_static'
 
 
 def render_admin_sidebar(raw: str, active: str | None) -> str:
-    for key in ('courses','enrollments','manual'):
+    for key in ('courses','calendar','enrollments','manual'):
         token='{{ACTIVE_'+key.upper()+'}}'
         raw=raw.replace(token,'aria-current="page"' if active==key else '')
     if '{{ACTIVE_' in raw:
@@ -44,6 +44,7 @@ def outputs():
     for filename,active in {
         'admin.html':None,
         'courses.html':'courses',
+        'calendar.html':'calendar',
         'enrollments.html':'enrollments',
         'manual.html':'manual',
     }.items():
