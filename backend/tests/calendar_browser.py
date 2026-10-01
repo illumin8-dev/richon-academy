@@ -128,14 +128,21 @@ def main():
             assert continuation.evaluate("(el)=>el.style.gridColumnEnd")=='span 2'
             assert page.locator('[data-date="2026-10-09"]').evaluate("(el)=>getComputedStyle(el).backgroundColor")=='rgba(0, 0, 0, 0)'
             assert page.locator('[data-date="2026-10-09"] .calendar-date').evaluate("(el)=>getComputedStyle(el).backgroundColor")=='rgba(0, 0, 0, 0)'
-            # Legend is monthly and lecture-driven: holiday colors do not create legend items.
-            expect(page.locator('#calendar-legend .calendar-legend-item')).to_have_count(3)
-            expect(page.locator('#calendar-legend')).to_contain_text('무료 브리핑')
-            expect(page.locator('#calendar-legend')).to_contain_text('리치온 스터디')
-            expect(page.locator('#calendar-legend')).to_contain_text('Pre리치온')
+            # Legend uses the actual monthly course text and each event's actual selected color.
+            legend=page.locator('#calendar-legend .calendar-legend-item')
+            expect(legend).to_have_count(3)
+            expect(legend.nth(0)).to_have_text('리치온 실전투자')
+            expect(legend.nth(0)).to_have_attribute('data-color','#FF5757')
+            expect(legend.nth(0).locator('.calendar-legend-dot')).to_have_class(re.compile(r'color-red'))
+            expect(legend.nth(1)).to_have_text('리치온 아카데미')
+            expect(legend.nth(1)).to_have_attribute('data-color','#D8BD78')
+            expect(legend.nth(1).locator('.calendar-legend-dot')).to_have_class(re.compile(r'color-gold'))
+            expect(legend.nth(2)).to_have_text('Pre리치온')
+            expect(legend.nth(2)).to_have_attribute('data-color','#00B622')
+            expect(legend.nth(2).locator('.calendar-legend-dot')).to_have_class(re.compile(r'color-green'))
+            expect(page.locator('#calendar-legend')).not_to_contain_text('무료 브리핑')
+            expect(page.locator('#calendar-legend')).not_to_contain_text('리치온 스터디')
             expect(page.locator('#calendar-legend')).not_to_contain_text('재개발중급반')
-            expect(page.locator('#calendar-legend')).not_to_contain_text('리치온 인테리어')
-            expect(page.locator('#calendar-legend')).not_to_contain_text('스터디 전체')
             expect(page.locator('#copy-event')).to_have_text('일정 복제')
 
             # Export is a 1200x1200 PNG copied to the image clipboard, not a screenshot of admin chrome.
