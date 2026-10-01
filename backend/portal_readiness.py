@@ -92,6 +92,13 @@ COURSE_UPDATE = {
 }
 
 CALENDAR_READ = ('calendar_events',)
+CALENDAR_LEGACY_INSERT = {
+    'calendar_events': ('event_id','event_type','title','presenter_name','starts_at','ends_at','is_public'),
+}
+CALENDAR_LEGACY_UPDATE = {
+    'calendar_events': ('event_type','title','presenter_name','starts_at','ends_at','is_public',
+                        'cancelled_at','version','updated_at'),
+}
 CALENDAR_INSERT = {
     'calendar_events': ('event_id','event_type','title','starts_at','is_public',
                         'course_label','content_text','color_hex'),
@@ -201,13 +208,24 @@ def calendar_schema_ready(cur):
     return cur.fetchone()==(3,)
 
 
+def calendar_grant_profile(cur):
+    """Accept only one of the two reviewed rollout profiles, never a mixed superset."""
+    cur.execute("""SELECT
+        has_column_privilege(%s,'richon.calendar_events','color_hex','INSERT'),
+        has_column_privilege(%s,'richon.calendar_events','presenter_name','INSERT')""",(ROLE,ROLE))
+    freeform,legacy=cur.fetchone()
+    if freeform is True and legacy is False:return 'freeform'
+    if freeform is False and legacy is True:return 'legacy'
+    raise ValueError('calendar_grant_profile_mismatch')
+
+
 def calendar_grants_prepared(cur):
     cur.execute("SELECT to_regclass('richon.calendar_events') IS NOT NULL")
     if cur.fetchone()!=(True,) or not calendar_schema_ready(cur): return False
-    cur.execute("""SELECT
-        has_table_privilege(%s,'richon.calendar_events','SELECT'),
-        has_column_privilege(%s,'richon.calendar_events','color_hex','INSERT')""",(ROLE,ROLE))
-    return cur.fetchone()==(True,True)
+    try: calendar_grant_profile(cur)
+    except ValueError: return False
+    cur.execute("SELECT has_table_privilege(%s,'richon.calendar_events','SELECT')",(ROLE,))
+    return cur.fetchone()==(True,)
 
 
 def legacy_grants_prepared(cur):
@@ -288,6 +306,7 @@ def check_role(cur):
     marketing_grants = marketing_active or marketing_grants_prepared(cur)
     course_grants = course_active or course_grants_prepared(cur)
     calendar_grants = calendar_active or calendar_grants_prepared(cur)
+    calendar_profile = calendar_grant_profile(cur) if calendar_grants else None
     legacy_grants = monthly_active or manual_active or legacy_grants_prepared(cur)
     tables = READ + (PROVIDER_PROFILE_READ if provider_profile_grants else ()) + (('member_profiles',) if profile_active else ()) + ((ACCOUNT_READ + ACCOUNT_WRITE_ONLY) if account_grants else ()) + (MARKETING_READ if marketing_grants else ()) + ((COURSE_READ + COURSE_WRITE_ONLY) if course_grants else ()) + (CALENDAR_READ if calendar_grants else ()) + ((LEGACY_READ + LEGACY_WRITE_ONLY) if legacy_grants else ())
     inserts = {**INSERT, **({'member_profiles': member_profile.INSERT_COLUMNS} if profile_active else {})}
@@ -319,8 +338,8 @@ def check_role(cur):
         for table,columns in COURSE_SELECT_COLUMNS.items():
             select_columns[table] = tuple(dict.fromkeys((*select_columns.get(table,()), *columns)))
     if calendar_grants:
-        inserts = merged_grants(inserts, CALENDAR_INSERT)
-        updates = merged_grants(updates, CALENDAR_UPDATE)
+        inserts = merged_grants(inserts, CALENDAR_LEGACY_INSERT if calendar_profile=='legacy' else CALENDAR_INSERT)
+        updates = merged_grants(updates, CALENDAR_LEGACY_UPDATE if calendar_profile=='legacy' else CALENDAR_UPDATE)
     if legacy_grants:
         inserts = merged_grants(inserts, LEGACY_INSERT)
         updates = merged_grants(updates, LEGACY_UPDATE)

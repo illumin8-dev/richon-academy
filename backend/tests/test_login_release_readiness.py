@@ -72,3 +72,19 @@ def test_actual_postgres_varchar_catalog_shape():
     for bad in (definition+' OR true',definition.replace('::text[]','::varchar[]'),
                 definition.replace("'/'::character varying","' /'::character varying")):
         with pytest.raises(ValueError):r.constraint_paths(bad)
+
+
+@pytest.mark.parametrize(('row','expected'),[
+    ((True,False),'freeform'),
+    ((False,True),'legacy'),
+])
+def test_calendar_rollout_accepts_only_one_reviewed_grant_profile(row,expected):
+    cur=Mock();cur.fetchone.return_value=row
+    assert r.calendar_grant_profile(cur)==expected
+
+
+@pytest.mark.parametrize('row',[(True,True),(False,False)])
+def test_calendar_rollout_rejects_mixed_or_missing_grant_profile(row):
+    cur=Mock();cur.fetchone.return_value=row
+    with pytest.raises(ValueError,match='calendar_grant_profile_mismatch'):
+        r.calendar_grant_profile(cur)
