@@ -1447,3 +1447,75 @@
   - /portal/enrollments
   - /portal/manual
   - header RICH/ON 정렬 / 우측 운영 링크 / full-width 공용 footer를 육안 확인.
+
+
+
+### 체크포인트 38 / site chrome 진짜 single-source 리팩터링 및 운영 반영
+- 사용자 피드백: 관리자/마이페이지/public이 같은 디자인처럼 보이지만 폰트/두께가 미묘하게 달랐고, 실제 공용 요소가 복제본인지 여부를 문제로 지적.
+- 원인 확인:
+  - Pretendard는 public/mypage 일부 페이지에서 개별 <link>로 로드되었지만 admin은 직접 로드하지 않아 fallback font 가능성이 있었음.
+  - header가 `header.html / portal-header.html / admin-header.html` 3개 편집 소스로 분리되어 있었음.
+  - admin에는 구형 `.topbar / .brand / .brand-mark / .top-actions` 스타일 잔재도 남아 있었음.
+- PR #114 `refactor: make site chrome single-source`
+  - head: `7534538b5a9419e5ba95d102b51d85454401a7b7`
+  - merge commit: `0d196230950b6877ed39471f598376257e90a04a`
+  - 최종 CI 전체 PASS.
+  - 초기 backend regression 1회 실패 원인은 삭제한 `portal-header.html`을 직접 읽던 오래된 test reference 1건이었음.
+  - 해당 test를 generated portal header 기준으로 수정 후 875 tests 포함 전체 회귀 PASS.
+- canonical editable chrome source:
+  - header: `frontend/shared/site-header.html` 단 하나
+  - footer: `frontend/shared/footer.html` 단 하나
+  - shared typography/header/footer CSS: `frontend/shared/site.css`
+- 삭제한 중복 편집 소스:
+  - `frontend/shared/header.html`
+  - `frontend/shared/portal-header.html`
+  - `frontend/shared/admin-header.html`
+  - `frontend/shared/admin-footer.html`
+- header variant는 `tools/shared_chrome.py`에서 canonical template에 slot 값만 주입:
+  - landing
+  - portal/member
+  - admin
+  - document/privacy/terms
+  - logo / nav frame / class contract 자체는 동일 template에서 생성.
+- public static Pages 특성상 최종 HTML에는 rendered header/footer markup이 들어가지만 사람이 별도 편집하는 복제본이 아님.
+  - `tools/render_public_chrome.py --check`가 canonical source와 rendered source page의 정확한 일치를 검증.
+  - `tools/build_public_pages.sh`는 drift가 있으면 Pages output 생성 전에 실패.
+- portal/admin:
+  - `tools/build_site_shell.py`도 동일 `shared_chrome.py` renderer 사용.
+  - Cloud Run 정적 산출물은 canonical source에서 생성.
+  - generated `backend/portal_static/site-header.html`은 runtime artifact이며 editable authority가 아님.
+- typography:
+  - Pretendard 로딩을 `frontend/shared/site.css`의 단일 @import로 이동.
+  - 개별 public/mypage Pretendard link 제거.
+  - `ops.css`의 `--ops-font`도 `var(--site-font)`을 상속.
+  - 따라서 public/member/admin 공용 chrome은 동일 font source/token 사용.
+- legacy shared chrome CSS 제거:
+  - admin `.topbar`, `.brand`, `.brand-mark`, `.top-actions`
+  - `.ops-footer`
+- privacy / terms / signup-guide도 canonical shared header/footer로 전환.
+  - policy 페이지 legacy nav/footer CSS 및 legacy year script 제거.
+- 페이지 고유 CSS는 의도적으로 별도 유지:
+  - `admin.css`: 관리자 레이아웃/사이드바
+  - `courses.css`: 강의 전용
+  - `enrollments.css`: 월별 수강관리 전용
+  - `manual.css`: 수동관리 전용
+  - 같은 공용 요소 스타일의 중복 소유가 아니라 페이지 고유 기능 스타일임.
+- 운영 rollout:
+  - source/request commit: `e0671955f116af5be1a45ab725746f98f2dc81aa`
+  - workflow run: `36816150070`
+  - image digest: `sha256:7fd785764ef9c349d553e18c9ba8920c58f396e268b3be62ab809fb27d8281b2`
+  - old candidate: `richon-portal-handoff-36810983256-1`
+  - new candidate: `richon-portal-handoff-36816150070-1`
+  - default 100% revision unchanged: `richon-portal-gh-35810692921-1`
+  - ACCOUNT=true / MARKETING=true / member-info-v1 preserved
+  - IAM unchanged / EDGE_GATE PASS / ACCESS_GATE PASS.
+  - customer probes: `/auth/login` 200 / `/portal/mypage` 200 / `/apply.html` 308 canonical / login-modal 200.
+- post-rollout read-only inspect:
+  - request commit: `c0e69bf13b3ac2134454667ba68acfae78e63e1d`
+  - `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+- deployment request returned to hold:
+  - commit: `4ce5e2afd194ab63a305524146c34d882907355a`
+- 사용자 육안 확인 포인트:
+  - public / mypage / admin에서 RICH/ON 로고 글꼴/두께가 동일한지
+  - admin header의 운영 홈 / 마이페이지 / 로그아웃만 variant로 다른지
+  - footer가 모든 shared-chrome 화면에서 동일한지.
