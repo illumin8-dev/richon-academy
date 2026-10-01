@@ -26,12 +26,6 @@ PAGE_HEADERS = {
     "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
     "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
 }
-PUBLIC_CALENDAR_HEADERS = {
-    **HEADERS,
-    "Cache-Control": "public, max-age=0, s-maxage=60",
-    "Referrer-Policy": "no-referrer",
-}
-
 UI_PAGE_HEADERS = {
     **PAGE_HEADERS,
     "Content-Security-Policy": PAGE_HEADERS["Content-Security-Policy"].replace(
@@ -255,9 +249,7 @@ def install_if_enabled(app: FastAPI) -> bool:
     @app.middleware("http")
     async def private_portal_headers(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path == "/portal/api/public/calendar":
-            response.headers.update(PUBLIC_CALENDAR_HEADERS if response.status_code == 200 else HEADERS)
-        elif request.url.path.startswith("/portal/"):
+        if request.url.path.startswith("/portal/"):
             page_headers = MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" else (UI_PAGE_HEADERS if request.url.path in {"/portal/admin", "/portal/courses", "/portal/calendar", "/portal/enrollments", "/portal/manual"} else PAGE_HEADERS)
             response.headers.update(page_headers if response.status_code == 200 else PAGE_HEADERS)
         return response
