@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "rollout-admin-site-chrome-20261001-a"
+  "operation": "inspect-legacy-admin-enabled",
+  "request_id": "post-admin-site-chrome-inspect-20261001-a"
 }
