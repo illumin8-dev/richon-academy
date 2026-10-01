@@ -8,7 +8,7 @@ The owner-provided October 2026 Richon calendar is the visual reference.
 - white poster-like canvas
 - Richon geometric navy/gold mark above the month title
 - title: `YYYY년 M월 / 리치온 캘린더`
-- upper-right legend is dynamic: only colors used by normal events in the viewed month are shown; holiday/emphasis entries do not create legend items
+- upper-right legend is dynamic: it uses each normal event's actual course label and selected color for the viewed month; holiday/emphasis entries do not create legend items
 - weekday row uses Su..Sa
 - Sunday red / Saturday blue / ordinary dates light gray
 - event dates use rounded colored date blocks with white numbers
@@ -31,7 +31,7 @@ The owner-provided October 2026 Richon calendar is the visual reference.
 - #00B622 / Pre리치온
 - #C000DB / 스터디 전체
 
-These six values are the only operator-selectable calendar colors. The viewed month shows only palette entries actually used by normal events in that month. Holiday/emphasis entries are excluded from legend presence. Historical screenshots from June–September may show older shades/categories; future rendering and later historical import normalize to the October palette.
+These six values are the only operator-selectable calendar colors. The viewed month legend is built from the actual normal-event course-label/color pairs present in that month, deduplicating identical pairs. It does not substitute the palette's canonical sample label for the event's real course text. Holiday/emphasis entries are excluded from legend presence. Historical screenshots from June–September may show older shades/categories; future rendering and later historical import normalize to the October palette.
 
 ## Admin interaction
 Calendar is independent from course_programs / course_runs / course_sessions.
