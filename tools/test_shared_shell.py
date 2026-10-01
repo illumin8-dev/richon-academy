@@ -68,6 +68,8 @@ class SharedShellTests(unittest.TestCase):
         site=(build.SOURCE/'site.css').read_text()
         self.assertNotIn('@import',site)
         self.assertNotIn('pretendard@v1.3.9',site)
+        self.assertIn('body.richon-page{box-sizing:border-box;padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}',site)
+        self.assertIn('.site-footer{margin-top:auto;flex-shrink:0;',site)
         self.assertIn('--ops-font:var(--site-font)',(build.SOURCE/'ops.css').read_text())
         admin=(build.SOURCE/'admin.css').read_text()
         for obsolete in ('.topbar{','.brand-mark{','.top-actions{'):
@@ -87,7 +89,7 @@ class SharedShellTests(unittest.TestCase):
 
     def test_admin_shell_owns_outer_spacing(self):
         css=(build.SOURCE/'admin.css').read_text()
-        for rule in ('body{padding-top:74px}', '.sidebar{border:0}', '.main{padding:0;max-width:none}', '.sidebar{top:98px}'):
+        for rule in ('body{padding-top:74px}', '.sidebar{border:0}', '.main{padding:0;max-width:none}', '.sidebar{top:98px}', 'width:100%;min-width:0;max-width:1360px'):
             self.assertIn(rule,css)
         for name in ('admin.html','courses.html','enrollments.html','manual.html'):
             page=(build.STATIC/name).read_text()
@@ -121,6 +123,7 @@ class SharedShellTests(unittest.TestCase):
                 self.assertEqual(page.count(footer),1)
                 self.assertIn('/portal/assets/site.css',page)
                 self.assertIn('/portal/assets/site.js',page)
+                self.assertIn('class="richon-page"',page)
                 self.assertEqual(page.count(chrome.font_link()),1)
                 self.assertEqual(page.count('data-admin-tab-link="orders"'),1)
                 self.assertEqual(page.count('data-admin-tab-link="members"'),1)
