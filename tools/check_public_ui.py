@@ -37,6 +37,11 @@ assert index.count('class="mentor-feature-card"') == 1
 assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
+assert 'body{padding-bottom:74px}' not in index
+assert 'id="calendar"' in index and 'RICHON CALENDAR' in index
+assert 'assets/calendar/public-calendar.css' in index
+assert 'assets/calendar/public-calendar.js' in index
+assert 'id="public-calendar-copy"' in index
 assert '.cal-' not in index
 assert '캘린더 셀 살짝 반응' not in index
 
@@ -119,6 +124,10 @@ for copy in (
 assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
 assert '회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`' not in work
 assert '원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음' in work
+
+for relative in ('assets/calendar/public-calendar.css','assets/calendar/public-calendar.js'):
+    path=ROOT/relative
+    assert path.is_file() and path.stat().st_size > 1000
 
 images=[
     'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',
