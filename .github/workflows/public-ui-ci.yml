@@ -12,6 +12,10 @@ on:
       - 'frontend/shared/**'
       - 'assets/**'
       - 'tools/check_public_ui.py'
+      - 'tools/shared_chrome.py'
+      - 'tools/render_public_chrome.py'
+      - 'tools/shared_chrome.py'
+      - 'tools/render_public_chrome.py'
       - 'tools/build_public_pages.sh'
       - '.github/workflows/public-ui-ci.yml'
   pull_request:
