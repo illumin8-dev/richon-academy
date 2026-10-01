@@ -43,6 +43,9 @@ def outputs():
     result = {}
     for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'auth.css', 'ops.css', 'account.css', 'account.js'):
         result[STATIC / name] = (SOURCE / name).read_bytes()
+    # Keep the deployed /portal/assets/portal.css URL stable while making
+    # frontend/shared/admin.css the single editable source for the admin shell.
+    result[STATIC / 'portal.css'] = (SOURCE / 'admin.css').read_bytes()
     result[STATIC / 'site-header.html'] = header.encode()
     result[STATIC / 'site-footer.html'] = footer.encode()
     mypage = (SOURCE / 'mypage.html').read_text()
