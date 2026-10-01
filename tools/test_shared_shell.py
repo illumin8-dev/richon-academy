@@ -68,7 +68,7 @@ class SharedShellTests(unittest.TestCase):
         site=(build.SOURCE/'site.css').read_text()
         self.assertNotIn('@import',site)
         self.assertNotIn('pretendard@v1.3.9',site)
-        self.assertIn('body.richon-page{padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}',site)
+        self.assertIn('body.richon-page{box-sizing:border-box;padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}',site)
         self.assertIn('.site-footer{margin-top:auto;flex-shrink:0;',site)
         self.assertIn('--ops-font:var(--site-font)',(build.SOURCE/'ops.css').read_text())
         admin=(build.SOURCE/'admin.css').read_text()
