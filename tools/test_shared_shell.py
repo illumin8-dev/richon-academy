@@ -78,6 +78,27 @@ class SharedShellTests(unittest.TestCase):
         self.assertNotIn('접근 인증 후 로그인 화면 열기', login)
 
 
+    def test_admin_shell_owns_outer_spacing(self):
+        css=(build.SOURCE/'admin.css').read_text()
+        for rule in ('.topbar .brand::before{content:none}', '.sidebar{border:0}', '.main{padding:0;max-width:none}'):
+            self.assertIn(rule,css)
+        for name in ('admin.html','courses.html','enrollments.html','manual.html'):
+            page=(build.STATIC/name).read_text()
+            with self.subTest(name=name):
+                self.assertIn('/portal/assets/portal.css',page)
+        # Monthly/manual still contain legacy generic shell selectors, so the
+        # canonical admin shell must load after them and win the cascade.
+        for name,asset in (
+            ('enrollments.html','/portal/monthly-assets/enrollments.css'),
+            ('manual.html','/portal/manual-assets/manual.css'),
+        ):
+            page=(build.STATIC/name).read_text()
+            self.assertGreater(page.find('/portal/assets/portal.css'),page.find(asset))
+        # Course CSS is already scoped to course-specific controls and may load
+        # after the shared shell.
+        courses=(build.STATIC/'courses.html').read_text()
+        self.assertGreater(courses.find('/portal/course-assets/courses.css'),courses.find('/portal/assets/portal.css'))
+
     def test_admin_pages_render_one_shared_shell(self):
         header=(build.SOURCE/'admin-header.html').read_text().strip()
         footer=(build.SOURCE/'admin-footer.html').read_text().strip()
