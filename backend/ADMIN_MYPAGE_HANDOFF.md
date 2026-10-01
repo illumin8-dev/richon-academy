@@ -1273,3 +1273,39 @@
   1. richon-academy-main main production deployment가 최신 merge commit을 반영했는지 Cloudflare dashboard에서 확인.
   2. custom domain cutover: Pages known issue 때문에 existing auth/portal Worker routes를 잠깐 제거한 후 richonacademy.com custom domain 연결, Active 확인 후 동일 route 2개 복원.
   3. E2E: /, /apply.html, /auth/login, /portal/mypage, 카카오/네이버 로그인 진입 확인.
+
+
+
+### 체크포인트 33 / Cloudflare Pages custom domain cutover 완료
+- 2026-10-01 owner browser verification 기준 hosting cutover 완료.
+- public origin:
+  - 이전: `richonacademy.com -> marururu00.github.io`
+  - 현재: `richonacademy.com -> richon-academy-main.pages.dev` (Cloudflare Pages custom domain Active)
+- Pages project:
+  - `richon-academy-main`
+  - canonical repo: `illumin8-dev/richon-academy`
+  - production branch: `main`
+- 기존 Worker routing 복원 완료:
+  - `https://richonacademy.com/auth/*` -> `richon-account-router`
+  - `https://richonacademy.com/portal/*` -> `richon-account-router`
+  - failure mode: fail closed/block
+- owner E2E 확인 PASS:
+  - `https://richonacademy.com/`
+  - `https://richonacademy.com/apply.html`
+  - `https://richonacademy.com/auth/login`
+  - `https://richonacademy.com/portal/mypage`
+- login cold-start UX 개선 PR #109도 이미 main 병합 및 Pages deploy 완료:
+  - static public pages load `frontend/shared/login.js`
+  - login click opens modal shell immediately and fetches CSRF/provider config from Cloud Run asynchronously
+  - Worker / Cloud Run / OAuth / Neon / minScale=0 unchanged
+- 현재 canonical production architecture:
+  - Cloudflare Pages: public static site
+  - Cloudflare Worker `richon-account-router`: /auth/*, /portal/* edge routing/security gate
+  - Google Cloud Run `richon-portal`: FastAPI application/backend
+  - Neon: Postgres
+- rollback reference:
+  - previous public origin was `marururu00.github.io`
+  - former marururu00 repository remains history/rollback source; no longer canonical production code source.
+- 다음 구조 작업은 owner 승인 후 별도 PR:
+  - hosting cutover 이후로 미뤄둔 shared CSS/source consolidation
+  - 실제 cold-start 체감 재확인 후 startup CPU boost/minScale 검토
