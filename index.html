@@ -301,7 +301,6 @@
   .ctabar .cb-brief:hover{background:#f7edda}
   .ctabar .cb-apply{background:var(--orange);color:#fff}
   .ctabar .cb-apply:hover{background:var(--orange-2,#e06a15);transform:translateY(-2px)}
-  body{padding-bottom:74px}
   @media(max-width:600px){
     .ctabar-in{padding:10px 14px;gap:10px}
     .ctabar .cb-sub{display:none}
@@ -310,7 +309,9 @@
   }
 </style>
 <link rel="stylesheet" href="frontend/shared/site.css">
+<link rel="stylesheet" href="assets/calendar/public-calendar.css">
 <script defer src="frontend/shared/site.js"></script>
+<script defer src="assets/calendar/public-calendar.js"></script>
 <script defer src="frontend/shared/login.js"></script>
 <link rel="preload" as="image" href="assets/hero/richon-hero-mobile.webp" type="image/webp" media="(max-width:768px)">
 <link rel="stylesheet" href="assets/hero/home-hero.css">
@@ -489,6 +490,32 @@
         </div>
       </article>
     </div>
+  </div>
+</section>
+
+<section class="block richon-calendar-section" id="calendar" hidden>
+  <div class="wrap">
+    <div class="richon-calendar-heading">
+      <div>
+        <p class="sec-eyebrow">RICHON CALENDAR</p>
+        <h2 class="sec-title">리치온 캘린더</h2>
+        <p class="sec-lead">이번 달 강의와 브리핑 일정을 한눈에 확인하세요.</p>
+      </div>
+      <button class="calendar-copy" id="public-calendar-copy" type="button">PNG 이미지 복사</button>
+    </div>
+    <div class="public-calendar-card">
+      <div class="public-calendar-toolbar">
+        <button class="public-calendar-arrow" id="public-calendar-prev" type="button" aria-label="이전 달" hidden>←</button>
+        <h3 id="public-calendar-month"></h3>
+        <button class="public-calendar-arrow" id="public-calendar-next" type="button" aria-label="다음 달" hidden>→</button>
+      </div>
+      <div class="public-calendar-legend" id="public-calendar-legend" aria-label="일정 구분"></div>
+      <div class="public-calendar-weekdays" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+      <div class="public-calendar-grid" id="public-calendar-grid"></div>
+      <div class="public-calendar-agenda" id="public-calendar-agenda"></div>
+      <p class="public-calendar-status" id="public-calendar-status" role="status"></p>
+    </div>
+    <p class="calendar-copy-status" id="calendar-copy-status" role="status"></p>
   </div>
 </section>
 
