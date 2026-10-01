@@ -78,6 +78,18 @@ class SharedShellTests(unittest.TestCase):
         self.assertNotIn('접근 인증 후 로그인 화면 열기', login)
 
 
+    def test_admin_shell_owns_outer_spacing(self):
+        css=(build.SOURCE/'admin.css').read_text()
+        for rule in ('.topbar .brand::before{content:none}', '.sidebar{border:0}', '.main{padding:0;max-width:none}'):
+            self.assertIn(rule,css)
+        for name in ('admin.html','courses.html','enrollments.html','manual.html'):
+            page=(build.STATIC/name).read_text()
+            with self.subTest(name=name):
+                self.assertIn('/portal/assets/portal.css',page)
+                page_specific=max(page.find('/portal/course-assets/courses.css'),page.find('/portal/monthly-assets/enrollments.css'),page.find('/portal/manual-assets/manual.css'))
+                if page_specific >= 0:
+                    self.assertGreater(page.find('/portal/assets/portal.css'),page_specific)
+
     def test_admin_pages_render_one_shared_shell(self):
         header=(build.SOURCE/'admin-header.html').read_text().strip()
         footer=(build.SOURCE/'admin-footer.html').read_text().strip()
