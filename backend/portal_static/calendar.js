@@ -144,6 +144,7 @@ function renderDesktop(){
           const itemEnd=holiday.end_date||holiday.event_date;
           const label=el('button',holiday.course_label,'calendar-banner '+colorClass(holiday.color_hex));label.type='button';
           label.style.setProperty('--holiday-span',String(placement.count));
+          label.style.width='calc('+(placement.count*100)+'% - 16px)';
           label.setAttribute('aria-label',holiday.course_label+' '+holiday.event_date+'부터 '+itemEnd+'까지');
           label.addEventListener('click',event=>{event.stopPropagation();edit(holiday);});cell.append(label);
         }
