@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 STATIC=ROOT/'backend'/'portal_static'
 html=(STATIC/'manual.html').read_text()
+html=html.replace('<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">','')
 js=(STATIC/'manual.js').read_text().replace('crypto.randomUUID()', 'demoUUID()')
 start=js.index('// Real transport.')
 end=js.index('// END REAL TRANSPORT')+len('// END REAL TRANSPORT')
