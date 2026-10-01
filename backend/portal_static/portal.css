@@ -19,3 +19,11 @@
 .topbar .brand::before{content:none}
 .sidebar{border:0}
 .main{padding:0;max-width:none}
+
+/* Admin pages use the same fixed brand header and full site footer as the
+   public/member surfaces. Keep the operational content clear of the header. */
+body{padding-top:74px}
+.sidebar{top:98px}
+.admin-site-nav .site-nav-right{gap:14px}
+@media(max-width:900px){body{padding-top:66px}}
+@media(max-width:720px){.sidebar{top:auto}}
