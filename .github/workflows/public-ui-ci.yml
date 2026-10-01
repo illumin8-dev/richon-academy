@@ -58,3 +58,4 @@ jobs:
           Path('/tmp/richon-apply-inline.js').write_text('\n'.join(scripts))
           PY
           node --check /tmp/richon-apply-inline.js
+          node --check assets/calendar/public-calendar.js
