@@ -35,13 +35,16 @@ It does not seed real programs, members or enrollments, and it does not rewrite 
 
 
 ## Central calendar decisions / 2026-10-01
-- Calendar is the next product work; login-provider lifecycle and payment remain deferred.
-- Phase 1 is admin-first: validate the central calendar in `/portal/calendar` before exposing any calendar data on the public landing page.
-- Real class meetings continue to use canonical `course_sessions`; they are not duplicated into a second schedule table.
-- Non-course schedules use `calendar_events` with types BRIEFING / STUDY_ALL / SPECIAL / FIELD_TRIP / OTHER.
-- Admin stores exact Seoul date/time.
-- "다음 주로 복제" creates a new draft from the selected event with date +7 days; course sessions also propose the next sequence number.
-- DB018 `calendar_events` and exact runtime grants must be prepared before rolling out the admin calendar image.
-- After owner validation of admin behavior, Phase 2 may expose the same data on the landing page between Programs and Mentors.
-- Approved Phase 2 behavior is preserved but not implemented in this PR: current Seoul month by default / adjacent arrows only when that adjacent month has public data / clock time hidden publicly / 60-second edge cache / 1200×1200 PNG clipboard copy with download fallback.
-- No payment, OAuth provider, member identity, or entitlement semantics are changed by the calendar work.
+- Calendar work remains ahead of login-provider lifecycle and payment.
+- The admin calendar is intentionally independent from `course_programs`, `course_runs`, and `course_sessions`.
+- `course_sessions` remains available for future My Courses/video/material semantics, but `/portal/calendar` does not read or write it.
+- Admin calendar input is exactly four operator-facing values: date / color / course label / content text.
+- Course label and content are free text. Adding a new course never requires calendar schema/code integration.
+- Color is selected from the UI dropdown and stored as a validated hex value; the database is not tied to a fixed course-to-color mapping.
+- Copy behavior has no recurrence rule: select an existing entry, choose any target date, then copy. The source entry remains unchanged.
+- Copying the fresh copy again to another arbitrary date is supported.
+- Delete is soft-delete through `cancelled_at`; destructive table DELETE remains unavailable to the runtime role.
+- DB018 remains the physical `calendar_events` table. DB019 adds free-form display columns without dropping tables/columns or linking course tables.
+- Phase 1 stays admin-only. Public landing calendar remains deferred until the owner approves real admin-calendar UX.
+- Approved Phase 2 behavior is preserved but not implemented here: Programs→Calendar→Mentors placement / current Seoul month / adjacent arrows only when data exists / public clock time hidden / 60-second edge cache / 1200×1200 PNG clipboard copy with download fallback.
+- No payment, OAuth provider, member identity, enrollment, or course-session semantics are changed by this free-form calendar work.
