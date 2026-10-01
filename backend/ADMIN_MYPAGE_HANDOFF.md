@@ -1354,3 +1354,51 @@
   - public Cloudflare Pages는 main을 자동 배포하므로 최신 main 상태.
   - admin/auth/portal 정적 자산은 Cloud Run 이미지가 서빙하므로 이번 시각적 shell reset은 아직 운영 Cloud Run 재배포 전.
   - production Cloud Run rollout은 별도 승인/운영 단계로 남김.
+
+
+
+### 체크포인트 36 / 관리자 shell 최신 main 운영 candidate 반영 완료
+- 사용자 승인: 운영 사용자가 거의 없는 시점에 latest main을 protected portal candidate까지 바로 반영.
+- 사전 read-only inspect `inspect-legacy-admin-enabled` 첫 시도:
+  - commit `05c853beb7b39955596f63543b6817b2a92c0dee`
+  - service/auth/portal 자체는 정상.
+  - 실패 원인은 Cloudflare Pages가 `/apply.html -> /apply`로 HTTP 308 canonical redirect하는 것을 기존 probe가 비정상으로 판정한 것.
+- probe 보정 PR #112:
+  - `fix: accept Cloudflare Pages canonical apply redirect`
+  - exact `/apply.html -> /apply` 308만 허용.
+  - 외부/임의 redirect는 계속 inconclusive/fail.
+  - CI PASS 후 merge commit `e4c0973b30e6a704c71c1d731e8391ac93989fc7`.
+- 운영 candidate rollout request:
+  - operation: `rollout-login-handoff`
+  - request commit/source image SHA: `519a0c0808cd6f215cb7feb5a4a780ad598e0dfa`
+  - workflow run: `36807214303`
+  - result: SUCCESS
+  - image digest: `sha256:9273b1b1c60dece5c95cef16c5045d7f915297f7ef8fa0eeee24c4ec5f38aaa5`
+  - previous candidate: `richon-portal-handoff-36739145776-1`
+  - new candidate: `richon-portal-handoff-36807214303-1`
+  - `portal-candidate` tag moved to the new revision only after check-revision validation.
+  - default 100% revision unchanged: `richon-portal-gh-35810692921-1`
+  - ACCOUNT=true / MARKETING=true / member-info-v1 preserved.
+  - course/monthly/manual and other existing protected configuration preserved by exact config checks.
+  - IAM unchanged / edge gate PASS / customer route PASS.
+- real customer-route probes after rollout:
+  - `/auth/login` 200
+  - Kakao callback 303 expected fallback
+  - Naver callback 303 expected fallback
+  - `/portal/mypage` 200
+  - `/` 200
+  - `/apply.html` 308 exact Pages canonical redirect accepted
+  - login modal JSON 200
+- post-rollout read-only inspect:
+  - request commit `35fd8f3fc068cc3bbd3a5aea6a2e7f2c04bc6bd2`
+  - `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+  - current customer routes all confirmed through Cloudflare.
+- deployment request returned to hold:
+  - commit `c87277e5ded549422a78308f5da8cfa5f1202350`
+  - hold request parser job PASS; no portal cloud operation requested.
+- Important architecture note:
+  - `portal-candidate` Cloud Run tag is the Worker upstream and therefore customer /auth/* and /portal/* traffic, even though Cloud Run percentage is 0%.
+  - default 100% Cloud Run revision is a separate rollback/serving reference and was not changed in this rollout.
+- User-visible follow-up:
+  - verify admin page spacing visually across admin / courses / enrollments / manual.
+  - verify first login/modal now shows shell immediately while Cloud Run wakes from minScale=0.
