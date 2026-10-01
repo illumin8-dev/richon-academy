@@ -5,6 +5,7 @@ printing is performed here.
 """
 from __future__ import annotations
 import argparse
+import os
 from pathlib import Path
 import sys
 
@@ -110,6 +111,13 @@ def main():
             print('DIAGNOSE_ONLY=PASS / NO_DATABASE_CHANGES=YES');return 0
         if input('Type '+CONFIRM+' to continue: ').strip()!=CONFIRM:
             print('CANCELLED: no database changes made.');return 0
+        # Match the already-enabled production portal contract while validating
+        # the new table's exact grants. This changes only this helper process.
+        os.environ['RICHON_TERMS_VERSION']='member-info-v1'
+        os.environ['RICHON_PRIVACY_VERSION']='member-info-v1'
+        os.environ['RICHON_ACCOUNT_ENABLED']='true'
+        os.environ['RICHON_MARKETING_CONSENT_ENABLED']='true'
+        os.environ['RICHON_COURSE_DOMAIN_ENABLED']='true'
         stage='database'
         changed=apply(owner_url,runtime_url)
         print('DB018='+('APPLIED' if changed else 'ALREADY_APPLIED'))
