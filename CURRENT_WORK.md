@@ -163,44 +163,44 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [ ] 주문 이력과 수강권 관계 정리
 - [ ] 결제는 이후 '수강권 생성 입력 경로'로 연결
 
-## 3-1. 중앙 캘린더 / 2026-10-01 자유형으로 단순화
+## 3-1. 중앙 캘린더 / 2026-10-02 10월 캘린더 UX 기준
 
-최종 관리자 입력:
-- [x] 날짜
-- [x] 색상 드롭다운
-- [x] 과정 자유 텍스트
-- [x] 내용 자유 텍스트
-- [x] 저장 / 복사 / 삭제
-- [x] 빈 날짜 클릭 시 해당 날짜로 새 일정 입력
-- [x] 기존 일정 선택 → 원하는 날짜 선택 → 복사
-- [x] +7일 고정 복사 / 반복 규칙 제거
-- [x] 복사본도 다시 임의 날짜로 연속 복사 가능
-- [x] PC 월간 달력 / 모바일 agenda 유지
+확정:
+- [x] 관리자 캘린더는 course_programs / course_runs / course_sessions와 독립
+- [x] 일반 일정 입력: 날짜 / 색상 / 과정 자유 텍스트 / 내용 자유 텍스트
+- [x] 내용은 공란 허용
+- [x] 색상은 2026년 10월 캘린더 팔레트 6종으로 통일
+- [x] 빈 날짜 클릭 → 날짜가 채워진 편집창
+- [x] 기존 일정 클릭 → 수정 / 임의 날짜 복사 / 삭제
+- [x] 연휴 / 강조 문구: 시작일 / 종료일 / 문구 / 색상
+- [x] +7일 고정 복사 / 반복 규칙 없음
+- [x] 10월 owner 제공 캘린더를 단일 시각 기준으로 사용
+- [x] 세로 격자 대신 주차 점선 / 컬러 날짜 블록 / 색상점+과정+선택 내용
+- [x] 고정 범례: 재개발중급반 / 리치온 인테리어 / 무료 브리핑 / 리치온 스터디 / Pre리치온 / 스터디 전체
+- [x] 2026년 6~10월 owner 제공 이미지는 추후 과거 일정 입력 기준 자료
+- [ ] visual-editor PR CI
+- [ ] visual-editor candidate rollout
+- [ ] banner용 ends_at 최소 쓰기권한 최종 적용
+- [ ] 실제 관리자 E2E / 디자인 owner 확인
+- [ ] 승인 후 랜딩 캘린더 별도 PR
 
-분리 원칙:
-- [x] 캘린더는 course_programs / course_runs / course_sessions와 데이터 연동하지 않음
-- [x] 새 과정 추가 시 캘린더 코드/DB 변경 불필요
-- [x] course_sessions는 내 강의 / 영상 / 자료용 별도 도메인으로 유지
-- [x] 기존 DB018 calendar_events는 유지하고 DB019에서 자유형 필드만 추가
-- [x] runtime DELETE 권한 없이 soft-delete 유지
+현재 운영:
+- [x] DB018 적용
+- [x] DB019 자유형 필드 적용
+- [x] DB019 final free-form grants 적용
+- [x] PR #118 자유형 캘린더 병합
+- [x] PR #119 DB019 rollout 호환성 수정 병합
+- [x] protected candidate richon-portal-handoff-36884928672-1 rollout PASS
+- [x] deploy request hold
+- [x] 랜딩 footer 하단 74px gap 제거 확인
 
-운영 상태:
-- [x] DB018 + 최소권한 운영 적용
-- [x] PR #117 admin-first 캘린더 병합
-- [x] protected candidate richon-portal-handoff-36841505878-1 rollout PASS
-- [x] 랜딩 footer 아래 74px 잔여 공간 제거 확인
-- [ ] 자유형 캘린더 PR CI
-- [ ] DB019 + 새 최소권한 운영 적용
-- [ ] 자유형 캘린더 protected candidate rollout
-- [ ] 실제 관리자에서 생성 / 임의 날짜 복사 / 수정 / 삭제 owner E2E
-- [ ] 관리자 UX 승인 후 랜딩 캘린더 별도 PR
-
-랜딩 2단계 확정안(아직 미구현):
+랜딩 2단계 확정안:
 - 정규 프로그램 아래 / 멘토진 위
+- 관리자와 같은 10월 캘린더 시각 체계
 - 현재 달 기본 표시
-- 바로 이전/다음 달에 공개 일정이 있을 때만 해당 방향 화살표 표시
-- 공개 화면에서는 시간 숨김
-- 공개 캘린더 Edge cache 60초 / browser max-age 0
+- 바로 이전/다음 달 데이터가 있을 때만 해당 방향 화살표
+- 공개 화면 시간 숨김
+- Edge cache 60초 / browser max-age 0
 - 1200×1200 PNG 클립보드 복사 / 미지원 브라우저 파일 저장 fallback
 
 ## 4. 결제
