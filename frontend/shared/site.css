@@ -1,3 +1,4 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
 :root{--site-orange:#f47920;--site-ink:#1c1f26;--site-muted:#686b72;--site-border:#e6e3db;--site-width:1180px;--site-font:'Pretendard',system-ui,sans-serif}
 [hidden]{display:none!important}.site-nav,.site-footer,.richon-dialog{font-family:var(--site-font);box-sizing:border-box}.site-nav *,.site-footer *,.richon-dialog *{box-sizing:border-box}body.richon-page{padding-top:74px}
 .site-nav{position:fixed;inset:0 0 auto;z-index:60;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;background:rgba(255,255,255,.88);backdrop-filter:blur(12px) saturate(140%);border-bottom:1px solid rgba(28,31,38,.08);color:var(--site-ink);line-height:1.65}
