@@ -13,7 +13,7 @@ class Input(BaseModel):
 
     @field_validator(
         'reason','program_id','title','description','access_mode','cohort_label','status',
-        'mentor_name','video_url','material_url','name','email','phone','note',
+        'mentor_name','presenter_name','video_url','material_url','name','email','phone','note',
         mode='before',check_fields=False)
     @classmethod
     def clean_text(cls,value):
