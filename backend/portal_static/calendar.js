@@ -82,9 +82,14 @@ function eventButton(item){
   if(item.content_text)b.append(el('span',item.content_text,'event-content'));
   b.addEventListener('click',event=>{event.stopPropagation();edit(item);});return b;
 }
+function activeLegendItems(){
+  const used=new Set(state.items.filter(item=>item.display_kind!=='BANNER'&&item.event_date.startsWith(state.month)).map(item=>item.color_hex));
+  return PALETTE.filter(([hex])=>used.has(hex));
+}
 function renderLegend(){
-  const root=$('calendar-legend');root.replaceChildren();
-  for(const [,cls,label] of PALETTE){const row=el('span',undefined,'calendar-legend-item');row.append(el('i',undefined,'calendar-legend-dot '+cls),document.createTextNode(label));root.append(row);}
+  const root=$('calendar-legend'),items=activeLegendItems();root.replaceChildren();root.hidden=!items.length;
+  root.closest('.calendar-paper-head')?.classList.toggle('legend-empty',!items.length);
+  for(const [,cls,label] of items){const row=el('span',undefined,'calendar-legend-item');row.append(el('i',undefined,'calendar-legend-dot '+cls),document.createTextNode(label));root.append(row);}
 }
 function monthGrid(){
   const [y,m]=state.month.split('-').map(Number),first=new Date(Date.UTC(y,m-1,1)),firstDow=first.getUTCDay(),days=new Date(Date.UTC(y,m,0)).getUTCDate();
@@ -124,34 +129,30 @@ function renderDesktop(){
     const weekIndex=w/7,weekDates=dates.slice(w,w+7),week=el('section',undefined,'calendar-week'),grid=el('div',undefined,'calendar-week-grid');
     weekDates.forEach((key,index)=>{
       const current=key.startsWith(state.month),items=by[key]||[],holiday=bannerForDate(key,banners),day=Number(key.slice(8));
-      let holidayEdge='';
-      if(holiday){
-        const previous=index>0?bannerForDate(weekDates[index-1],banners):null;
-        const next=index<6?bannerForDate(weekDates[index+1],banners):null;
-        const left=previous&&previous.event_id===holiday.event_id,right=next&&next.event_id===holiday.event_id;
-        holidayEdge=left?(right?' holiday-middle':' holiday-end'):(right?' holiday-start':' holiday-single');
-      }
-      const classes='calendar-day'+(current?'':' outside')+(index===0?' sunday':'')+(index===6?' saturday':'')+(items.length?' has-event':'')+(holiday?' holiday-day '+colorClass(holiday.color_hex)+holidayEdge:'');
+      const classes='calendar-day'+(current?'':' outside')+(index===0?' sunday':'')+(index===6?' saturday':'')+(items.length?' has-event':'')+(holiday?' holiday-day '+colorClass(holiday.color_hex):'');
       const cell=el('div',undefined,classes);cell.dataset.date=key;cell.setAttribute('aria-label',key);
       const dateNode=el('div',day,'calendar-date'+(items.length?' '+colorClass(items[0].color_hex):''));
       cell.append(dateNode);
       if(current)cell.addEventListener('click',()=>resetEditor(key));
       for(const item of items)cell.append(eventButton(item));
-      if(holiday){
-        const placement=placements.get(holiday.event_id);
-        if(placement&&placement.weekIndex===weekIndex&&placement.startIndex===index){
-          cell.classList.add('holiday-label-host');
-          const itemEnd=holiday.end_date||holiday.event_date;
-          const label=el('button',holiday.course_label,'calendar-banner '+colorClass(holiday.color_hex));label.type='button';
-          label.style.setProperty('--holiday-span',String(placement.count));
-          label.style.width='calc('+(placement.count*100)+'% - 16px)';
-          label.setAttribute('aria-label',holiday.course_label+' '+holiday.event_date+'부터 '+itemEnd+'까지');
-          label.addEventListener('click',event=>{event.stopPropagation();edit(holiday);});cell.append(label);
-        }
-      }
       grid.append(cell);
     });
-    week.append(grid);root.append(week);
+    week.append(grid);
+    const ribbonGrid=el('div',undefined,'calendar-holiday-grid');let ribbons=0;
+    for(const item of banners){
+      const segment=holidaySegment(item,weekDates);if(!segment)continue;
+      const currentIndices=[];
+      for(let index=segment.startIndex;index<=segment.endIndex;index++)if(weekDates[index].startsWith(state.month))currentIndices.push(index);
+      if(!currentIndices.length)continue;
+      const first=currentIndices[0],last=currentIndices[currentIndices.length-1],placement=placements.get(item.event_id);
+      const showLabel=placement&&placement.weekIndex===weekIndex;
+      const ribbon=el('button',showLabel?item.course_label:'','calendar-holiday-ribbon '+colorClass(item.color_hex)+(showLabel?' has-label':' is-continuation'));
+      ribbon.type='button';ribbon.style.gridColumnStart=String(first+1);ribbon.style.gridColumnEnd='span '+String(last-first+1);
+      ribbon.setAttribute('aria-label',item.course_label+' '+item.event_date+'부터 '+(item.end_date||item.event_date)+'까지');
+      ribbon.addEventListener('click',event=>{event.stopPropagation();edit(item);});ribbonGrid.append(ribbon);ribbons++;
+    }
+    if(ribbons)week.append(ribbonGrid);
+    root.append(week);
   }
 }
 function renderMobile(){
@@ -206,7 +207,7 @@ function drawCalendarPng(){
   drawCalendarSymbol(ctx,510,34);
   ctx.fillStyle='#111';ctx.textAlign='center';ctx.font='800 38px Pretendard, Arial, sans-serif';ctx.fillText(year+'년 '+month+'월',510,158);ctx.fillText('리치온 캘린더',510,203);
   ctx.textAlign='left';ctx.font='600 17px Pretendard, Arial, sans-serif';
-  PALETTE.forEach((item,index)=>{const y=58+index*29;ctx.fillStyle=item[0];ctx.beginPath();ctx.arc(850,y,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#222';ctx.fillText(item[2],865,y);});
+  activeLegendItems().forEach((item,index)=>{const y=58+index*29;ctx.fillStyle=item[0];ctx.beginPath();ctx.arc(850,y,5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#222';ctx.fillText(item[2],865,y);});
   const dates=monthGrid(),rows=dates.length/7,x0=90,gridWidth=1020,colW=gridWidth/7,gridTop=322,gridBottom=1122,rowH=(gridBottom-gridTop)/rows;
   const weekdays=['Su','Mo','Tu','We','Th','Fr','Sa'];ctx.textAlign='center';ctx.font='500 22px Pretendard, Arial, sans-serif';
   weekdays.forEach((name,index)=>{ctx.fillStyle=index===0?'#ff5257':index===6?'#178de5':'#b9b9b9';ctx.fillText(name,x0+colW*(index+.5),285);});
@@ -216,19 +217,11 @@ function drawCalendarPng(){
   for(let row=0;row<rows;row++){
     const rowY=gridTop+row*rowH,weekDates=dates.slice(row*7,row*7+7);
     if(row){ctx.save();ctx.strokeStyle='#c7c7c7';ctx.lineWidth=2;ctx.setLineDash([5,6]);ctx.beginPath();ctx.moveTo(x0,rowY);ctx.lineTo(x0+gridWidth,rowY);ctx.stroke();ctx.restore();}
-    for(const item of banners){
-      const segment=holidaySegment(item,weekDates);if(!segment)continue;
-      const segmentKeys=weekDates.slice(segment.startIndex,segment.endIndex+1),currentKeys=segmentKeys.filter(key=>key.startsWith(state.month));
-      if(!currentKeys.length)continue;
-      const firstIndex=weekDates.indexOf(currentKeys[0]),lastIndex=weekDates.indexOf(currentKeys[currentKeys.length-1]);
-      const segmentX=x0+firstIndex*colW+5,segmentW=(lastIndex-firstIndex+1)*colW-10;
-      fillRound(ctx,segmentX,rowY+5,segmentW,rowH-10,13,hexRgba(item.color_hex,.055),null);
-    }
     for(let col=0;col<7;col++){
       const key=weekDates[col],current=key.startsWith(state.month),items=by[key]||[],holiday=bannerForDate(key,banners),cx=x0+colW*(col+.5),cellX=x0+colW*col;
       const dateY=rowY+34,day=Number(key.slice(8));
       if(items.length){fillRound(ctx,cx-25,dateY-25,50,50,10,items[0].color_hex,null);ctx.fillStyle='#fff';ctx.font='650 25px Pretendard, Arial, sans-serif';}
-      else if(holiday&&current){fillRound(ctx,cx-25,dateY-25,50,50,10,hexRgba(holiday.color_hex,.12),null);ctx.fillStyle=holiday.color_hex;ctx.font='700 23px Pretendard, Arial, sans-serif';}
+      else if(holiday&&current){ctx.fillStyle=holiday.color_hex;ctx.font='700 23px Pretendard, Arial, sans-serif';}
       else{ctx.fillStyle=col===0?'#ff5257':col===6?'#178de5':'#b7b7b7';ctx.globalAlpha=current?1:.5;ctx.font='500 23px Pretendard, Arial, sans-serif';}
       ctx.textAlign='center';ctx.fillText(String(day),cx,dateY);ctx.globalAlpha=1;
       let eventY=rowY+72;
@@ -239,10 +232,16 @@ function drawCalendarPng(){
       }
     }
     for(const item of banners){
-      const placement=placements.get(item.event_id);if(!placement||placement.weekIndex!==row)continue;
-      const labelX=x0+placement.startIndex*colW+8,labelW=placement.count*colW-16,labelY=rowY+rowH-34;
-      fillRound(ctx,labelX,labelY,labelW,26,13,hexRgba(item.color_hex,.11),hexRgba(item.color_hex,.32));
-      ctx.fillStyle=item.color_hex;ctx.textAlign='center';ctx.font='800 15px Pretendard, Arial, sans-serif';const label=fitCanvasLines(ctx,item.course_label,labelW-20,1)[0]||'';ctx.fillText(label,labelX+labelW/2,labelY+13);
+      const segment=holidaySegment(item,weekDates);if(!segment)continue;
+      const currentIndices=[];
+      for(let index=segment.startIndex;index<=segment.endIndex;index++)if(weekDates[index].startsWith(state.month))currentIndices.push(index);
+      if(!currentIndices.length)continue;
+      const first=currentIndices[0],last=currentIndices[currentIndices.length-1],ribbonX=x0+first*colW+8,ribbonW=(last-first+1)*colW-16,ribbonY=rowY+rowH-28;
+      fillRound(ctx,ribbonX,ribbonY,ribbonW,18,9,hexRgba(item.color_hex,.13),hexRgba(item.color_hex,.28));
+      const placement=placements.get(item.event_id);
+      if(placement&&placement.weekIndex===row){
+        ctx.fillStyle=item.color_hex;ctx.textAlign='center';ctx.font='800 13px Pretendard, Arial, sans-serif';const label=fitCanvasLines(ctx,item.course_label,ribbonW-18,1)[0]||'';ctx.fillText(label,ribbonX+ribbonW/2,ribbonY+9);
+      }
     }
   }
   return canvas;

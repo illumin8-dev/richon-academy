@@ -3,7 +3,7 @@
 .calendar-month-nav{position:absolute;top:24px;left:24px;right:24px;display:grid;grid-template-columns:42px 1fr 42px;align-items:center;pointer-events:none}
 .calendar-month-nav button{pointer-events:auto;width:42px;height:42px;border:1px solid #e4dfd7;border-radius:10px;background:#fff;color:#1d2128;font-size:18px}
 .calendar-month-nav button:last-child{grid-column:3}.calendar-month-nav .calendar-today{grid-column:2;grid-row:1;width:auto;height:auto;justify-self:center;border:0;background:transparent;color:#8c8379;font-size:12px;padding:7px 10px}
-.calendar-paper-head{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:24px;align-items:start;padding-top:48px;min-height:210px}
+.calendar-paper-head{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:24px;align-items:start;padding-top:48px;min-height:210px}.calendar-paper-head.legend-empty{grid-template-columns:1fr}
 .calendar-paper-title{justify-self:center;display:flex;flex-direction:column;align-items:center;text-align:center}
 .calendar-symbol{position:relative;display:block;width:68px;height:92px;margin-bottom:2px}
 .calendar-symbol::before{content:"";position:absolute;left:4px;top:11px;width:48px;height:70px;background:#06163e;clip-path:polygon(0 31%,100% 0,100% 67%,47% 100%,47% 49%,0 78%)}
@@ -15,21 +15,23 @@
 .calendar-weekdays span{text-align:center;font-size:21px;font-weight:500;color:#bbb}.calendar-weekdays span:first-child{color:#ff4f54}.calendar-weekdays span:last-child{color:#168de5}
 .calendar-weeks{display:block}.calendar-week{border-top:2px dashed #c9c9c9;padding:15px 0 13px}.calendar-week:first-child{border-top:0;padding-top:0}
 .calendar-week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
-.calendar-day{position:relative;min-height:116px;padding:0 8px;min-width:0;cursor:pointer;border-radius:10px;transition:background .15s ease}.calendar-day:not(.outside):hover{background:#fcfaf6}.calendar-day.outside{opacity:.56;cursor:default}.calendar-day.holiday-day{background:color-mix(in srgb,var(--calendar-color) 7%,#fff);border-radius:0}.calendar-day.holiday-start{border-radius:12px 0 0 12px}.calendar-day.holiday-end{border-radius:0 12px 12px 0}.calendar-day.holiday-single{border-radius:12px}.calendar-day.holiday-label-host{z-index:2}.calendar-day.holiday-day:not(.has-event) .calendar-date{background:color-mix(in srgb,var(--calendar-color) 12%,#fff);color:var(--calendar-color);font-weight:750}
+.calendar-day{position:relative;min-height:116px;padding:0 8px;min-width:0;cursor:pointer;border-radius:10px;transition:background .15s ease}.calendar-day:not(.outside):hover{background:#fcfaf6}.calendar-day.outside{opacity:.56;cursor:default}
 .calendar-date{width:50px;height:50px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;border-radius:10px;color:#b8b8b8;font-size:23px;font-weight:500}
 .calendar-day.sunday .calendar-date{color:#ff5257}.calendar-day.saturday .calendar-date{color:#178de5}
-.calendar-day.has-event .calendar-date{color:#fff;font-size:25px;font-weight:650}
+.calendar-day.has-event .calendar-date{color:#fff;font-size:25px;font-weight:650}.calendar-day.holiday-day:not(.has-event) .calendar-date{background:transparent;color:var(--calendar-color);font-weight:750}
 .calendar-event-item{display:block;width:100%;border:0;background:transparent;padding:0;margin:6px 0 0;text-align:left;color:#171717;cursor:pointer;font:inherit}
 .calendar-event-item:hover .event-course{text-decoration:underline;text-underline-offset:2px}
 .event-label-line{display:flex;align-items:center;gap:6px;min-width:0}.event-course{font-size:14px;font-weight:750;line-height:1.22;white-space:normal;word-break:keep-all}.event-content{display:block;margin:3px 0 0 14px;color:#424242;font-size:13px;line-height:1.28;word-break:keep-all}
-.calendar-banner{position:absolute;left:8px;bottom:7px;width:auto;box-sizing:border-box;z-index:4;border:1px solid color-mix(in srgb,var(--calendar-color) 28%,#fff);border-radius:999px;background:color-mix(in srgb,var(--calendar-color) 13%,#fff);color:var(--calendar-color);padding:5px 12px;text-align:center;font-size:14px;line-height:1.2;font-weight:820;letter-spacing:.01em;cursor:pointer;word-break:keep-all;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.calendar-banner:hover{background:color-mix(in srgb,var(--calendar-color) 18%,#fff)}
+.calendar-holiday-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:center;min-height:22px;padding:0 8px 5px;column-gap:0}
+.calendar-holiday-ribbon{height:18px;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--calendar-color) 26%,#fff);border-radius:999px;background:color-mix(in srgb,var(--calendar-color) 13%,#fff);color:var(--calendar-color);padding:0 9px;text-align:center;font-size:12px;line-height:16px;font-weight:800;letter-spacing:.01em;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calendar-holiday-ribbon.is-continuation{color:transparent}
+.calendar-holiday-ribbon:hover{background:color-mix(in srgb,var(--calendar-color) 18%,#fff)}
 .calendar-status{min-height:22px;margin:14px 0 0;text-align:center;color:#8d857c;font-size:13px}
 .calendar-mobile-list{display:none}
 .color-blue{--calendar-color:#3978F6}.color-orange{--calendar-color:#FF9F26}.color-gold{--calendar-color:#D8BD78}.color-red{--calendar-color:#FF5757}.color-green{--calendar-color:#00B622}.color-purple{--calendar-color:#C000DB}
 .calendar-legend-dot,.event-dot,.color-preview{background:var(--calendar-color)}
 .calendar-date.color-blue,.calendar-date.color-orange,.calendar-date.color-gold,.calendar-date.color-red,.calendar-date.color-green,.calendar-date.color-purple{background:var(--calendar-color)}
-.calendar-banner.color-blue,.calendar-banner.color-orange,.calendar-banner.color-gold,.calendar-banner.color-red,.calendar-banner.color-green,.calendar-banner.color-purple{color:var(--calendar-color)}
+.calendar-holiday-ribbon.color-blue,.calendar-holiday-ribbon.color-orange,.calendar-holiday-ribbon.color-gold,.calendar-holiday-ribbon.color-red,.calendar-holiday-ribbon.color-green,.calendar-holiday-ribbon.color-purple{color:var(--calendar-color)}.calendar-holiday-ribbon.is-continuation{color:transparent}
 .calendar-dialog{width:min(640px,calc(100vw - 32px));border:0;border-radius:18px;padding:0;box-shadow:0 28px 90px rgba(25,23,20,.28);color:var(--ops-ink)}
 .calendar-dialog::backdrop{background:rgba(19,18,16,.48);backdrop-filter:blur(2px)}
 .calendar-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px 26px 14px;border-bottom:1px solid var(--ops-line)}
