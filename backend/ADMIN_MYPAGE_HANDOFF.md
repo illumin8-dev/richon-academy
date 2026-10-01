@@ -1579,3 +1579,66 @@
 - 다음 사용자 확인:
   - 운영 admin 페이지를 hard refresh하여 RICH/ON 및 관리자 본문이 Pretendard로 렌더되는지 확인.
   - public homepage와 header logo/font weight가 동일하게 보이는지 비교.
+
+
+
+### 체크포인트 40 / shared sticky footer + short-page bottom alignment 운영 반영
+- 사용자 피드백:
+  - 공용 footer가 콘텐츠가 짧은 화면에서 viewport 하단이 아니라 콘텐츠 직후, 화면 중간에 보임.
+  - 의도는 fixed overlay가 아니라 short content일 때만 viewport bottom까지 밀리는 sticky-footer shell.
+- PR #116 `fix: keep shared footer at viewport bottom`
+  - final head: `08197a82193e869dd6ae4ecb2a73e2bbbb6eb341`
+  - merge commit: `4af83f8345e534801b2208b28f9d8ff3a8af03e7`
+  - final CI 전체 PASS.
+- shared layout 변경:
+  - `frontend/shared/site.css`
+  - `body.richon-page`을 `min-height:100vh / 100dvh + display:flex + flex-direction:column + border-box` shell로 사용.
+  - canonical `.site-footer`에 `margin-top:auto; flex-shrink:0` 적용.
+  - footer는 `position:fixed`가 아니므로 긴 콘텐츠에서는 기존처럼 문서 끝에 자연스럽게 위치.
+- admin 적용:
+  - admin / courses / enrollments / manual body 모두 `richon-page` shell 사용.
+  - admin `.layout`은 flex child 환경에서 안전하게 줄어들도록 `width:100%; min-width:0` 명시.
+- public/member:
+  - apply / signup-guide / privacy / terms / mypage는 기존 `richon-page`를 그대로 사용해 같은 sticky-footer rule 공유.
+  - index는 콘텐츠가 충분히 길고 별도 landing body 구조를 유지.
+- browser regression:
+  - short admin gate 화면에서 viewport를 1440x1400으로 두고
+    - `.site-footer` bottom == viewport bottom (±2px)
+    - computed `position != fixed`
+    를 실제 Chromium에서 검증.
+  - 390px mobile horizontal overflow regression도 함께 유지.
+- CI 중 초기 browser failure 2회:
+  - 첫 번째: body flex 전환 후 mobile width가 밀리는 것처럼 보여 `.layout width/min-width` 보호 추가.
+  - 두 번째 diagnostic에서 실제 overflow가 `layout left=8/right=418`로 확인됨.
+  - 원인은 production CSS가 아니라 synthetic browser fixture가 `/portal/assets/ops.css`를 서빙하지 않아 browser default body margin 8px + missing box-sizing이 발생한 테스트 환경 차이.
+  - fixture에 실제 운영과 동일한 `ops.css`를 추가한 뒤 mobile width + sticky footer browser test PASS.
+- PR final verification:
+  - Cloudflare Pages PASS
+  - public static-contract PASS
+  - portal browser PASS
+  - browser-and-policy PASS
+  - admin preview PASS
+  - edge-and-image PASS
+  - backend Python/PostgreSQL PASS
+  - Gcloud/Docker PASS
+- production rollout:
+  - source/request commit: `2f2129a9e1fed0aa1e357d6ec8dfdf8155eeca5b`
+  - workflow run: `36822208344`
+  - result: SUCCESS
+  - image digest: `sha256:5055123c569cee2076eaa3f2bbaa3c43e984abb7eb057db0a9d748d8e61c5c78`
+  - old candidate: `richon-portal-handoff-36820170190-1`
+  - new candidate: `richon-portal-handoff-36822208344-1`
+  - default 100% revision unchanged: `richon-portal-gh-35810692921-1`
+  - ACCOUNT=true / MARKETING=true / member-info-v1 preserved.
+  - IAM unchanged / EDGE_GATE PASS / ACCESS_GATE PASS.
+  - customer probes: `/auth/login` 200 / `/portal/mypage` 200 / `/apply.html` 308 canonical / login-modal 200.
+- post-rollout read-only inspect:
+  - request commit: `795361eed11315b396879fc949c8275245a17b30`
+  - `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+- deployment request returned to hold:
+  - commit: `86d0de4e53f50f91716fb4fffaab58941208e5a8`
+- font status:
+  - PR #115의 original homepage Pretendard direct-link 복구는 이미 이전 candidate에서 운영 반영 완료 상태이며 이번 rollout에도 그대로 포함됨.
+- 사용자 육안 확인:
+  - 콘텐츠가 적은 admin/mypage 화면에서 footer가 viewport 하단에 붙는지.
+  - 긴 페이지에서 footer가 콘텐츠를 덮지 않고 아래로 자연스럽게 밀리는지.
