@@ -11,8 +11,8 @@ PUBLIC_BLOBS = {
 # Full SHA is checked below with the actual approved value; the shortened value
 # above is never used as an authority.
 APPROVED = {
-    'index.html': 'de9136fa71db2a672440ef3e59c47db26a73c6ef',
-    'apply.html': '88a3095606a7afb74ec29dda40a1042c95ded1c7',
+    'index.html': '717213803896d14c0b06d601e4705548b2e276f0',
+    'apply.html': '9088b8d06b2f6f63d5474c39e9377c764e13d2a7',
     'privacy.html': '903296249695223811375573c0a734d59fbdf70e',
     'terms.html': 'fac6ef6c734764797124710343fc02d405471077',
 }
