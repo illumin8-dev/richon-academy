@@ -95,7 +95,7 @@ test('public calendar strips cookies and uses 60 second edge cache',async()=>{
   },cache);
   assert.equal(first.status,200);assert.equal(observed.headers.get('cookie'),null);
   assert.equal(observed.cache,'no-store');
-  assert.equal(first.headers.get('cache-control'),'public, max-age=60, s-maxage=60');
+  assert.equal(first.headers.get('cache-control'),'public, max-age=0, s-maxage=60');
   assert.equal(await first.text(),'{"month":"2026-10","items":[]}');
   const second=await handle(request,env,()=>assert.fail('cached public calendar must not reach origin'),cache);
   assert.equal(second.status,200);assert.equal(await second.text(),'{"month":"2026-10","items":[]}');
@@ -116,7 +116,7 @@ test('public calendar strips cookies and uses 60 second edge cache',async()=>{
   },cache);
   assert.equal(first.status,200);assert.equal(observed.headers.get('cookie'),null);
   assert.equal(observed.cache,'no-store');
-  assert.equal(first.headers.get('cache-control'),'public, max-age=60, s-maxage=60');
+  assert.equal(first.headers.get('cache-control'),'public, max-age=0, s-maxage=60');
   assert.equal(await first.text(),'{"month":"2026-10","items":[]}');
   const second=await handle(request,env,()=>assert.fail('cached public calendar must not reach origin'),cache);
   assert.equal(second.status,200);assert.equal(await second.text(),'{"month":"2026-10","items":[]}');
