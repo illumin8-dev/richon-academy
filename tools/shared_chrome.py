@@ -77,3 +77,14 @@ def footer() -> str:
 
 def wrapped(name: str, value: str) -> str:
     return "<!-- richon:shared-" + name + " -->\n" + value.strip() + "\n<!-- /richon:shared-" + name + " -->"
+
+
+def replace_wrapped(page: str, name: str, value: str) -> str:
+    import re
+    start = "<!-- richon:shared-" + name + " -->"
+    end = "<!-- /richon:shared-" + name + " -->"
+    pattern = re.escape(start) + r".*?" + re.escape(end)
+    rendered, count = re.subn(pattern, wrapped(name, value), page, count=1, flags=re.S)
+    if count != 1:
+        raise ValueError("missing_shared_marker_" + name)
+    return rendered
