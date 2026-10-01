@@ -1,0 +1,40 @@
+'use strict';
+(()=>{
+const root=document.getElementById('calendar');if(!root)return;
+const $=id=>document.getElementById(id);
+const state={month:null,items:[],prev:null,next:null};
+const COLORS={pre:'#00b622',study:'#ff5757',redev:'#3978f6',interior:'#ff9f26',briefing:'#d8bd78',studyall:'#c000db',special:'#7258d8',trip:'#008f83',other:'#77716a'};
+function monthNow(){const p=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit'}).formatToParts(new Date());const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return o.year+'-'+o.month;}
+function keyOf(item){const s=(item.category_key||'')+' '+(item.category_label||'');if(/pre|프리/i.test(s))return'pre';if(/재개발/.test(s))return'redev';if(/인테리어/.test(s))return'interior';if(/event:briefing|무료 브리핑/i.test(s))return'briefing';if(/event:study_all|스터디 전체/i.test(s))return'studyall';if(/event:special|특강/i.test(s))return'special';if(/event:field_trip|임장/i.test(s))return'trip';if(/스터디/.test(s))return'study';return'other';}
+const color=item=>COLORS[keyOf(item)];
+const el=(tag,value,cls)=>{const x=document.createElement(tag);if(value!==undefined)x.textContent=String(value);if(cls)x.className=cls;return x;};
+function labelMonth(value){const [y,m]=value.split('-').map(Number);return y+'년 '+m+'월';}
+function group(){const out={};for(const item of state.items)(out[item.event_date]??=[]).push(item);return out;}
+function entry(item){const row=el('div',undefined,'public-calendar-entry');const dot=el('span',undefined,'public-calendar-dot');dot.style.setProperty('--calendar-color',color(item));const text=el('div');text.append(el('b',item.category_label));if(item.title&&item.title!==item.category_label)text.append(el('small',item.title+(item.presenter_name?' / '+item.presenter_name:'')));else if(item.presenter_name)text.append(el('small',item.presenter_name));row.append(dot,text);return row;}
+function render(){
+ $('public-calendar-month').textContent=labelMonth(state.month)+' 리치온 캘린더';$('public-calendar-prev').hidden=!state.prev;$('public-calendar-next').hidden=!state.next;
+ const unique=[];const seen=new Set();for(const item of state.items){const k=item.category_label;if(!seen.has(k)){seen.add(k);unique.push(item);}}
+ const legend=$('public-calendar-legend');legend.replaceChildren(...unique.map(item=>{const s=el('span');const d=el('i',undefined,'public-calendar-dot');d.style.setProperty('--calendar-color',color(item));s.append(d,document.createTextNode(item.category_label));return s;}));
+ const by=group(),[y,m]=state.month.split('-').map(Number),first=new Date(Date.UTC(y,m-1,1)).getUTCDay(),days=new Date(Date.UTC(y,m,0)).getUTCDate(),total=Math.max(35,Math.ceil((first+days)/7)*7),grid=$('public-calendar-grid');grid.replaceChildren();
+ for(let n=0;n<total;n++){const day=n-first+1,cell=el('div',undefined,'public-calendar-cell'+(day<1||day>days?' outside':''));if(day>=1&&day<=days){const date=state.month+'-'+String(day).padStart(2,'0'),items=by[date]||[];if(items.length)cell.classList.add('has-events');cell.append(el('div',day,'public-calendar-date'));for(const item of items)cell.append(entry(item));}grid.append(cell);}
+ const agenda=$('public-calendar-agenda');agenda.replaceChildren();for(const date of Object.keys(by).sort()){const box=el('section',undefined,'public-agenda-day');box.append(el('h4',new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'long',day:'numeric',weekday:'short'}).format(new Date(date+'T00:00:00+09:00'))));for(const item of by[date])box.append(entry(item));agenda.append(box);}
+ $('public-calendar-status').textContent=state.items.length?'':'등록된 일정이 없습니다.';
+ root.hidden=!(state.items.length||state.prev||state.next);
+}
+async function load(month){$('public-calendar-status').textContent='일정을 불러오는 중입니다.';try{const r=await fetch('/portal/api/public/calendar?'+new URLSearchParams({month}),{credentials:'omit',cache:'default',redirect:'error'});if(!r.ok)throw new Error();const data=await r.json();state.month=data.month;state.items=data.items;state.prev=data.prev_month;state.next=data.next_month;render();}catch{root.hidden=true;}}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function cut(ctx,text,max){if(ctx.measureText(text).width<=max)return text;let s=text;while(s.length>1&&ctx.measureText(s+'…').width>max)s=s.slice(0,-1);return s+'…';}
+async function pngBlob(){
+ const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;const c=canvas.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,1200,1200);
+ c.fillStyle='#07183f';c.beginPath();c.moveTo(540,54);c.lineTo(610,12);c.lineTo(610,96);c.lineTo(540,138);c.closePath();c.fill();c.fillStyle='#d8bd78';c.beginPath();c.moveTo(575,52);c.lineTo(620,78);c.lineTo(620,116);c.lineTo(575,143);c.closePath();c.fill();
+ c.fillStyle='#111';c.textAlign='center';c.font='800 38px Pretendard, sans-serif';c.fillText(labelMonth(state.month),600,192);c.font='800 38px Pretendard, sans-serif';c.fillText('리치온 캘린더',600,238);
+ const unique=[];const seen=new Set();for(const item of state.items)if(!seen.has(item.category_label)){seen.add(item.category_label);unique.push(item);}c.font='18px Pretendard, sans-serif';c.textAlign='left';let lx=760,ly=82;for(const item of unique.slice(0,7)){c.fillStyle=color(item);c.beginPath();c.arc(lx,ly-5,6,0,Math.PI*2);c.fill();c.fillStyle='#222';c.fillText(item.category_label,lx+14,ly);ly+=30;}
+ const left=90,top=300,width=1020,col=width/7;c.font='20px Pretendard, sans-serif';['Su','Mo','Tu','We','Th','Fr','Sa'].forEach((d,i)=>{c.fillStyle=i===0?'#ff5055':i===6?'#1688ed':'#aaa';c.textAlign='center';c.fillText(d,left+col*(i+.5),top);});
+ const [y,m]=state.month.split('-').map(Number),first=new Date(Date.UTC(y,m-1,1)).getUTCDay(),days=new Date(Date.UTC(y,m,0)).getUTCDate(),rows=Math.max(5,Math.ceil((first+days)/7)),rowH=rows===6?125:145,by=group();c.textAlign='left';
+ for(let r=0;r<rows;r++){const yy=top+48+r*rowH;c.strokeStyle='#c8c8c8';c.setLineDash([5,5]);c.beginPath();c.moveTo(left,yy);c.lineTo(left+width,yy);c.stroke();c.setLineDash([]);for(let k=0;k<7;k++){const day=r*7+k-first+1;if(day<1||day>days)continue;const x=left+k*col+8,date=state.month+'-'+String(day).padStart(2,'0'),items=by[date]||[];if(items.length){c.fillStyle=color(items[0]);roundRect(c,x,yy+13,52,52,9);c.fill();c.fillStyle='#fff';c.textAlign='center';c.font='27px Pretendard, sans-serif';c.fillText(String(day),x+26,yy+48);c.textAlign='left';}else{c.fillStyle=k===0?'#ff5055':k===6?'#1688ed':'#aaa';c.font='25px Pretendard, sans-serif';c.fillText(String(day),x+16,yy+47);}let ey=yy+82;for(const item of items.slice(0,2)){c.fillStyle=color(item);c.beginPath();c.arc(x,ey-5,5,0,Math.PI*2);c.fill();c.fillStyle='#222';c.font='16px Pretendard, sans-serif';c.fillText(cut(c,item.category_label,col-28),x+12,ey);ey+=22;if(item.title&&item.title!==item.category_label){c.fillStyle='#555';c.font='14px Pretendard, sans-serif';c.fillText(cut(c,item.title,col-16),x+12,ey);ey+=18;}}}}
+ c.fillStyle='#8a8a8a';c.font='14px Pretendard, sans-serif';c.textAlign='center';c.fillText('RICHON ACADEMY',600,1160);
+ return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error()),'image/png'));
+}
+async function copyPng(){const status=$('calendar-copy-status');status.textContent='이미지를 만드는 중입니다.';try{const blob=await pngBlob();if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);status.textContent='PNG 이미지를 클립보드에 복사했습니다.';}else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=state.month+'-richon-calendar.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);status.textContent='클립보드를 지원하지 않아 PNG 파일로 저장했습니다.';}}catch{status.textContent='이미지 복사에 실패했습니다. 브라우저 권한을 확인해 주세요.';}}
+$('public-calendar-prev').addEventListener('click',()=>state.prev&&load(state.prev));$('public-calendar-next').addEventListener('click',()=>state.next&&load(state.next));$('public-calendar-copy').addEventListener('click',copyPng);load(monthNow());
+})();
