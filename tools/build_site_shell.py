@@ -35,6 +35,7 @@ def outputs():
     mypage = (SOURCE / 'mypage.html').read_text()
     mypage = mypage.replace('{{SITE_HEADER}}', chrome.wrapped('header', header))
     mypage = mypage.replace('{{SITE_FOOTER}}', chrome.wrapped('footer', footer))
+    mypage = chrome.ensure_font_link(mypage)
     result[STATIC / 'mypage.html'] = mypage.encode()
 
     admin_header=chrome.render_header('admin')
@@ -50,6 +51,7 @@ def outputs():
         page=chrome.replace_wrapped(page,'admin-header',admin_header)
         page=chrome.replace_wrapped(page,'admin-sidebar',render_admin_sidebar(admin_sidebar,active))
         page=chrome.replace_wrapped(page,'admin-footer',admin_footer)
+        page=chrome.ensure_font_link(page)
         result[STATIC/filename]=page.encode()
     return result
 

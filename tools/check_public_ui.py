@@ -132,9 +132,10 @@ for name in images:
 css=(shared/'site.css').read_text()
 js=(shared/'site.js').read_text()
 assert '.site-footer-links a{color:inherit;' in css
-assert css.startswith("@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');")
+assert '@import' not in css and 'pretendard@v1.3.9' not in css
+font_link=chrome.font_link()
 for page in (index,apply,guide,privacy,terms):
-    assert 'pretendard@v1.3.9' not in page
+    assert page.count(font_link)==1
 assert 'html.site-menu-open{overflow:hidden}' in css
 assert "document.documentElement.classList.toggle('site-menu-open', open)" in js
 

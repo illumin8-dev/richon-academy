@@ -17,6 +17,7 @@ def rendered(path: Path, variant: str) -> str:
     page = path.read_text()
     page = chrome.replace_wrapped(page, "header", chrome.render_header(variant))
     page = chrome.replace_wrapped(page, "footer", chrome.footer())
+    page = chrome.ensure_font_link(page)
     return page
 
 

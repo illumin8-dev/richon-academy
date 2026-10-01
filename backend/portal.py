@@ -19,18 +19,25 @@ import portal_store as store
 logger = logging.getLogger("richon.portal")
 STATIC = Path(__file__).parent / "portal_static"
 HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+PRETENDARD_CSS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+PRETENDARD_FONT = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/"
 PAGE_HEADERS = {
     **HEADERS,
     "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
     "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
 }
+UI_PAGE_HEADERS = {
+    **PAGE_HEADERS,
+    "Content-Security-Policy": PAGE_HEADERS["Content-Security-Policy"].replace(
+        "style-src 'self';",
+        f"style-src 'self' {PRETENDARD_CSS}; font-src 'self' {PRETENDARD_FONT};"),
+}
 
 # Native form POST needs a same-origin Origin. APIs/admin keep no-referrer.
 MEMBER_PAGE_HEADERS = {
-    **PAGE_HEADERS, "Referrer-Policy": "same-origin",
-    "Content-Security-Policy": PAGE_HEADERS["Content-Security-Policy"].replace(
-        "style-src 'self';",
-        "style-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css; font-src 'self' https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/;").replace("form-action 'self';", "form-action 'self' https://kauth.kakao.com https://nid.naver.com;"),
+    **UI_PAGE_HEADERS, "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": UI_PAGE_HEADERS["Content-Security-Policy"].replace(
+        "form-action 'self';", "form-action 'self' https://kauth.kakao.com https://nid.naver.com;"),
 }
 
 
@@ -243,7 +250,8 @@ def install_if_enabled(app: FastAPI) -> bool:
     async def private_portal_headers(request: Request, call_next):
         response = await call_next(request)
         if request.url.path.startswith("/portal/"):
-            response.headers.update(MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" and response.status_code == 200 else PAGE_HEADERS)
+            page_headers = MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" else (UI_PAGE_HEADERS if request.url.path in {"/portal/admin", "/portal/courses", "/portal/enrollments", "/portal/manual"} else PAGE_HEADERS)
+            response.headers.update(page_headers if response.status_code == 200 else PAGE_HEADERS)
         return response
 
     # Pages contain only the UI shell. Protected APIs decide every data access.
@@ -253,7 +261,7 @@ def install_if_enabled(app: FastAPI) -> bool:
 
     @app.get("/portal/admin", include_in_schema=False)
     def admin_page():
-        return FileResponse(STATIC / "admin.html", headers=PAGE_HEADERS)
+        return FileResponse(STATIC / "admin.html", headers=UI_PAGE_HEADERS)
 
     @app.get("/portal/assets/{asset}", include_in_schema=False)
     def asset(asset: str):

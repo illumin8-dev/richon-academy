@@ -101,6 +101,9 @@ def test_ui_shell_has_no_customer_data_and_restricts_resources(app, page):
     response = TestClient(app).get("/portal/" + page)
     assert response.status_code == 200
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert portal.PRETENDARD_CSS in response.headers["content-security-policy"]
+    assert portal.PRETENDARD_FONT in response.headers["content-security-policy"]
+    assert 'pretendard@v1.3.9/dist/web/static/pretendard.min.css' in response.text
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["referrer-policy"] == ("same-origin" if page == "mypage" else "no-referrer")
     assert "noindex,nofollow" in response.text

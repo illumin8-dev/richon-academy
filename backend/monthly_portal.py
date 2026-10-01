@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, model_valida
 
 from auth_core import Principal
 from auth_http import require_admin, AuthSettings, _origin, _csrf, cookie_token
-from portal import PAGE_HEADERS, HEADERS, SearchQuery, PageQuery, PageResult
+from portal import UI_PAGE_HEADERS, HEADERS, SearchQuery, PageQuery, PageResult
 import monthly_store as store
 
 logger = logging.getLogger('richon.monthly')
@@ -168,7 +168,7 @@ def install_if_enabled(app: FastAPI) -> bool:
 
     @app.get('/portal/enrollments',include_in_schema=False)
     def page():
-        return FileResponse(STATIC/'enrollments.html',headers=PAGE_HEADERS)
+        return FileResponse(STATIC/'enrollments.html',headers=UI_PAGE_HEADERS)
 
     @app.get('/portal/monthly-assets/{asset}',include_in_schema=False)
     def asset(asset: str):

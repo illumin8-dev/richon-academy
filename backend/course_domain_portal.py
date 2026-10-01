@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 
 from auth_core import Principal
 from auth_http import require_member,require_admin,AuthSettings,_origin,_csrf,cookie_token
-from portal import PAGE_HEADERS,HEADERS,PageQuery
+from portal import UI_PAGE_HEADERS,HEADERS,PageQuery
 import course_domain_models as model
 import course_domain_store as store
 
@@ -120,7 +120,7 @@ def install_if_enabled(app:FastAPI):
     app.include_router(make_router(AuthSettings(origins)))
 
     @app.get('/portal/courses',include_in_schema=False)
-    def page():return FileResponse(STATIC/'courses.html',headers=PAGE_HEADERS)
+    def page():return FileResponse(STATIC/'courses.html',headers=UI_PAGE_HEADERS)
 
     @app.get('/portal/course-assets/{asset}',include_in_schema=False)
     def asset(asset:str):
