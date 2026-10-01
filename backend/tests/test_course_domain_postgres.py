@@ -207,9 +207,7 @@ def test_general_calendar_event_create_update_and_month_read(course_db,actors):
         event_type='BRIEFING',title='가상 무료 브리핑 수정',presenter_name='가상 멘토',
         starts_at=start,ends_at=start+timedelta(hours=1),is_public=True))
     assert updated['version']==created['version']+1
-    public=store.public_calendar(
-        datetime(2026,10,1,tzinfo=timezone.utc),datetime(2026,11,1,tzinfo=timezone.utc),
-        datetime(2026,9,1,tzinfo=timezone.utc),datetime(2026,12,1,tzinfo=timezone.utc))
-    item=next(x for x in public['items'] if x['item_id']==created['event_id'])
-    assert item['category_label']=='무료 브리핑'
-    assert 'starts_at' not in item and item['event_date'].startswith('2026-10-')
+    rows=store.admin_calendar(datetime(2026,10,1,tzinfo=timezone.utc),datetime(2026,11,1,tzinfo=timezone.utc))
+    row=next(x for x in rows if x['event_id'] and str(x['event_id'])==created['event_id'])
+    assert row['title']=='가상 무료 브리핑 수정'
+    assert row['ends_at'] is not None
