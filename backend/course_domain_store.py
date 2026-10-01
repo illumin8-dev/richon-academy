@@ -3,7 +3,7 @@
 Legacy monthly/manual records remain untouched. Member linkage is explicit only.
 """
 from contextlib import contextmanager
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timedelta, timezone
 import hashlib
 import json
 import re
@@ -163,13 +163,20 @@ def _calendar_start(event_date):
     return datetime.combine(event_date,time.min,tzinfo=SEOUL).astimezone(timezone.utc)
 
 
+def _calendar_end(end_date):
+    if end_date is None:return None
+    return _calendar_start(end_date+timedelta(days=1))
+
+
 def _calendar_event_create(cur,actor,body):
     eid=uuid4()
+    banner=body.display_kind=='BANNER'
     cur.execute('''INSERT INTO richon.calendar_events
-      (event_id,event_type,title,starts_at,is_public,course_label,content_text,color_hex)
-      VALUES(%s,'OTHER',%s,%s,TRUE,%s,%s,%s) RETURNING version''',
-      (eid,body.course_label,_calendar_start(body.event_date),
-       body.course_label,body.content_text,body.color_hex))
+      (event_id,event_type,title,starts_at,ends_at,is_public,course_label,content_text,color_hex)
+      VALUES(%s,%s,%s,%s,%s,TRUE,%s,%s,%s) RETURNING version''',
+      (eid,'SPECIAL' if banner else 'OTHER',body.course_label,_calendar_start(body.event_date),
+       _calendar_end(body.end_date) if banner else None,
+       body.course_label,body.content_text if not banner else '',body.color_hex))
     return {'event_id':str(eid),'version':cur.fetchone()[0]}
 
 
@@ -178,13 +185,15 @@ def _calendar_event_update(cur,actor,body):
     row=cur.fetchone()
     if row is None: raise Rejected('calendar_event_not_found',404)
     if row[0]!=body.version: raise Rejected('stale_record')
+    banner=body.display_kind=='BANNER'
     cur.execute('''UPDATE richon.calendar_events
-      SET event_type='OTHER',title=%s,starts_at=%s,is_public=TRUE,
+      SET event_type=%s,title=%s,starts_at=%s,ends_at=%s,is_public=TRUE,
           course_label=%s,content_text=%s,color_hex=%s,
           cancelled_at=%s,version=version+1,updated_at=CURRENT_TIMESTAMP
       WHERE event_id=%s RETURNING version''',
-      (body.course_label,_calendar_start(body.event_date),body.course_label,
-       body.content_text,body.color_hex,
+      ('SPECIAL' if banner else 'OTHER',body.course_label,_calendar_start(body.event_date),
+       _calendar_end(body.end_date) if banner else None,body.course_label,
+       body.content_text if not banner else '',body.color_hex,
        datetime.now(timezone.utc) if body.deleted else None,body.event_id))
     return {'event_id':str(body.event_id),'version':cur.fetchone()[0],'deleted':body.deleted}
 
@@ -297,11 +306,17 @@ def sessions(run_id,include_cancelled=False):
 def admin_calendar(start_at,end_at):
     with read_cursor() as cur:
         cur.execute('''SELECT event_id::text AS item_id,event_id,
+                 CASE WHEN event_type='SPECIAL' AND ends_at IS NOT NULL THEN 'BANNER' ELSE 'EVENT' END AS display_kind,
                  to_char(starts_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD') AS event_date,
+                 CASE WHEN event_type='SPECIAL' AND ends_at IS NOT NULL
+                      THEN to_char((ends_at AT TIME ZONE 'Asia/Seoul') - INTERVAL '1 day','YYYY-MM-DD')
+                      ELSE NULL END AS end_date,
                  color_hex,course_label,content_text,version
             FROM richon.calendar_events
-           WHERE starts_at >= %s AND starts_at < %s AND cancelled_at IS NULL
-           ORDER BY starts_at,event_id''',(start_at,end_at))
+           WHERE cancelled_at IS NULL AND (
+                 (event_type='SPECIAL' AND ends_at IS NOT NULL AND ends_at>%s AND starts_at<%s)
+                 OR ((event_type<>'SPECIAL' OR ends_at IS NULL) AND starts_at>=%s AND starts_at<%s))
+           ORDER BY starts_at,event_id''',(start_at,end_at,start_at,end_at))
         return _rows(cur)
 
 
