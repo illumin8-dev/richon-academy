@@ -312,43 +312,6 @@ def admin_calendar(start_at,end_at):
         return _rows(cur)
 
 
-def public_calendar(start_at,end_at,previous_start,next_end):
-    with read_cursor() as cur:
-        cur.execute('''SELECT * FROM (
-          SELECT 'session'::text AS kind,s.session_id::text AS item_id,p.program_id AS category_key,
-                 p.title AS category_label,s.title,s.mentor_name AS presenter_name,
-                 to_char(s.starts_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD') AS event_date
-            FROM richon.course_sessions s
-            JOIN richon.course_runs r USING(run_id) JOIN richon.course_programs p USING(program_id)
-           WHERE s.cancelled_at IS NULL AND s.starts_at >= %s AND s.starts_at < %s
-          UNION ALL
-          SELECT 'event'::text,e.event_id::text,'event:'||lower(e.event_type),
-                 CASE e.event_type
-                   WHEN 'BRIEFING' THEN '무료 브리핑'
-                   WHEN 'STUDY_ALL' THEN '스터디 전체'
-                   WHEN 'SPECIAL' THEN '특강'
-                   WHEN 'FIELD_TRIP' THEN '임장'
-                   ELSE '기타' END,
-                 e.title,e.presenter_name,
-                 to_char(e.starts_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD')
-            FROM richon.calendar_events e
-           WHERE e.is_public AND e.cancelled_at IS NULL AND e.starts_at >= %s AND e.starts_at < %s
-        ) x ORDER BY event_date,category_label,title,item_id''',(start_at,end_at,start_at,end_at))
-        items=_rows(cur)
-        cur.execute('''SELECT
-          (EXISTS(SELECT 1 FROM richon.course_sessions s
-                    WHERE s.cancelled_at IS NULL AND s.starts_at >= %s AND s.starts_at < %s)
-           OR EXISTS(SELECT 1 FROM richon.calendar_events e
-                    WHERE e.is_public AND e.cancelled_at IS NULL AND e.starts_at >= %s AND e.starts_at < %s)),
-          (EXISTS(SELECT 1 FROM richon.course_sessions s
-                    WHERE s.cancelled_at IS NULL AND s.starts_at >= %s AND s.starts_at < %s)
-           OR EXISTS(SELECT 1 FROM richon.calendar_events e
-                    WHERE e.is_public AND e.cancelled_at IS NULL AND e.starts_at >= %s AND e.starts_at < %s))''',
-          (previous_start,start_at,previous_start,start_at,end_at,next_end,end_at,next_end))
-        previous_exists,next_exists=cur.fetchone()
-    return {'items':items,'previous_exists':previous_exists,'next_exists':next_exists}
-
-
 def enrollments(run_id=None,limit=50,offset=0):
     with read_cursor() as cur:
         cur.execute('''SELECT e.enrollment_id,e.run_id,e.learner_id,l.member_id,l.name,
