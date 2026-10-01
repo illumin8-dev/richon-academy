@@ -13,7 +13,7 @@ class Input(BaseModel):
 
     @field_validator(
         'reason','program_id','title','description','access_mode','cohort_label','status',
-        'mentor_name','presenter_name','video_url','material_url','name','email','phone','note',
+        'mentor_name','presenter_name','course_label','content_text','color_hex','video_url','material_url','name','email','phone','note',
         mode='before',check_fields=False)
     @classmethod
     def clean_text(cls,value):
@@ -124,36 +124,20 @@ class SessionUpdate(Write):
         return self
 
 
-CalendarEventType=Literal['BRIEFING','STUDY_ALL','SPECIAL','FIELD_TRIP','OTHER']
-
 class CalendarEventCreate(Write):
-    event_type: CalendarEventType
-    title: str=Field(min_length=1,max_length=200)
-    presenter_name: str|None=Field(default=None,max_length=80)
-    starts_at: datetime
-    ends_at: datetime|None=None
-    is_public: bool=True
-
-    @model_validator(mode='after')
-    def time(self):
-        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_calendar_event_range')
-        return self
+    event_date: date
+    color_hex: str=Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    course_label: str=Field(min_length=1,max_length=200)
+    content_text: str=Field(min_length=1,max_length=500)
 
 class CalendarEventUpdate(Write):
     event_id: UUID
     version: int=Field(ge=1)
-    event_type: CalendarEventType
-    title: str=Field(min_length=1,max_length=200)
-    presenter_name: str|None=Field(default=None,max_length=80)
-    starts_at: datetime
-    ends_at: datetime|None=None
-    is_public: bool=True
-    cancelled: bool=False
-
-    @model_validator(mode='after')
-    def time(self):
-        if self.ends_at and self.ends_at<=self.starts_at: raise ValueError('invalid_calendar_event_range')
-        return self
+    event_date: date
+    color_hex: str=Field(pattern=r'^#[0-9A-Fa-f]{6}$')
+    course_label: str=Field(min_length=1,max_length=200)
+    content_text: str=Field(min_length=1,max_length=500)
+    deleted: bool=False
 
 
 class TargetProfile(Input):
