@@ -75,15 +75,18 @@ def test_actual_postgres_varchar_catalog_shape():
 
 
 @pytest.mark.parametrize(('row','expected'),[
-    ((True,False),'freeform'),
-    ((False,True),'legacy'),
+    ((True,False,False),'freeform'),
+    ((False,True,True),'legacy'),
+    ((True,False,True),'visual'),
 ])
-def test_calendar_rollout_accepts_only_one_reviewed_grant_profile(row,expected):
+def test_calendar_rollout_accepts_only_reviewed_grant_profiles(row,expected):
     cur=Mock();cur.fetchone.return_value=row
     assert r.calendar_grant_profile(cur)==expected
 
 
-@pytest.mark.parametrize('row',[(True,True),(False,False)])
+@pytest.mark.parametrize('row',[
+    (True,True,True),(True,True,False),(False,False,False),(False,False,True),(False,True,False)
+])
 def test_calendar_rollout_rejects_mixed_or_missing_grant_profile(row):
     cur=Mock();cur.fetchone.return_value=row
     with pytest.raises(ValueError,match='calendar_grant_profile_mismatch'):

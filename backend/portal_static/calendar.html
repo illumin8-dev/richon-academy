@@ -39,51 +39,75 @@
 </aside>
 <!-- /richon:shared-admin-sidebar -->
 <main class="main" id="main">
-<div class="page-heading"><div><p class="eyebrow">RICHON CALENDAR</p><h1>캘린더</h1><p class="small">강의 데이터와 별개로 운영 일정을 자유롭게 기록합니다.</p></div><span class="pill dark admin-heading-tag">관리자</span></div>
+<div class="page-heading">
+  <div><p class="eyebrow">RICHON CALENDAR</p><h1>캘린더</h1><p class="small">완성된 월간 캘린더를 보면서 바로 일정을 추가하고 수정합니다.</p></div>
+  <button id="add-event" class="calendar-add-button" type="button">+ 일정 추가</button>
+</div>
 <section id="gate" class="panel gate"><h2>관리자 권한을 확인하고 있습니다.</h2><p id="gate-text">잠시만 기다려 주세요.</p><button id="retry" type="button" hidden>다시 확인</button></section>
 <div id="content" hidden>
-<section class="panel editor-panel">
-  <div class="section-head">
-    <div><h2 id="editor-title">일정 추가</h2><p>날짜 / 색상 / 과정 / 내용만 입력합니다. 기존 일정을 선택한 뒤 날짜를 바꾸고 복사를 누르면 새 일정이 만들어집니다.</p></div>
-    <button id="reset-editor" type="button">새 일정</button>
+<section class="calendar-paper" aria-labelledby="visual-title">
+  <div class="calendar-month-nav">
+    <button id="prev-month" type="button" aria-label="이전 달">←</button>
+    <button id="today" class="calendar-today" type="button">이번 달</button>
+    <button id="next-month" type="button" aria-label="다음 달">→</button>
+  </div>
+  <div class="calendar-paper-head">
+    <div class="calendar-paper-title">
+      <span class="calendar-symbol" aria-hidden="true"></span>
+      <h2 id="visual-title"><span id="month-label"></span><br>리치온 캘린더</h2>
+    </div>
+    <div id="calendar-legend" class="calendar-legend" aria-label="색상 범례"></div>
+  </div>
+  <div class="calendar-weekdays" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+  <div id="calendar-weeks" class="calendar-weeks"></div>
+  <div id="calendar-mobile-list" class="calendar-mobile-list"></div>
+  <p id="calendar-status" class="calendar-status" role="status"></p>
+</section>
+</div>
+<p id="action-status" class="status" role="status"></p>
+
+<dialog id="calendar-editor" class="calendar-dialog" aria-labelledby="editor-title">
+  <div class="calendar-dialog-head">
+    <div><p class="eyebrow">CALENDAR EDITOR</p><h2 id="editor-title">일정 추가</h2></div>
+    <button id="close-editor" class="dialog-close" type="button" aria-label="닫기">×</button>
+  </div>
+  <div class="calendar-kind" role="group" aria-label="일정 표시 방식">
+    <button type="button" data-calendar-kind="EVENT" aria-pressed="true">일정</button>
+    <button type="button" data-calendar-kind="BANNER" aria-pressed="false">연휴 / 강조 문구</button>
   </div>
   <form id="calendar-form" class="calendar-form">
-    <label>날짜<input name="event_date" type="date" required></label>
+    <label><span id="date-caption">날짜</span><input name="event_date" type="date" required></label>
+    <label class="banner-only" hidden>종료일<input name="end_date" type="date"></label>
     <label>색상
-      <span class="color-control"><span id="color-preview" class="color-preview" aria-hidden="true"></span>
+      <span class="color-control"><span id="color-preview" class="color-preview color-blue" aria-hidden="true"></span>
       <select name="color_hex" id="color-select">
-        <option value="#3978F6">파랑</option>
-        <option value="#FF9F26">주황</option>
-        <option value="#D8BD78">골드</option>
-        <option value="#FF5757">빨강</option>
-        <option value="#00B622">초록</option>
-        <option value="#C000DB">보라</option>
+        <option value="#3978F6">파랑 / 재개발중급반</option>
+        <option value="#FF9F26">주황 / 리치온 인테리어</option>
+        <option value="#D8BD78">골드 / 무료 브리핑</option>
+        <option value="#FF5757">빨강 / 리치온 스터디</option>
+        <option value="#00B622">초록 / Pre리치온</option>
+        <option value="#C000DB">보라 / 스터디 전체</option>
       </select></span>
+      <small id="color-caption" class="field-hint"></small>
     </label>
-    <label>과정<input name="course_label" maxlength="200" required placeholder="예: Pre리치온"></label>
-    <label class="wide">내용<textarea name="content_text" maxlength="500" required rows="3" placeholder="예: 부동산 투자원칙"></textarea></label>
+    <label class="course-field"><span id="course-caption">과정</span><input name="course_label" list="course-suggestions" maxlength="200" required placeholder="예: Pre리치온"></label>
+    <label class="event-only wide">내용 <small>선택</small><textarea name="content_text" maxlength="500" rows="3" placeholder="예: 부동산 투자원칙 / 멘토 이루민"></textarea></label>
+    <datalist id="course-suggestions">
+      <option value="재개발중급반"></option><option value="리치온 인테리어"></option>
+      <option value="리치온 아카데미"></option><option value="리치온 스터디"></option>
+      <option value="리치온 실전투자"></option><option value="Pre리치온"></option>
+      <option value="스터디 전체"></option><option value="청약 스터디"></option>
+      <option value="리치온 현장임장"></option>
+    </datalist>
     <div class="editor-actions wide">
       <button id="save-event" class="primary" type="submit">저장</button>
       <button id="copy-event" type="button" hidden>복사</button>
       <button id="delete-event" class="danger" type="button" hidden>삭제</button>
+      <button id="cancel-editor" type="button">취소</button>
     </div>
   </form>
   <p id="editor-status" class="status" role="status"></p>
-</section>
-
-<section class="panel calendar-panel">
-  <div class="calendar-toolbar">
-    <button id="prev-month" type="button" aria-label="이전 달">←</button>
-    <div><strong id="month-label"></strong><button id="today" class="plain-link" type="button">이번 달</button></div>
-    <button id="next-month" type="button" aria-label="다음 달">→</button>
-  </div>
-  <div class="weekday-row" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
-  <div id="calendar-grid" class="calendar-grid"></div>
-  <div id="calendar-agenda" class="calendar-agenda"></div>
-  <p id="calendar-status" class="status" role="status"></p>
-</section>
-</div>
-<p id="action-status" class="status" role="status"></p>
+</dialog>
 </main></div>
 <!-- richon:shared-admin-footer -->
 <footer class="site-footer">

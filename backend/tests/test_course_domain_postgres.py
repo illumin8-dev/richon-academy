@@ -195,27 +195,30 @@ def test_admin_member_detail_combines_canonical_enrollment_with_legacy_enabled(c
     assert validated.orders==[]
 
 
-def test_freeform_calendar_create_update_delete_and_month_read(course_db,actors):
+def test_visual_calendar_event_banner_update_delete_and_overlap(course_db,actors):
     admin,_=actors
     created=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(
         request_id=req(),reason='가상 일정',event_date=date(2026,10,8),
         color_hex='#00B622',course_label='Pre리치온',content_text='부동산 투자원칙'))
     rows=store.admin_calendar(datetime(2026,9,30,15,tzinfo=timezone.utc),datetime(2026,10,31,15,tzinfo=timezone.utc))
     row=next(x for x in rows if str(x['event_id'])==created['event_id'])
-    assert row['event_date']=='2026-10-08'
-    assert row['color_hex']=='#00B622'
-    assert row['course_label']=='Pre리치온'
-    assert row['content_text']=='부동산 투자원칙'
+    assert (row['display_kind'],row['event_date'],row['end_date'])==('EVENT','2026-10-08',None)
+    assert (row['color_hex'],row['course_label'],row['content_text'])==('#00B622','Pre리치온','부동산 투자원칙')
 
     updated=store.mutate(admin,'calendar_event.update',model.CalendarEventUpdate(
         request_id=req(),reason='가상 수정',event_id=UUID(created['event_id']),version=created['version'],
         event_date=date(2026,10,21),color_hex='#C000DB',
         course_label='자유 과정',content_text='원하는 날짜로 이동'))
     assert updated['version']==created['version']+1
-    rows=store.admin_calendar(datetime(2026,9,30,15,tzinfo=timezone.utc),datetime(2026,10,31,15,tzinfo=timezone.utc))
-    row=next(x for x in rows if str(x['event_id'])==created['event_id'])
-    assert (row['event_date'],row['color_hex'],row['course_label'],row['content_text'])==(
-        '2026-10-21','#C000DB','자유 과정','원하는 날짜로 이동')
+
+    banner=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(
+        request_id=req(),reason='가상 연휴',display_kind='BANNER',
+        event_date=date(2026,9,29),end_date=date(2026,10,2),
+        color_hex='#FF5757',course_label='연휴'))
+    october=store.admin_calendar(datetime(2026,9,30,15,tzinfo=timezone.utc),datetime(2026,10,31,15,tzinfo=timezone.utc))
+    holiday=next(x for x in october if str(x['event_id'])==banner['event_id'])
+    assert (holiday['display_kind'],holiday['event_date'],holiday['end_date'])==('BANNER','2026-09-29','2026-10-02')
+    assert holiday['content_text']==''
 
     deleted=store.mutate(admin,'calendar_event.update',model.CalendarEventUpdate(
         request_id=req(),reason='가상 삭제',event_id=UUID(created['event_id']),version=updated['version'],

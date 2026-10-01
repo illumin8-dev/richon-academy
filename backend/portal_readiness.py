@@ -108,6 +108,12 @@ CALENDAR_UPDATE = {
                         'course_label','content_text','color_hex',
                         'cancelled_at','version','updated_at'),
 }
+CALENDAR_VISUAL_INSERT = {
+    'calendar_events': tuple(dict.fromkeys((*CALENDAR_INSERT['calendar_events'],'ends_at'))),
+}
+CALENDAR_VISUAL_UPDATE = {
+    'calendar_events': tuple(dict.fromkeys((*CALENDAR_UPDATE['calendar_events'],'ends_at'))),
+}
 
 LEGACY_READ = ('course_month_rules','monthly_enrollments','monthly_enrollment_terms',
                'manual_learners','manual_enrollments','manual_terms')
@@ -209,13 +215,15 @@ def calendar_schema_ready(cur):
 
 
 def calendar_grant_profile(cur):
-    """Accept only one of the two reviewed rollout profiles, never a mixed superset."""
+    """Accept only a reviewed calendar rollout profile, never an arbitrary superset."""
     cur.execute("""SELECT
         has_column_privilege(%s,'richon.calendar_events','color_hex','INSERT'),
-        has_column_privilege(%s,'richon.calendar_events','presenter_name','INSERT')""",(ROLE,ROLE))
-    freeform,legacy=cur.fetchone()
-    if freeform is True and legacy is False:return 'freeform'
-    if freeform is False and legacy is True:return 'legacy'
+        has_column_privilege(%s,'richon.calendar_events','presenter_name','INSERT'),
+        has_column_privilege(%s,'richon.calendar_events','ends_at','INSERT')""",(ROLE,ROLE,ROLE))
+    freeform,legacy,ends_at=cur.fetchone()
+    if freeform is False and legacy is True and ends_at is True:return 'legacy'
+    if freeform is True and legacy is False and ends_at is False:return 'freeform'
+    if freeform is True and legacy is False and ends_at is True:return 'visual'
     raise ValueError('calendar_grant_profile_mismatch')
 
 
@@ -338,8 +346,15 @@ def check_role(cur):
         for table,columns in COURSE_SELECT_COLUMNS.items():
             select_columns[table] = tuple(dict.fromkeys((*select_columns.get(table,()), *columns)))
     if calendar_grants:
-        inserts = merged_grants(inserts, CALENDAR_LEGACY_INSERT if calendar_profile=='legacy' else CALENDAR_INSERT)
-        updates = merged_grants(updates, CALENDAR_LEGACY_UPDATE if calendar_profile=='legacy' else CALENDAR_UPDATE)
+        if calendar_profile=='legacy':
+            inserts = merged_grants(inserts, CALENDAR_LEGACY_INSERT)
+            updates = merged_grants(updates, CALENDAR_LEGACY_UPDATE)
+        elif calendar_profile=='visual':
+            inserts = merged_grants(inserts, CALENDAR_VISUAL_INSERT)
+            updates = merged_grants(updates, CALENDAR_VISUAL_UPDATE)
+        else:
+            inserts = merged_grants(inserts, CALENDAR_INSERT)
+            updates = merged_grants(updates, CALENDAR_UPDATE)
     if legacy_grants:
         inserts = merged_grants(inserts, LEGACY_INSERT)
         updates = merged_grants(updates, LEGACY_UPDATE)

@@ -34,17 +34,15 @@ It does not seed real programs, members or enrollments, and it does not rewrite 
 - Real program/run/session data entry and authenticated owner-browser E2E remain operational follow-up, not schema implementation work.
 
 
-## Central calendar decisions / 2026-10-01
-- Calendar work remains ahead of login-provider lifecycle and payment.
-- The admin calendar is intentionally independent from `course_programs`, `course_runs`, and `course_sessions`.
-- `course_sessions` remains available for future My Courses/video/material semantics, but `/portal/calendar` does not read or write it.
-- Admin calendar input is exactly four operator-facing values: date / color / course label / content text.
-- Course label and content are free text. Adding a new course never requires calendar schema/code integration.
-- Color is selected from the UI dropdown and stored as a validated hex value; the database is not tied to a fixed course-to-color mapping.
-- Copy behavior has no recurrence rule: select an existing entry, choose any target date, then copy. The source entry remains unchanged.
-- Copying the fresh copy again to another arbitrary date is supported.
-- Delete is soft-delete through `cancelled_at`; destructive table DELETE remains unavailable to the runtime role.
-- DB018 remains the physical `calendar_events` table. DB019 adds free-form display columns without dropping tables/columns or linking course tables.
-- Phase 1 stays admin-only. Public landing calendar remains deferred until the owner approves real admin-calendar UX.
-- Approved Phase 2 behavior is preserved but not implemented here: Programs→Calendar→Mentors placement / current Seoul month / adjacent arrows only when data exists / public clock time hidden / 60-second edge cache / 1200×1200 PNG clipboard copy with download fallback.
-- No payment, OAuth provider, member identity, enrollment, or course-session semantics are changed by this free-form calendar work.
+## Central calendar decisions / 2026-10-02
+- The admin calendar remains independent from `course_programs`, `course_runs`, and `course_sessions`.
+- The owner-provided October 2026 calendar is the canonical visual standard; see `CALENDAR_VISUAL_SPEC.md`.
+- Normal event fields are date / canonical palette color / free-text course label / optional free-text content.
+- Holiday/emphasis entries use an inclusive start/end date range, canonical palette color, and free-text banner label.
+- The six October palette values are server-validated; historical June–September colors normalize to this palette when imported later.
+- Copy uses the dates currently chosen by the operator; there is no fixed +7-day or recurrence rule.
+- The existing DB018/019 physical table remains in use. Holiday ranges reuse existing `ends_at`; no new calendar table or course relation is introduced.
+- Runtime DELETE stays unavailable; admin delete remains soft delete.
+- Rollout order for banner writes: new code can start on the existing DB019 free-form grant profile, then the owner applies the final reviewed visual profile that adds only `ends_at` write access.
+- The public landing calendar remains deferred until the owner approves the real admin UX.
+- No payment, OAuth provider, member identity, enrollment, or course-session semantics are changed by this visual-calendar work.
