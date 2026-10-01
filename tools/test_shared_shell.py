@@ -68,6 +68,8 @@ class SharedShellTests(unittest.TestCase):
         site=(build.SOURCE/'site.css').read_text()
         self.assertNotIn('@import',site)
         self.assertNotIn('pretendard@v1.3.9',site)
+        self.assertIn('body.richon-page{padding-top:74px;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}',site)
+        self.assertIn('.site-footer{margin-top:auto;flex-shrink:0;',site)
         self.assertIn('--ops-font:var(--site-font)',(build.SOURCE/'ops.css').read_text())
         admin=(build.SOURCE/'admin.css').read_text()
         for obsolete in ('.topbar{','.brand-mark{','.top-actions{'):
@@ -121,6 +123,7 @@ class SharedShellTests(unittest.TestCase):
                 self.assertEqual(page.count(footer),1)
                 self.assertIn('/portal/assets/site.css',page)
                 self.assertIn('/portal/assets/site.js',page)
+                self.assertIn('class="richon-page"',page)
                 self.assertEqual(page.count(chrome.font_link()),1)
                 self.assertEqual(page.count('data-admin-tab-link="orders"'),1)
                 self.assertEqual(page.count('data-admin-tab-link="members"'),1)
