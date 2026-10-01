@@ -121,8 +121,7 @@ def page(title,body):
     static = Path(__file__).parent / 'portal_static'
     header = (static / 'site-header.html').read_text()
     footer = (static / 'site-footer.html').read_text()
-    font = (static / 'site-font.html').read_text().strip()
-    assets = font + '<link rel="stylesheet" href="/auth/assets/site.css"><link rel="stylesheet" href="/auth/assets/auth.css"><script src="/auth/assets/site.js"></script><script defer src="/auth/assets/signup.js"></script>'
+    assets = '<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"><link rel="stylesheet" href="/auth/assets/site.css"><link rel="stylesheet" href="/auth/assets/auth.css"><script src="/auth/assets/site.js"></script><script defer src="/auth/assets/signup.js"></script>'
     content = content.replace('</head>', assets + '</head>', 1)
     content = content.replace('<body class="richon-page auth-page">', '<body class="richon-page auth-page">' + header, 1)
     content = content.replace('</main></body>', '</main>' + footer + '</body>', 1)
