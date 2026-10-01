@@ -1519,3 +1519,63 @@
   - public / mypage / admin에서 RICH/ON 로고 글꼴/두께가 동일한지
   - admin header의 운영 홈 / 마이페이지 / 로그아웃만 variant로 다른지
   - footer가 모든 shared-chrome 화면에서 동일한지.
+
+
+
+### 체크포인트 39 / original homepage font loading 복구 + admin fallback 수정
+- 사용자 육안 피드백: PR #114 single-source chrome 반영 후 관리자에서 폰트/두께가 구려지고 fallback처럼 보임.
+- 실제 원인:
+  - PR #114에서 header CSS 값(font-size/weight/padding/logo rules)을 관리자 기준으로 덮어쓴 것은 아님.
+  - pre-refactor 기준 `frontend/shared/site.css`와 비교 결과 header CSS 값은 동일했고, 차이는 Pretendard loading을 page-level direct `<link>`에서 `site.css @import`로 옮긴 1줄이었음.
+  - admin HTML response는 strict `style-src 'self'` CSP를 사용하고 있었기 때문에 external jsDelivr `@import`가 차단될 수 있었고 browser가 system font fallback을 사용함.
+- 복구 원칙:
+  - 시각적 authority는 기존 public homepage.
+  - single-source header/footer renderer 구조(PR #114)는 유지.
+  - `site.css`의 visual rules는 기존 approved public version으로 정확히 복구.
+  - Pretendard는 원래 homepage처럼 direct `<link rel="stylesheet" as="style" crossorigin ...>` 방식 사용.
+- PR #115 `fix: restore original homepage font loading`
+  - final head: `34433d3d640b0671ad5abda3a161096ed82aa855`
+  - merge commit: `077a43e47c8223b4699f1538e393c71d8e6b69a9`
+  - `frontend/shared/site.css` blob가 pre-refactor approved blob `b0ce5787c3cf5e5ca5a8ac020567b0bc7c26e7a1`과 byte-identical 확인.
+  - `index.html`도 기존 approved blob `717213803896d14c0b06d601e4705548b2e276f0`로 정확히 복구.
+  - public / mypage / admin / courses / enrollments / manual / policy pages에 동일 pinned Pretendard direct link 적용.
+  - public/member/admin header markup은 계속 canonical `frontend/shared/site-header.html`에서 variant 생성.
+  - footer도 계속 canonical `frontend/shared/footer.html`.
+- CSP 정리:
+  - 일반 `PAGE_HEADERS` / API는 기존 strict self-only style CSP 유지.
+  - HTML 화면 전용 `UI_PAGE_HEADERS`만 정확한 pinned Pretendard stylesheet/font origin 허용.
+  - mypage `MEMBER_PAGE_HEADERS`는 UI CSP + OAuth form-action만 추가.
+  - admin / courses / enrollments / manual 모두 `UI_PAGE_HEADERS` 사용.
+  - auth fallback은 기존처럼 같은 pinned direct Pretendard link와 허용 CSP 사용.
+- CI/preview hardening:
+  - network-free `admin-test.html` preview에서는 font CDN link만 제거하여 완전 offline 유지.
+  - generated shell whitespace drift 3건(admin/enrollments/manual)은 생성기 출력과 정확히 동기화.
+  - PR final verification:
+    - Public UI static-contract PASS
+    - Cloudflare Pages PASS
+    - Portal browser PASS
+    - Backend Python/PostgreSQL PASS
+    - Gcloud/Docker PASS
+    - edge-and-image PASS
+    - admin preview PASS
+    - browser-and-policy PASS
+  - login-flow reusable duplicate backend jobs는 GitHub queue에 pending이었으나 동일 commit의 direct backend Python/PostgreSQL + Docker jobs가 PASS했고 branch protection allowed merge.
+- production rollout:
+  - source/request commit: `2d4077cc2f54743fe527b551b0569d322ad9b770`
+  - workflow run: `36820170190`
+  - result: SUCCESS
+  - image digest: `sha256:1435f098758928f6529285f8b08a5315777c084d4532f9fa40c92af6642ee86d`
+  - old candidate: `richon-portal-handoff-36816150070-1`
+  - new candidate: `richon-portal-handoff-36820170190-1`
+  - default 100% revision unchanged: `richon-portal-gh-35810692921-1`
+  - ACCOUNT=true / MARKETING=true / member-info-v1 preserved.
+  - IAM unchanged / EDGE_GATE PASS / ACCESS_GATE PASS.
+  - customer probes: `/auth/login` 200 / `/portal/mypage` 200 / `/apply.html` 308 canonical / login-modal 200.
+- post-rollout read-only inspect:
+  - request commit: `b27d643209b48959d48173b9e8cb2aab4a002398`
+  - `LEGACY ADMIN INSPECT PASSED. No DB/IAM/secret/customer writes.`
+- deployment request returned to hold:
+  - commit: `1bf2da15bc572aa9bb3db721e0b2c1a7ef9a3729`
+- 다음 사용자 확인:
+  - 운영 admin 페이지를 hard refresh하여 RICH/ON 및 관리자 본문이 Pretendard로 렌더되는지 확인.
+  - public homepage와 header logo/font weight가 동일하게 보이는지 비교.
