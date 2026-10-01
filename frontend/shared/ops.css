@@ -2,7 +2,7 @@
 :root{
   --ops-orange:#f47920;--ops-ink:#24211f;--ops-muted:#77716a;--ops-line:#e7e3de;
   --ops-bg:#faf9f6;--ops-soft:#fff1e5;--ops-dark:#25231f;--ops-radius:18px;
-  --ops-font:Pretendard,"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --ops-font:var(--site-font);
   --orange:var(--ops-orange);--accent:var(--ops-orange);--ink:var(--ops-ink);
   --muted:var(--ops-muted);--line:var(--ops-line);--border:var(--ops-line);
   --bg:var(--ops-bg);--paper:var(--ops-bg);--soft:var(--ops-soft);--dark:var(--ops-dark);
