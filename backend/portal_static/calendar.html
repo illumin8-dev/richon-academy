@@ -15,7 +15,6 @@
 <!-- richon:shared-admin-header -->
 <nav class="site-nav admin-site-nav" id="siteNav" aria-label="리치온 아카데미 관리자 메뉴">
   <a class="site-logo" href="/#top" aria-label="리치온 아카데미 홈"><span class="r">RICH</span><span class="o">ON</span><small>ESTATE STUDY</small></a>
-
   <div class="site-nav-right">
     <a class="site-account-link" href="/portal/admin?tab=orders">운영 홈</a>
     <a class="site-account-link" href="/portal/mypage">마이페이지</a>
@@ -39,9 +38,38 @@
 </aside>
 <!-- /richon:shared-admin-sidebar -->
 <main class="main" id="main">
-<div class="page-heading"><div><p class="eyebrow">CENTRAL CALENDAR</p><h1>캘린더</h1><p class="small">강의 회차와 공개 일정을 한 곳에서 관리합니다.</p></div><span class="pill dark admin-heading-tag">관리자</span></div>
+<div class="page-heading"><div><p class="eyebrow">RICHON CALENDAR</p><h1>캘린더</h1><p class="small">강의 데이터와 별개로 운영 일정을 자유롭게 기록합니다.</p></div><span class="pill dark admin-heading-tag">관리자</span></div>
 <section id="gate" class="panel gate"><h2>관리자 권한을 확인하고 있습니다.</h2><p id="gate-text">잠시만 기다려 주세요.</p><button id="retry" type="button" hidden>다시 확인</button></section>
 <div id="content" hidden>
+<section class="panel editor-panel">
+  <div class="section-head">
+    <div><h2 id="editor-title">일정 추가</h2><p>날짜 / 색상 / 과정 / 내용만 입력합니다. 기존 일정을 선택한 뒤 날짜를 바꾸고 복사를 누르면 새 일정이 만들어집니다.</p></div>
+    <button id="reset-editor" type="button">새 일정</button>
+  </div>
+  <form id="calendar-form" class="calendar-form">
+    <label>날짜<input name="event_date" type="date" required></label>
+    <label>색상
+      <span class="color-control"><span id="color-preview" class="color-preview" aria-hidden="true"></span>
+      <select name="color_hex" id="color-select">
+        <option value="#3978F6">파랑</option>
+        <option value="#FF9F26">주황</option>
+        <option value="#D8BD78">골드</option>
+        <option value="#FF5757">빨강</option>
+        <option value="#00B622">초록</option>
+        <option value="#C000DB">보라</option>
+      </select></span>
+    </label>
+    <label>과정<input name="course_label" maxlength="200" required placeholder="예: Pre리치온"></label>
+    <label class="wide">내용<textarea name="content_text" maxlength="500" required rows="3" placeholder="예: 부동산 투자원칙"></textarea></label>
+    <div class="editor-actions wide">
+      <button id="save-event" class="primary" type="submit">저장</button>
+      <button id="copy-event" type="button" hidden>복사</button>
+      <button id="delete-event" class="danger" type="button" hidden>삭제</button>
+    </div>
+  </form>
+  <p id="editor-status" class="status" role="status"></p>
+</section>
+
 <section class="panel calendar-panel">
   <div class="calendar-toolbar">
     <button id="prev-month" type="button" aria-label="이전 달">←</button>
@@ -52,41 +80,6 @@
   <div id="calendar-grid" class="calendar-grid"></div>
   <div id="calendar-agenda" class="calendar-agenda"></div>
   <p id="calendar-status" class="status" role="status"></p>
-</section>
-
-<section class="panel editor-panel">
-  <div class="section-head"><div><h2 id="editor-title">일정 추가</h2><p>강의 회차는 내 강의와 연결되고, 일반 일정은 캘린더에만 표시됩니다.</p></div><button id="reset-editor" type="button">새 일정</button></div>
-  <form id="calendar-form" class="calendar-form">
-    <label>일정 종류<select name="kind" id="kind"><option value="session">강의 회차</option><option value="event">일반 일정</option></select></label>
-    <div id="session-fields" class="field-group">
-      <label>프로그램<select name="program_id" id="program"></select></label>
-      <label>기수<select name="run_id" id="run"></select></label>
-      <label>회차<input name="sequence_no" type="number" min="1" max="1000"></label>
-    </div>
-    <div id="event-fields" class="field-group" hidden>
-      <label>일정 유형<select name="event_type">
-        <option value="BRIEFING">무료 브리핑</option><option value="STUDY_ALL">스터디 전체</option>
-        <option value="SPECIAL">특강</option><option value="FIELD_TRIP">임장</option><option value="OTHER">기타</option>
-      </select></label>
-      <label class="check"><input name="is_public" type="checkbox" checked> 랜딩에 공개</label>
-    </div>
-    <label>날짜<input name="date" type="date" required></label>
-    <label>시작 시간<input name="start_time" type="time" required></label>
-    <label>종료 시간<input name="end_time" type="time"></label>
-    <label class="wide">제목<input name="title" maxlength="200" required placeholder="부동산 투자원칙"></label>
-    <label>멘토 / 담당자<input name="presenter_name" maxlength="80"></label>
-    <div id="session-links" class="field-group wide">
-      <label>영상 URL<input name="video_url" type="url" placeholder="https://"></label>
-      <label>자료 URL<input name="material_url" type="url" placeholder="https://"></label>
-    </div>
-    <label class="check wide"><input name="cancelled" type="checkbox"> 취소된 일정</label>
-    <label class="wide">기록 사유<input name="reason" maxlength="200" required value="캘린더 일정 등록"></label>
-    <div class="editor-actions wide">
-      <button id="save-event" class="primary" type="submit">저장</button>
-      <button id="clone-week" type="button" hidden>다음 주로 복제</button>
-    </div>
-  </form>
-  <p id="editor-status" class="status" role="status"></p>
 </section>
 </div>
 <p id="action-status" class="status" role="status"></p>
