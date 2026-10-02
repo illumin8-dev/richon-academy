@@ -266,6 +266,45 @@ def _enrollment_cancel(cur,actor,body):
     return {'enrollment_id':str(body.enrollment_id),'version':cur.fetchone()[0],'status':'CANCELLED'}
 
 
+def _effective_status(cur,access_start,access_end):
+    cur.execute('''SELECT CASE
+        WHEN CURRENT_DATE<%s THEN 'SCHEDULED'
+        WHEN CURRENT_DATE>%s THEN 'COMPLETED'
+        ELSE 'ACTIVE' END''',(access_start,access_end))
+    return cur.fetchone()[0]
+
+
+def _adjustment_target(cur,enrollment_id,version):
+    cur.execute('''SELECT version,status,access_start,access_end,cancelled_at,suspended_at
+      FROM richon.course_enrollments WHERE enrollment_id=%s FOR UPDATE''',(enrollment_id,))
+    row=cur.fetchone()
+    if row is None: raise Rejected('enrollment_not_found',404)
+    current_version,stored_status,access_start,access_end,cancelled_at,suspended_at=row
+    if current_version!=version: raise Rejected('stale_record')
+    status=stored_status if stored_status in ('CANCELLED','SUSPENDED') else _effective_status(cur,access_start,access_end)
+    return {
+        'version':current_version,'stored_status':stored_status,'status':status,
+        'access_start':access_start,'access_end':access_end,
+        'cancelled_at':cancelled_at,'suspended_at':suspended_at,
+    }
+
+
+def _record_adjustment(cur,actor,body,kind,before,after_status,after_end,
+                       extension_kind=None,refund_kind=None,refund_amount=None,refund_reference=None):
+    aid=uuid4()
+    cur.execute('''INSERT INTO richon.course_enrollment_adjustments
+      (adjustment_id,enrollment_id,actor_id,request_id,kind,effective_on,
+       status_before,status_after,access_start_before,access_end_before,
+       access_start_after,access_end_after,extension_kind,refund_kind,
+       refund_amount_krw,refund_reference,note)
+      VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
+      (aid,body.enrollment_id,actor,body.request_id,kind,body.effective_on,
+       before['status'],after_status,before['access_start'],before['access_end'],
+       before['access_start'],after_end,extension_kind,refund_kind,
+       refund_amount,refund_reference,body.reason))
+    return str(aid)
+
+
 def _enrollment_restore(cur,actor,body):
     cur.execute('''SELECT version,status,access_start,access_end
       FROM richon.course_enrollments WHERE enrollment_id=%s FOR UPDATE''',(body.enrollment_id,))
@@ -273,7 +312,7 @@ def _enrollment_restore(cur,actor,body):
     if row is None: raise Rejected('enrollment_not_found',404)
     version,status,access_start,access_end=row
     if version!=body.version: raise Rejected('stale_record')
-    if status not in ('CANCELLED','SUSPENDED'):
+    if status!='CANCELLED':
         raise Rejected('enrollment_not_restorable')
     cur.execute('''UPDATE richon.course_enrollments
       SET status=CASE
@@ -286,6 +325,89 @@ def _enrollment_restore(cur,actor,body):
       RETURNING status,version''',(body.enrollment_id,))
     restored_status,new_version=cur.fetchone()
     return {'enrollment_id':str(body.enrollment_id),'version':new_version,'status':restored_status}
+
+
+def _enrollment_suspend(cur,actor,body):
+    before=_adjustment_target(cur,body.enrollment_id,body.version)
+    if before['status'] not in ('SCHEDULED','ACTIVE'):
+        raise Rejected('enrollment_not_suspendable')
+    cur.execute('''UPDATE richon.course_enrollments
+      SET status='SUSPENDED',suspended_at=CURRENT_TIMESTAMP,
+          version=version+1,updated_at=CURRENT_TIMESTAMP
+      WHERE enrollment_id=%s RETURNING version''',(body.enrollment_id,))
+    version=cur.fetchone()[0]
+    aid=_record_adjustment(cur,actor,body,'SUSPEND',before,'SUSPENDED',before['access_end'])
+    return {'enrollment_id':str(body.enrollment_id),'adjustment_id':aid,
+            'version':version,'status':'SUSPENDED','access_end':str(before['access_end'])}
+
+
+def _enrollment_resume(cur,actor,body):
+    before=_adjustment_target(cur,body.enrollment_id,body.version)
+    if before['status']!='SUSPENDED':
+        raise Rejected('enrollment_not_resumable')
+    new_end=body.new_access_end or before['access_end']
+    if new_end<before['access_end']:
+        raise Rejected('resume_cannot_shorten')
+    extended=new_end>before['access_end']
+    if extended!=(body.extension_kind is not None):
+        raise Rejected('resume_extension_kind_mismatch',422)
+    after_status=_effective_status(cur,before['access_start'],new_end)
+    cur.execute('''UPDATE richon.course_enrollments
+      SET status=%s,access_end=%s,suspended_at=NULL,
+          version=version+1,updated_at=CURRENT_TIMESTAMP
+      WHERE enrollment_id=%s RETURNING version''',(after_status,new_end,body.enrollment_id))
+    version=cur.fetchone()[0]
+    aid=_record_adjustment(cur,actor,body,'RESUME',before,after_status,new_end,
+                           extension_kind=body.extension_kind)
+    return {'enrollment_id':str(body.enrollment_id),'adjustment_id':aid,
+            'version':version,'status':after_status,'access_end':str(new_end)}
+
+
+def _enrollment_extend(cur,actor,body):
+    before=_adjustment_target(cur,body.enrollment_id,body.version)
+    if before['status']=='CANCELLED':
+        raise Rejected('cancelled_enrollment_not_adjustable')
+    if body.new_access_end<=before['access_end']:
+        raise Rejected('extension_must_increase_end',422)
+    after_status='SUSPENDED' if before['status']=='SUSPENDED' else _effective_status(
+        cur,before['access_start'],body.new_access_end)
+    cur.execute('''UPDATE richon.course_enrollments
+      SET status=%s,access_end=%s,version=version+1,updated_at=CURRENT_TIMESTAMP
+      WHERE enrollment_id=%s RETURNING version''',(after_status,body.new_access_end,body.enrollment_id))
+    version=cur.fetchone()[0]
+    aid=_record_adjustment(cur,actor,body,'EXTEND',before,after_status,body.new_access_end,
+                           extension_kind=body.extension_kind)
+    return {'enrollment_id':str(body.enrollment_id),'adjustment_id':aid,
+            'version':version,'status':after_status,'access_end':str(body.new_access_end)}
+
+
+def _enrollment_refund(cur,actor,body):
+    before=_adjustment_target(cur,body.enrollment_id,body.version)
+    if before['status']=='CANCELLED':
+        raise Rejected('already_cancelled')
+    if body.refund_kind=='FULL':
+        new_end=before['access_end']
+        after_status='CANCELLED'
+        cur.execute('''UPDATE richon.course_enrollments
+          SET status='CANCELLED',cancelled_at=CURRENT_TIMESTAMP,suspended_at=NULL,
+              version=version+1,updated_at=CURRENT_TIMESTAMP
+          WHERE enrollment_id=%s RETURNING version''',(body.enrollment_id,))
+    else:
+        new_end=body.new_access_end
+        if new_end<before['access_start'] or new_end>=before['access_end']:
+            raise Rejected('partial_refund_end_invalid',422)
+        after_status='SUSPENDED' if before['status']=='SUSPENDED' else _effective_status(
+            cur,before['access_start'],new_end)
+        cur.execute('''UPDATE richon.course_enrollments
+          SET status=%s,access_end=%s,version=version+1,updated_at=CURRENT_TIMESTAMP
+          WHERE enrollment_id=%s RETURNING version''',(after_status,new_end,body.enrollment_id))
+    version=cur.fetchone()[0]
+    aid=_record_adjustment(cur,actor,body,'REFUND',before,after_status,new_end,
+                           refund_kind=body.refund_kind,refund_amount=body.refund_amount_krw,
+                           refund_reference=body.refund_reference)
+    return {'enrollment_id':str(body.enrollment_id),'adjustment_id':aid,
+            'version':version,'status':after_status,'access_end':str(new_end),
+            'refund_kind':body.refund_kind,'refund_amount_krw':body.refund_amount_krw}
 
 
 def programs(limit=100,offset=0,include_archived=False):
