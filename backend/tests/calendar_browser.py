@@ -46,7 +46,7 @@ def main():
     origin=f'http://127.0.0.1:{server.server_port}'
     items=[
         {'item_id':PRE_ID,'event_id':PRE_ID,'display_kind':'EVENT','event_date':'2026-10-08','end_date':None,
-         'color_hex':'#00B622','course_label':'Pre리치온','content_text':'부동산 투자원칙','version':1},
+         'color_hex':'#00B622','course_label':'Pre리치온','content_text':'부동산 기초 및 시장구조','version':1},
         {'item_id':'00000000-0000-4000-8000-000000000021','event_id':'00000000-0000-4000-8000-000000000021',
          'display_kind':'EVENT','event_date':'2026-10-05','end_date':None,'color_hex':'#D8BD78',
          'course_label':'리치온 아카데미','content_text':'무료 브리핑','version':1},
@@ -110,6 +110,16 @@ def main():
             page=context.new_page();page.goto(origin+'/portal/calendar')
             expect(page.locator('#gate')).to_be_hidden()
             expect(page.locator('#month-label')).to_have_text('2026년 10월')
+            for button_id in ('prev-month','next-month'):
+                button=page.locator('#'+button_id)
+                box=button.bounding_box()
+                assert box and box['width']>=44 and box['height']>=44
+                assert button.locator('span').evaluate("(el)=>getComputedStyle(el).pointerEvents")=='none'
+                center=page.evaluate("""id=>{
+                  const el=document.getElementById(id),r=el.getBoundingClientRect();
+                  return document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.id||'';
+                }""",button_id)
+                assert center==button_id
             expect(page.locator('.calendar-logo')).to_have_attribute('src','/portal/calendar-assets/calendar-logo.svg')
             assert page.locator('.calendar-logo').evaluate("(el)=>el.complete&&el.naturalWidth>0")
             # Legend must not shift the title: the title block stays centered on the calendar paper.
@@ -119,6 +129,15 @@ def main():
               return {paper:paper.left+paper.width/2,title:title.left+title.width/2};
             }""")
             assert abs(centers['paper']-centers['title'])<=1.0
+            spacing=page.evaluate("""()=>{
+              const title=document.querySelector('.calendar-paper-title').getBoundingClientRect();
+              const weekdays=document.querySelector('.calendar-weekdays').getBoundingClientRect();
+              return weekdays.top-title.bottom;
+            }""")
+            assert spacing>=20
+            long_text=page.locator('[data-date="2026-10-08"] .event-content')
+            expect(long_text).to_have_text('부동산 기초 및 시장구조')
+            assert long_text.evaluate("(el)=>getComputedStyle(el).whiteSpace")=='nowrap'
             expect(page.locator('.calendar-week')).to_have_count(5)
             expect(page.locator('.calendar-event-item')).to_have_count(3)
             # Exact regression: 9~12 must never visually expand to the 8th.

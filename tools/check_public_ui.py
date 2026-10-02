@@ -53,6 +53,9 @@ assert 'grid-template-columns:46px 1fr 46px' in calendar_css
 assert '.landing-calendar-nav button span{pointer-events:none' in calendar_css
 assert 'max-width:980px' in calendar_css
 assert 'min-height:88px' in calendar_css
+assert '.landing-calendar-day{min-height:88px;padding:0 3px' in calendar_css
+assert '.landing-calendar-event-content{display:block;margin:2px 0 0;color:#444;font-size:11.5px' in calendar_css
+assert '@media(min-width:901px){.landing-calendar-event-content{white-space:nowrap}}' in calendar_css
 assert 'id="landing-calendar-prev" type="button" aria-label="이전 달" hidden><span aria-hidden="true">←</span>' in index
 assert 'id="landing-calendar-next" type="button" aria-label="다음 달" hidden><span aria-hidden="true">→</span>' in index
 calendar_js=(ROOT/'assets'/'calendar'/'public-calendar.js').read_text()
