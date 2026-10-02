@@ -6,9 +6,9 @@ Status: owner-approved / 2026-10-02
 The owner-provided October 2026 Richon calendar is the visual reference.
 
 - white poster-like canvas
-- Richon geometric navy/gold mark above the month title
-- title: `YYYY년 M월 / 리치온 캘린더`
-- upper-right legend is dynamic: it uses each normal event's actual course label and selected color for the viewed month; holiday/emphasis entries do not create legend items
+- the navy/gold mark is the original Richon calendar logo traced from the owner-provided October reference, served as a reusable SVG asset
+- title: `YYYY년 M월 / 리치온 캘린더`, always centered on the full calendar canvas regardless of legend width or presence
+- upper-right legend is independently positioned and dynamic: it uses each normal event's actual course label and selected color for the viewed month; holiday/emphasis entries do not create legend items
 - weekday row uses Su..Sa
 - Sunday red / Saturday blue / ordinary dates light gray
 - event dates use rounded colored date blocks with white numbers

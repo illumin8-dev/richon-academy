@@ -164,7 +164,7 @@ def install_if_enabled(app:FastAPI):
 
         @app.get('/portal/calendar-assets/{asset}',include_in_schema=False)
         def calendar_asset(asset:str):
-            if asset not in {'calendar.css','calendar.js'}:raise HTTPException(404,'not_found',headers=HEADERS)
+            if asset not in {'calendar.css','calendar.js','calendar-logo.svg'}:raise HTTPException(404,'not_found',headers=HEADERS)
             return FileResponse(STATIC/asset,headers=HEADERS)
 
     @app.get('/portal/courses',include_in_schema=False)

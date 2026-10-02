@@ -205,8 +205,14 @@ function fitCanvasLines(ctx,value,maxWidth,maxLines){
   return lines;
 }
 function drawCalendarSymbol(ctx,cx,top){
-  ctx.fillStyle='#06163e';ctx.beginPath();ctx.moveTo(cx-34,top+29);ctx.lineTo(cx+22,top);ctx.lineTo(cx+22,top+57);ctx.lineTo(cx-8,top+78);ctx.lineTo(cx-8,top+39);ctx.lineTo(cx-34,top+57);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#D8BD78';ctx.beginPath();ctx.moveTo(cx-1,top+29);ctx.lineTo(cx+36,top+48);ctx.lineTo(cx+36,top+76);ctx.lineTo(cx-1,top+94);ctx.closePath();ctx.fill();
+  const scale=.72,originX=cx-77*scale,originY=top-16*scale;
+  const polygon=(points,fill)=>{
+    ctx.fillStyle=fill;ctx.beginPath();
+    points.forEach(([x,y],index)=>{const px=originX+x*scale,py=originY+y*scale;if(index===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});
+    ctx.closePath();ctx.fill();
+  };
+  polygon([[117,16],[29,69],[29,159],[47,159],[72,145],[73,68],[117,93]],'#021138');
+  polygon([[82,82],[81,158],[125,136],[125,106]],'#D9C38A');
 }
 function drawCalendarPng(){
   const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=1200;const ctx=canvas.getContext('2d');
