@@ -297,6 +297,36 @@ $('grant-form').addEventListener('submit',async e=>{
  try{await post('/portal/api/admin/learning/enrollments',body);text('grant-status','수강권을 지급했습니다.');await loadCatalog();}
  catch(x){text('grant-status','지급하지 못했습니다: '+(x.detail||x.status||''));}
 });
+$('adjust-close').addEventListener('click',()=>$('adjust-dialog').close());
+$('adjust-cancel').addEventListener('click',()=>$('adjust-dialog').close());
+$('adjust-history-close').addEventListener('click',()=>$('adjust-history-dialog').close());
+$('adjust-form').elements.refund_kind.addEventListener('change',syncRefundFields);
+$('adjust-form').addEventListener('submit',async e=>{
+ e.preventDefault();const form=e.currentTarget,f=formData(form),op=f.operation,row=state.adjusting;
+ if(!row)return;
+ const body={request_id:requestId(),reason:f.reason,enrollment_id:f.enrollment_id,
+   version:Number(f.version),effective_on:f.effective_on};
+ if(op==='resume'){
+  body.new_access_end=f.new_access_end||null;body.extension_kind=f.extension_kind||null;
+  if(Boolean(body.new_access_end)!==Boolean(body.extension_kind)){
+   $('adjust-hint').textContent='종료일을 연장할 때는 무료/유료 구분도 함께 선택해 주세요.';return;
+  }
+ }else if(op==='extend'){
+  body.new_access_end=f.new_access_end;body.extension_kind=f.extension_kind;
+ }else if(op==='refund'){
+  body.refund_kind=f.refund_kind;
+  body.refund_amount_krw=f.refund_amount_krw==null?null:Number(f.refund_amount_krw);
+  body.refund_reference=f.refund_reference||null;
+  body.new_access_end=f.refund_kind==='PARTIAL'?f.new_access_end:null;
+ }
+ $('adjust-save').disabled=true;
+ try{
+  await post('/portal/api/admin/learning/enrollments/'+op,body);
+  $('adjust-dialog').close();state.adjusting=null;await loadEnrollments();
+  text('enrollment-status',{suspend:'수강을 휴식 처리했습니다.',resume:'수강을 재개했습니다.',extend:'수강기간을 연장했습니다.',refund:'환불 기록을 반영했습니다.'}[op]);
+ }catch(x){$('adjust-hint').textContent='저장하지 못했습니다: '+(x.detail||x.status||'');}
+ finally{$('adjust-save').disabled=false;}
+});
 $('logout').addEventListener('click',async()=>{try{const t=await csrf();await api('/auth/logout',{method:'POST',headers:{'X-CSRF-Token':t}});location.href='/';}catch{ text('action-status','로그아웃하지 못했습니다.');}});
 boot();
 })();
