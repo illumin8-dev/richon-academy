@@ -168,10 +168,17 @@ def apply(owner_url,runtime_url):
                 matched,missing,unexpected,duplicates=inspect(cur)
                 need(unexpected==0,'unexpected_active_calendar_rows')
                 need(duplicates==0,'duplicate_calendar_rows')
-                ids=[seed_id(row) for row in SEED]
-                cur.execute('SELECT count(*) FROM richon.calendar_events WHERE event_id=ANY(%s)',(ids,))
-                existing_ids=cur.fetchone()[0]
-                need(existing_ids==matched,'seed_id_conflict')
+                expected_by_id={seed_id(row):row for row in SEED}
+                cur.execute('''SELECT event_id,
+                  CASE WHEN event_type='SPECIAL' AND ends_at IS NOT NULL THEN 'BANNER' ELSE 'EVENT' END,
+                  to_char(starts_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD'),
+                  CASE WHEN event_type='SPECIAL' AND ends_at IS NOT NULL
+                       THEN to_char((ends_at AT TIME ZONE 'Asia/Seoul') - interval '1 day','YYYY-MM-DD') ELSE NULL END,
+                  color_hex,course_label,content_text,cancelled_at IS NOT NULL
+                  FROM richon.calendar_events WHERE event_id=ANY(%s)''',(list(expected_by_id),))
+                for event_id,kind,event_date,end_date,color,label,content,cancelled in cur.fetchall():
+                    need(not cancelled and (kind,event_date,end_date,color,label,content)==expected_by_id[event_id],
+                         'seed_id_conflict')
                 inserted=0
                 active=set(read_active(cur))
                 for row in SEED:
