@@ -207,6 +207,64 @@ def test_admin_cancel_restore_and_resume_are_audited_without_deleting_history(co
               AND entity_id=%s""",(grant['enrollment_id'],)).fetchone()==(5,)
 
 
+def test_extend_and_refund_preserve_history_and_idempotency(course_db,actors):
+    admin,member=actors
+    pid='adjust-'+uuid4().hex[:8];program(admin,pid)
+    start=date.today();end=start+timedelta(days=30);r=run(admin,pid,start,end)
+    grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
+        request_id=req(),reason='가상 조정 지급',run_id=UUID(r['run_id']),member_id=member))
+
+    extend_body=model.EnrollmentExtend(
+        request_id=req(),reason='운영 일정 보상 무료 연장',enrollment_id=UUID(grant['enrollment_id']),
+        version=grant['version'],new_access_end=end+timedelta(days=10),extension_kind='FREE')
+    extended=store.mutate(admin,'enrollment.extend',extend_body)
+    assert extended['access_end']==str(end+timedelta(days=10))
+    assert store.mutate(admin,'enrollment.extend',extend_body)==extended
+
+    partial=store.mutate(admin,'enrollment.refund',model.EnrollmentRefund(
+        request_id=req(),reason='일부 수강분 환불',enrollment_id=UUID(grant['enrollment_id']),
+        version=extended['version'],refund_kind='PARTIAL',refund_amount_krw=50000,
+        refund_reference='synthetic-partial',new_access_end=end+timedelta(days=5)))
+    assert partial['refund_kind']=='PARTIAL'
+    assert partial['access_end']==str(end+timedelta(days=5))
+
+    full=store.mutate(admin,'enrollment.refund',model.EnrollmentRefund(
+        request_id=req(),reason='잔여 전액 환불',enrollment_id=UUID(grant['enrollment_id']),
+        version=partial['version'],refund_kind='FULL',refund_amount_krw=100000,
+        refund_reference='synthetic-full'))
+    assert full['status']=='CANCELLED'
+
+    history=store.adjustments(UUID(grant['enrollment_id']))
+    assert [x['kind'] for x in history]==['REFUND','REFUND','EXTEND']
+    assert history[0]['refund_kind']=='FULL' and history[0]['refund_amount_krw']==100000
+    assert history[1]['refund_kind']=='PARTIAL' and history[1]['access_end_after']==end+timedelta(days=5)
+    assert history[2]['extension_kind']=='FREE' and history[2]['access_end_after']==end+timedelta(days=10)
+
+    with course_db() as db:
+        assert db.execute('SELECT count(*) FROM richon.course_enrollment_adjustments WHERE enrollment_id=%s',
+                          (grant['enrollment_id'],)).fetchone()==(3,)
+        assert db.execute('SELECT status,access_end,cancelled_at IS NOT NULL FROM richon.course_enrollments WHERE enrollment_id=%s',
+                          (grant['enrollment_id'],)).fetchone()==('CANCELLED',end+timedelta(days=5),True)
+
+
+def test_resume_can_extend_only_with_explicit_free_or_paid_kind(course_db,actors):
+    admin,member=actors
+    pid='resume-'+uuid4().hex[:8];program(admin,pid)
+    start=date.today();end=start+timedelta(days=14);r=run(admin,pid,start,end)
+    grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
+        request_id=req(),reason='가상 재개 연장 지급',run_id=UUID(r['run_id']),member_id=member))
+    suspended=store.mutate(admin,'enrollment.suspend',model.EnrollmentSuspend(
+        request_id=req(),reason='가상 휴식',enrollment_id=UUID(grant['enrollment_id']),version=grant['version']))
+    resumed=store.mutate(admin,'enrollment.resume',model.EnrollmentResume(
+        request_id=req(),reason='휴식 보상 연장 재개',enrollment_id=UUID(grant['enrollment_id']),
+        version=suspended['version'],new_access_end=end+timedelta(days=7),extension_kind='FREE'))
+    assert resumed['status']=='ACTIVE' and resumed['access_end']==str(end+timedelta(days=7))
+    history=store.adjustments(UUID(grant['enrollment_id']))
+    assert history[0]['kind']=='RESUME' and history[0]['extension_kind']=='FREE'
+    assert history[0]['access_end_before']==end
+    assert history[0]['access_end_after']==end+timedelta(days=7)
+
+
 def test_admin_member_detail_combines_canonical_enrollment_with_legacy_enabled(course_db,actors,monkeypatch):
     admin,member=actors
     pid='detail-'+uuid4().hex[:8]
