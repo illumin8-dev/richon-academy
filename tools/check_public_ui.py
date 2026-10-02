@@ -7,6 +7,7 @@ index=(ROOT/'index.html').read_text()
 index_css=(ROOT/'assets'/'pages'/'index.css').read_text()
 apply=(ROOT/'apply.html').read_text()
 guide=(ROOT/'signup-guide.html').read_text()
+signup_guide_css=(ROOT/'assets'/'pages'/'signup-guide.css').read_text()
 privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
 policy_css=(ROOT/'assets'/'pages'/'policy.css').read_text()
@@ -200,6 +201,9 @@ for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only not in guide
 assert 'id="navMenu"' not in guide
 assert 'id="burger"' not in guide
+assert '<link rel="stylesheet" href="/assets/pages/signup-guide.css">' in guide
+assert '<style>' not in guide
+assert '.signup-guide' in signup_guide_css and '.guide-section' in signup_guide_css and '.collection-table' in signup_guide_css
 assert 'src="/frontend/shared/login.js"' in guide
 for value in ('회원가입 전체 절차','이름','휴대전화번호','이메일','연령대','성별',
               'CI(연계정보)','중복가입 방지'):
