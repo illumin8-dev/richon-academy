@@ -97,7 +97,7 @@ test('public calendar is anonymous, cookie-free and edge-cached for 60 seconds',
   assert.equal(observed.url,env.PORTAL_UPSTREAM+'/portal/api/public/calendar?month=2026-10');
   assert.equal(observed.init.headers.get('cookie'),null);
   assert.equal(observed.init.cache,undefined);
-  assert.deepEqual(observed.init.cf,{cacheEverything:true,cacheTtl:60});
+  assert.deepEqual(observed.init.cf,{cacheEverything:true,cacheTtlByStatus:{'200-299':60,'300-599':0}});
   assert.equal(r.headers.get('cache-control'),'public, max-age=0, s-maxage=60');
   assert.equal(r.headers.get('set-cookie'),null);
 });
