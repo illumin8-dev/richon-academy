@@ -1,118 +1,124 @@
 # 운영 정리 감사 / 2026-10-02
 
-## 범위
-이 문서는 cleanup 후보를 정리하기 위한 감사 결과다.
-실제 PR close, branch 삭제, 코드 삭제, DB/Cloud 변경은 수행하지 않는다.
+## 결과 요약
 
-현재 기준:
+이번 정리는 "많이 지우기"가 아니라 "삭제 안전성을 Git history와 운영 역할로 증명한 뒤 정리"하는 방식으로 수행했다.
+
 - canonical repository: `illumin8-dev/richon-academy`
 - canonical branch: `main`
-- main SHA at audit start: `026f485d7e276e671774999c6029ceeafa73b999`
 - portal deploy request: `hold`
 - login provider review: HOLD
 - payment / PG: HOLD
+- cleanup 시작 시 remote branch: 약 134개
+- cleanup 완료 후 remote branch: 2개
+  - `main`
+  - `feat/backend-pricing-notes-oauth` / 결제·가격 정책 HOLD
+- GitHub repository setting: `delete_branch_on_merge=true`
+- 현재 open PR: 0
 
-## Open PR 감사
+## PR 정리
 
-### Close 후보 / 현재 main에 병합하지 말 것
-1. PR #101 / ops: add guarded Pre Richon 9 course bootstrap
-   - 운영값과 직접 충돌하는 과거 bootstrap 초안.
-   - 초안: 132,000원 / 2026-10-01 시작 / 2026-11-30 종료 / 7개 session 자동 생성.
-   - 현재 production: 176,000원 / 2026-10-08~2026-12-07 / sessions=0.
-   - 다시 병합하면 안 됨.
+다음 superseded PR은 현재 main과 충돌하거나 더 최신 구현으로 대체되어, 이유를 Conversation comment로 남긴 뒤 closed 처리했다.
 
-2. PR #86 / fix(auth): restore polished login and signup experience
-   - 이후 auth UX / shared chrome / 운영 rollout이 여러 차례 완료됨.
-   - PR에 있던 `/portal/courses` return 허용은 최신 #137에서 별도로 정본화 완료.
-   - 현재 운영 기준으로 superseded.
+- #101 / 과거 Pre리치온 9 bootstrap
+  - 132,000원 / 2026-10-01~11-30 / 7개 session seed 가정.
+  - 현재 production 176,000원 / 2026-10-08~12-07 / sessions=0과 충돌.
+- #86 / 과거 auth UX
+- #72 / 과거 catalog foundation
+- #59 / 과거 apply shared UI
+- #48 / 과거 login E2E 문서
+- #43 / 과거 provider 303 test draft
+- #25 / 과거 DB009 owner-prepare draft
 
-3. PR #72 / feat(catalog): add course programs runs and weekly sessions
-   - 이후 canonical course domain / entitlement / admin UI가 main에 구현됨.
-   - 실제 Pre리치온 9기 program/run/enrollment E2E도 운영에서 통과.
-   - 과거 catalog foundation은 superseded.
+PR #10은 closed / unmerged 상태다.
+해당 `feat/backend-pricing-notes-oauth` branch에는 현재 main에 없는 pricing / learner-note 초안이 있어 결제 HOLD 자료로만 보존한다.
+재개 시 그대로 merge하지 않고 현재 요구사항과 schema를 기준으로 다시 검토한다.
 
-4. PR #59 / refactor(ui): bring apply page onto shared chrome
-   - apply gallery asset과 shared chrome은 이후 통합 main에 반영됨.
-   - 현재 single-source site chrome 구조가 더 최신 authority.
-   - superseded.
+## Branch 정리
 
-5. PR #48 / docs: record login E2E and profile consent follow-up
-   - 문서 전용 PR.
-   - 현재 `backend/ADMIN_MYPAGE_HANDOFF.md`의 이후 체크포인트가 대체.
-   - superseded documentation.
+### 1. Git에서 완전 병합이 증명된 branch
 
-6. PR #43 / test(login): verify modal 303 reaches provider
-   - 오래된 draft test PR.
-   - 이후 login-flow regression / customer-route probes / provider handoff 검증 체계가 main에 존재.
-   - superseded test draft.
+`git branch -r --merged origin/main`으로 확인된 114개 branch를 삭제했다.
 
-7. PR #25 / DB009 회원정보 저장 공간·최소권한 준비
-   - 과거 DB009 준비용 SQL/CI.
-   - 현재 main에는 canonical `009_member_profiles` 및 이후 account lifecycle 계열이 존재하고 운영 적용 이력이 있음.
-   - 과거 owner-prepare draft를 다시 병합하지 않음.
+이 그룹은 branch tip이 main history에 포함되어 있어 branch ref 삭제로 코드가 유실되지 않는다.
 
-### 보존 / HOLD
-8. PR #10 / 1·2·6개월 가격 / 고객 메모 초안
-   - 일부 unique scope가 아직 main에 없음:
-     - `backend/pricing.py`
-     - `006_pricing_notes`
-     - learner notes draft
-   - OAuth 007 계열은 이후 main에 별도 구현됐지만 pricing/notes 부분은 독립적으로 남아 있음.
-   - 결제/PG를 현재 보류하기로 했으므로 이번 cleanup에서는 보존.
-   - 향후 결제/가격 정책 재개 시 요구사항부터 다시 검토하고 필요한 부분만 재작성하는 편이 안전함.
+### 2. superseded closed-PR head
 
-## Branch 감사
+고유 commit이 있었지만 PR 자체와 정리 사유가 GitHub history에 남은 다음 7개 head branch를 삭제했다.
 
-현재 branch 수: 134.
+- `ops/bootstrap-pre-richon-9-20260930`
+- `fix/auth-ui-login-regression`
+- `feat/course-catalog-foundation`
+- `feat/apply-shared-ui`
+- `docs/login-e2e-and-profile-consent-20260928`
+- `test/login-modal-provider-redirect`
+- `feat/signup-consent-policy`
 
-### main에 완전히 흡수된 것이 확인된 안전 삭제 후보
-아래 branch head는 GitHub compare에서 `branch_unique_commits=0`으로 확인됨.
+### 3. unique history archive 후 branch 삭제
 
-- `feat/enrollment-restore`
-- `fix/public-calendar-edge-cache`
-- `fix/worker-courses-return-sync`
-- `fix/admin-shell-spacing-consistency`
-- `fix/pages-canonical-route-probe`
-- `fix/restore-original-font-loading`
-- `fix/sticky-shared-footer`
-- `fix/unify-admin-site-chrome`
-- `refactor/shared-admin-css-source`
-- `refactor/single-shared-site-chrome`
-- `integration/main-portal-unify-20261001`
-- `integration/unified-main-20261001`
+나머지 오래된 unique branch 중 현재 main의 더 최신 구현으로 대체된 12개는 exact HEAD를 먼저 아래 archive tag로 보존한 뒤 branch ref를 삭제했다.
 
-이 12개는 이번 감사에서만 delete 후보로 분류한다.
-실제 삭제는 별도 승인 전 수행하지 않는다.
+- `archive/2026-10-02/feat/backend-social-login`
+- `archive/2026-10-02/feat/catalog-admin-ui`
+- `archive/2026-10-02/feat/verified-ci-signup`
+- `archive/2026-10-02/fix/edge-auth-css-allowlist`
+- `archive/2026-10-02/fix/functional-page-header-20260930`
+- `archive/2026-10-02/fix/kakao-review-signup-evidence`
+- `archive/2026-10-02/fix/public-course-card-apply-polish`
+- `archive/2026-10-02/fix/public-mentor-cta-polish`
+- `archive/2026-10-02/fix/session-7d-24h`
+- `archive/2026-10-02/policy/public-20261001`
+- `archive/2026-10-02/sync/original-public-ui`
+- `archive/2026-10-02/sync/public-main-20260929`
 
-### 이번에 자동 삭제 후보로 분류하지 않는 branch
-- 현재 open PR의 head branch.
-- Kakao/Naver 심사 자료 branch.
-- 과거 production recovery/diagnostic branch.
-- main에 없는 unique commit 여부를 아직 확인하지 않은 branch.
-- payment/pricing draft branch.
-
-134개 전체를 이름만 보고 일괄 삭제하지 않는다.
+archive tag는 삭제된 branch의 exact commit을 다시 찾을 수 있는 역사 보존점이다.
 
 ## Dead-code 감사
 
-이번 pass에서는 main 내부 코드 파일을 삭제 후보로 확정하지 않는다.
+current main ZIP 기준으로 281개 text file / 176개 Python file을 정적 교차 분석했다.
 
-이유:
-- migration 파일은 실행 완료 후에도 schema checksum/history authority로 보존 필요.
-- `.github/portal/*`의 과거 operation/recovery helper는 workflow 또는 장애복구 경로와 연결될 수 있음.
-- ops helper는 일반 앱 import가 없어도 owner-run one-time tool일 수 있음.
-- 단순 reference count만으로 dead code를 판정하면 위험함.
+### 안전하게 확인된 것
 
-따라서 이번 cleanup의 안전한 1차 효과는:
-1. stale open PR 정리 후보 확정.
-2. main에 완전히 흡수된 branch 12개 삭제 후보 확정.
-3. 과거 상충 문서를 최신 checkpoint로 덮어쓰기.
-4. 실제 code deletion은 별도 audit 후 진행.
+- unreferenced frontend asset 후보: 0
+- shared/runtime 중 byte-identical duplicate 11그룹은 의도된 generated artifact 구조.
+  - 예: `frontend/shared/account.js` -> `backend/portal_static/account.js`
+  - 예: `frontend/shared/site.css` -> `backend/portal_static/site.css`
+- 이 generated 파일은 중복 구현이 아니라 build output이므로 삭제 대상이 아니다.
 
-## 현재 보류 항목
+### 단순 분석에서 orphan처럼 보였지만 보존한 파일
+
+- `ops/prepare_calendar.py`
+- `ops/prepare_calendar_freeform.py`
+- `ops/prepare_calendar_rollout_compat.py`
+- `ops/prepare_calendar_visual.py`
+
+일반 application import가 없지만 각각 DB018 / DB019 / rollout compatibility / visual grant 복구·재적용용 owner operation이다.
+
+특히 `portal_readiness.calendar_grant_profile()`과 테스트가 `legacy / freeform / visual` 세 reviewed grant profile을 의도적으로 인식한다.
+따라서 rollback/recovery 정책을 재설계하기 전에는 dead code로 삭제하지 않는다.
+
+### 결론
+
+이번 감사에서 runtime/application code 삭제를 안전하다고 확정한 파일은 0개다.
+이는 cleanup 실패가 아니라, 실제 dead code와 운영 복구 artifact를 구분한 결과다.
+
+## 문서 책임 분리
+
+기존 `CURRENT_WORK.md`는 2026-09-29의 오래된 상태와 완료/미완료 항목이 섞여 있었다.
+또 `tools/check_public_ui.py`가 그 문서의 특정 운영 문구를 UI 계약처럼 검사하고 있었다.
+
+정리 원칙:
+- `CURRENT_WORK.md`: 현재 authority와 HOLD만 가리키는 짧은 인덱스
+- `backend/ADMIN_MYPAGE_HANDOFF.md`: 상세 historical checkpoint
+- 이 파일: cleanup 실행 기록
+- `REPO_MAINTENANCE.md`: 반복 가능한 저장소 유지관리 정책
+- public UI CI: HTML/CSS/assets 동작 계약만 검사
+
+## 현재 HOLD
+
 - Kakao CI / Naver 공개 심사
 - 결제 / PG
 - 실제 일반회원 E2E
 - Pre리치온 session / 영상 / 자료 입력
 
-위 항목은 이번 cleanup 범위에서 구현/실행하지 않는다.
+HOLD 범위는 cleanup 과정에서 구현/배포하지 않았다.
