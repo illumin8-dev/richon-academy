@@ -47,9 +47,14 @@ for relative in ('calendar-logo.svg','public-calendar.css','public-calendar.js')
     path=ROOT/'assets'/'calendar'/relative
     assert path.is_file() and path.stat().st_size > 100
 calendar_css=(ROOT/'assets'/'calendar'/'public-calendar.css').read_text()
-assert 'display:grid;grid-template-columns:42px 1fr 42px' in calendar_css
 assert '.landing-calendar-nav button:first-child{grid-column:1}' in calendar_css
 assert '.landing-calendar-nav button:last-child{grid-column:3}' in calendar_css
+assert 'grid-template-columns:46px 1fr 46px' in calendar_css
+assert '.landing-calendar-nav button span{pointer-events:none' in calendar_css
+assert 'max-width:980px' in calendar_css
+assert 'min-height:88px' in calendar_css
+assert 'id="landing-calendar-prev" type="button" aria-label="이전 달" hidden><span aria-hidden="true">←</span>' in index
+assert 'id="landing-calendar-next" type="button" aria-label="다음 달" hidden><span aria-hidden="true">→</span>' in index
 calendar_js=(ROOT/'assets'/'calendar'/'public-calendar.js').read_text()
 assert "/portal/api/public/calendar?month=" in calendar_js
 assert "credentials:'omit'" in calendar_js
