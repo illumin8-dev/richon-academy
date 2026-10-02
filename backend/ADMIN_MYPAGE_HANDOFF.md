@@ -1691,3 +1691,32 @@
   - 운영 문서 최신화.
   - 오래된 open PR / branch / obsolete draft 정리 후보 감사.
   - 실제 close/delete는 별도 승인 전 수행하지 않음.
+
+
+### 체크포인트 42 / repository hygiene cleanup 완료
+- PR #138 docs cleanup audit 병합 완료.
+  - merge commit: `436179844f11d1c7af62978c787046f55600f111`.
+- stale/superseded PR 정리:
+  - #101 / #86 / #72 / #59 / #48 / #43 / #25에 superseded 사유 comment 후 close.
+  - open PR 최종 0.
+  - #10은 closed/unmerged이며 pricing/customer-note HOLD branch만 보존.
+- remote branch cleanup:
+  - 시작 약 134개.
+  - `git branch -r --merged origin/main`으로 증명된 114개 branch 삭제.
+  - closed stale PR의 unique head 7개 삭제.
+  - 추가 unique history 12개는 `archive/2026-10-02/*` exact tag로 보존 후 branch 삭제.
+  - 최종 remote branch는 `main` + `feat/backend-pricing-notes-oauth` 두 개.
+- GitHub repository setting:
+  - `delete_branch_on_merge=true` 적용 및 API readback 확인.
+- dead-code audit:
+  - current main의 text 281 / Python 176 files 정적 교차분석.
+  - unreferenced frontend asset 0.
+  - shared/runtime byte-identical 중복은 generated artifact로 확인.
+  - calendar owner ops 4개는 DB/ACL rollback·recovery 역할이 있어 보존.
+  - 이번 pass에서 안전한 runtime code 삭제 후보 0.
+- 문서 구조 후속:
+  - stale `CURRENT_WORK.md`를 current authority index로 축약.
+  - public UI CI의 운영문서 문구 의존 제거.
+  - `REPO_MAINTENANCE.md`에 branch/archive/dead-code 정책 고정.
+- production / DB / Cloudflare / Cloud Run 변경 없음.
+- login provider review / payment PG / real-member E2E / Pre리치온 learning-resource 입력은 HOLD 유지.
