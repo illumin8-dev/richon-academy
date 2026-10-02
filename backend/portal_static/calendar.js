@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
-const $=id=>document.getElementById(id);
+const {$,text,el,requestId,api,csrf,post}=window.RichonOps;
 const PALETTE=[
   ['#3978F6','color-blue','재개발중급반'],
   ['#FF9F26','color-orange','리치온 인테리어'],
@@ -11,12 +11,6 @@ const PALETTE=[
 ];
 const COLOR=new Map(PALETTE.map(x=>[x[0],{cls:x[1],label:x[2]}]));
 const state={month:null,items:[],selected:null,kind:'EVENT',bannerAnchor:null,pngResetTimer:null};
-const requestId=()=>crypto.randomUUID();
-const text=(id,v)=>{if($(id))$(id).textContent=String(v??'');};
-const el=(tag,value,cls)=>{const x=document.createElement(tag);if(value!==undefined)x.textContent=String(value);if(cls)x.className=cls;return x;};
-async function api(path,options={}){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',redirect:'error',...options});if(!r.ok){const e=new Error('request_failed');e.status=r.status;try{e.detail=(await r.json()).detail}catch{}throw e;}return r.status===204?null:r.json();}
-async function csrf(){return (await api('/auth/csrf')).csrf_token;}
-async function post(path,body){const token=await csrf();return api(path,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':token},body:JSON.stringify(body)});}
 function kstToday(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const o=Object.fromEntries(p.map(x=>[x.type,x.value]));return o.year+'-'+o.month+'-'+o.day;}
 function kstMonth(){return kstToday().slice(0,7);}
 function shiftMonth(value,delta){const [y,m]=value.split('-').map(Number);const d=new Date(Date.UTC(y,m-1+delta,1));return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');}

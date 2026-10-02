@@ -25,7 +25,7 @@ def outputs():
     header = chrome.render_header('portal')
     footer = chrome.footer()
     result = {}
-    for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'auth.css', 'ops.css', 'account.css', 'account.js'):
+    for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'auth.css', 'ops.css', 'ops.js', 'account.css', 'account.js'):
         result[STATIC / name] = (SOURCE / name).read_bytes()
     # Keep the deployed /portal/assets/portal.css URL stable while making
     # frontend/shared/admin.css the single editable source for the admin shell.

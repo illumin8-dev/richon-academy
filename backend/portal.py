@@ -271,7 +271,7 @@ def install_if_enabled(app: FastAPI) -> bool:
 
     @app.get("/portal/assets/{asset}", include_in_schema=False)
     def asset(asset: str):
-        if asset not in {"portal.css", "portal.js", "site.css", "site.js", "login.js", "signup.js", "auth.css", "ops.css", "account.css", "account.js"}:
+        if asset not in {"portal.css", "portal.js", "site.css", "site.js", "login.js", "signup.js", "auth.css", "ops.css", "ops.js", "account.css", "account.js"}:
             raise HTTPException(404, "not_found", headers=HEADERS)
         return FileResponse(STATIC / asset, headers=HEADERS)
     return True

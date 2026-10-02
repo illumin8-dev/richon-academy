@@ -112,7 +112,7 @@ def test_standalone_fallback_and_member_page_share_markup(monkeypatch):
         assert forbidden not in page.text
 
 
-@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','auth.css','ops.css','account.css','account.js'])
+@pytest.mark.parametrize('name',['site.css','site.js','login.js','signup.js','auth.css','ops.css','ops.js','account.css','account.js'])
 def test_shared_assets_are_available_without_customer_queries(monkeypatch,name):
     app=app_with_portal(monkeypatch)
     r=TestClient(app).get('/portal/assets/'+name)

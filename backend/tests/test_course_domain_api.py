@@ -157,13 +157,17 @@ def test_default_off_and_dependency_gate(monkeypatch):
 
 
 def test_static_assets_have_no_token_storage_or_html_injection():
+    forbidden=('innerHTML','insertAdjacentHTML','document.cookie','localStorage.','sessionStorage.','eval(')
     for name in ('courses.js','calendar.js'):
         js=(portal.STATIC/name).read_text()
-        for forbidden in ('innerHTML','insertAdjacentHTML','document.cookie','localStorage.','sessionStorage.','eval('):
-            assert forbidden not in js
+        for value in forbidden:
+            assert value not in js
         assert "textContent" in js or "replaceChildren" in js
-    assert "credentials:'same-origin'" in (portal.STATIC/'courses.js').read_text()
-    assert "credentials:'same-origin'" in (portal.STATIC/'calendar.js').read_text()
+    ops=(portal.STATIC/'ops.js').read_text()
+    for value in forbidden:
+        assert value not in ops
+    for required in ("credentials:'same-origin'","cache:'no-store'","redirect:'error'","'X-CSRF-Token':token"):
+        assert required in ops
 
 
 def test_course_admin_keeps_calendar_decoupled_and_manages_sessions():

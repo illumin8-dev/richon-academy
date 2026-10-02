@@ -20,6 +20,7 @@ class Handler(BaseHTTPRequestHandler):
             '/portal/assets/site.css':'site.css',
             '/portal/assets/site.js':'site.js',
             '/portal/assets/ops.css':'ops.css',
+            '/portal/assets/ops.js':'ops.js',
             '/portal/assets/portal.css':'portal.css',
             '/portal/calendar-assets/calendar.css':'calendar.css',
             '/portal/calendar-assets/calendar.js':'calendar.js',
