@@ -16,6 +16,9 @@ import kakao_ci_migrate
 import course_entitlement_migrate
 
 import account_migrate
+import course_domain_migrate
+import calendar_migrate
+import calendar_freeform_migrate
 
 class Context:
     def __init__(self,value):
@@ -118,6 +121,13 @@ def test_rejects_ledger_mismatch(tmp_path,rows,message):
     assert ('target-sql',None) not in cur.executed
 
 
+def test_dependency_error_can_include_version(tmp_path):
+    directory,cur,db,checksum=target(tmp_path,[(None,)])
+    with pytest.raises(ValueError,match='dependency_mismatch_dep'):
+        apply(directory,db,checksum,dependency_error_with_version=True)
+    assert ('target-sql',None) not in cur.executed
+
+
 @pytest.mark.parametrize(
     'module',
     [
@@ -172,6 +182,35 @@ def test_lock_slot_migration_modules_delegate_to_standard_runner(monkeypatch,mod
     expected.update(extra)
     assert called==expected
 
+
+
+@pytest.mark.parametrize(
+    ('module','extra'),
+    [
+        (course_domain_migrate,{'dependency_error_with_version':True}),
+        (calendar_migrate,{'advisory_slot':4,'dependency_error_with_version':True}),
+        (calendar_freeform_migrate,{'advisory_slot':5,'dependency_error_with_version':True}),
+    ],
+)
+def test_versioned_dependency_migrations_delegate_to_standard_runner(monkeypatch,module,extra):
+    called={}
+
+    def fake_runner(**kwargs):
+        called.update(kwargs)
+        return 'sentinel'
+
+    monkeypatch.setattr(module,'apply_standard_migration',fake_runner)
+    assert module.apply_migration(connection_url='synthetic://override')=='sentinel'
+    expected={
+        'db_module':module.db,
+        'directory':module.DIRECTORY,
+        'version':module.VERSION,
+        'dependencies':module.DEPENDENCIES,
+        'checksum':module.checksum,
+        'connection_url':'synthetic://override',
+    }
+    expected.update(extra)
+    assert called==expected
 
 def test_account_migration_delegates_timeout_override(monkeypatch):
     called={}
