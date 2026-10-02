@@ -2,11 +2,10 @@
 
 No identity inference, order claiming, membership edits, or payment side effects.
 """
-from contextlib import contextmanager
+from db import read_cursor
 from store_common import fetch_rows, literal_search
 from uuid import UUID
 
-import db
 import os
 import member_profile
 import marketing_consent as marketing
@@ -14,17 +13,6 @@ import marketing_consent as marketing
 
 class MissingMember(Exception):
     pass
-
-
-@contextmanager
-def read_cursor():
-    with db._connect(db.database_url()) as conn:
-        conn.read_only = True
-        with conn.cursor() as cur:
-            cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-            cur.execute("SET LOCAL statement_timeout = '5s'")
-            cur.execute("SET LOCAL lock_timeout = '3s'")
-            yield cur
 
 
 def _row(cur):

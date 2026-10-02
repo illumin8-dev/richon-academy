@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 import pytest
 
+import db
 import auth_core as core
 import auth_http as http
 import orders
@@ -168,7 +169,7 @@ def test_order_cannot_be_linked_to_two_members(example,portal_postgres):
 def test_domain_read_transaction_rejects_writes(portal_postgres):
     import psycopg
     with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
-        with portal_store.read_cursor() as cur:
+        with db.read_cursor() as cur:
             cur.execute('SHOW transaction_read_only');assert cur.fetchone()==('on',)
             cur.execute('DELETE FROM richon.member_order_links WHERE FALSE')
 

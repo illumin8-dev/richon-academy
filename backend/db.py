@@ -1,7 +1,7 @@
-"""Read-only connectivity probe. No schema or customer-data operations."""
+"""Read-only DB connectivity and shared read transaction policy. No customer-data writes."""
 
 import os
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, contextmanager
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -44,6 +44,17 @@ def _connect(url: str) -> AbstractContextManager[Any]:
         sslmode="verify-full",
         sslrootcert="system",
     )
+
+
+@contextmanager
+def read_cursor():
+    with _connect(database_url()) as conn:
+        conn.read_only = True
+        with conn.cursor() as cur:
+            cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+            cur.execute("SET LOCAL statement_timeout = '5s'")
+            cur.execute("SET LOCAL lock_timeout = '3s'")
+            yield cur
 
 
 def check_database() -> bool:

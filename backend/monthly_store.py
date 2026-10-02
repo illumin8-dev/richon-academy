@@ -3,7 +3,7 @@ import os
 import re
 from uuid import UUID
 from domain_dates import month_start
-from portal_store import read_cursor
+from db import read_cursor
 from store_common import fetch_rows, literal_search
 
 
