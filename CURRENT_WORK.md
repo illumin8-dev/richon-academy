@@ -188,7 +188,10 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [ ] visual-editor candidate rollout
 - [ ] banner용 ends_at 최소 쓰기권한 최종 적용
 - [ ] 실제 관리자 E2E / 디자인 owner 확인
-- [ ] 승인 후 랜딩 캘린더 별도 PR
+- [ ] 2026년 6~10월 owner 제공 이미지 기준 76개 역사 일정 insert-only seed 적용
+- [ ] 랜딩 캘린더 공개 API + 정규 프로그램 아래 / 멘토진 위 노출
+- [ ] 1번 완료 후 Backend / DBA / Frontend / 관리자 / 고객 관점 통합 점검 회의
+- [ ] 통합 점검에서 보완 범위를 확정한 뒤에만 내 강의/수강권 실제 E2E(3번)로 이동
 
 현재 운영:
 - [x] DB018 적용
