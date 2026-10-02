@@ -19,8 +19,8 @@ import db
 import member_profile
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_-]{43}\Z")
-SESSION_SECONDS = 12 * 60 * 60  # Development defaults; confirm UX before launch.
-IDLE_SECONDS = 30 * 60
+SESSION_SECONDS = 7 * 24 * 60 * 60
+IDLE_SECONDS = 24 * 60 * 60
 
 
 class AuthenticationRequired(Exception):
