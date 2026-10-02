@@ -10,6 +10,7 @@ privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
 policy_css=(ROOT/'assets'/'pages'/'policy.css').read_text()
 apply_css=(ROOT/'assets'/'pages'/'apply.css').read_text()
+apply_js=(ROOT/'assets'/'pages'/'apply.js').read_text()
 shared=ROOT/'frontend'/'shared'
 
 footer=chrome.footer()
@@ -29,6 +30,8 @@ for landing_only in ('/#proof','/#programs','/#instructor'):
 assert 'id="navMenu"' not in apply
 assert '<link rel="stylesheet" href="/assets/pages/apply.css">' in apply
 assert '<style>' not in apply
+assert '<script src="/assets/pages/apply.js"></script>' in apply
+assert '<script>\n' not in apply
 assert '.apply-grid' in apply_css and '.apply-summary' in apply_css and '.apply-curriculum' in apply_css
 assert 'id="burger"' not in apply
 assert 'data:image' not in index
@@ -70,15 +73,14 @@ for forbidden in ('innerHTML','insertAdjacentHTML','document.cookie','localStora
 assert '.cal-' not in index
 assert '캘린더 셀 살짝 반응' not in index
 
-assert len(apply) > 5000
 assert apply.count('id="burger"') == 0
 assert apply.count('class="site-footer"') == 1
-assert "briefing:" not in apply and "welcome:" not in apply
+assert "briefing:" not in apply_js and "welcome:" not in apply_js
 for course in ("pre","study","redev","interior","subscription"):
-    assert course+":{" in apply
-assert "redev:{name:'재개발 중급반'" in apply and "status:'waitlist'" in apply
-assert "interior:{name:'리치온 인테리어'" in apply and "status:'upcoming'" in apply
-assert "subscription:{name:'청약 실전반'" in apply and "status:'upcoming'" in apply
+    assert course+":{" in apply_js
+assert "redev:{name:'재개발 중급반'" in apply_js and "status:'waitlist'" in apply_js
+assert "interior:{name:'리치온 인테리어'" in apply_js and "status:'upcoming'" in apply_js
+assert "subscription:{name:'청약 실전반'" in apply_js and "status:'upcoming'" in apply_js
 assert 'href="apply.html?course=redev">대기 신청 →' in index
 assert index.count('href="apply.html?course=pre">신청하기 →') == 1
 assert index.count('href="apply.html?course=study">신청하기 →') == 1
@@ -113,23 +115,24 @@ assert '신청 정보와 결제 정보는 실제 운영 링크가 열린 뒤 입
 assert '접수 확인 후 수강 방법과 준비사항을 별도로 안내합니다.' not in apply
 assert '현재는 UI 준비 상태입니다.' not in apply
 # PR #59에서 보존된 과정별 상세 소개 이미지 49장을 현재 신청 UI에 복원한다.
+for value in ('id="course-visual"', 'id="course-gallery"'):
+    assert value in apply
 for value in (
-    'id="course-visual"', 'id="course-gallery"',
     'assets/images/pre-richon-course.jpg', 'assets/images/richon-study-course.jpg',
     'assets/images/redevelopment-reconstruction-course.jpg', 'assets/images/space-design-course.jpg',
     'assets/images/subscription-course.jpg',
 ):
-    assert value in apply
+    assert value in apply_js
 for prefix,count in (('pre',1),('study',12),('redevelopment',11),('interior',15),('subscription',10)):
     for number in range(1,count+1):
         path=ROOT/'assets'/'apply'/f'{prefix}-{number:02d}.jpg'
         assert path.is_file() and path.stat().st_size > 1000
-        assert f'assets/apply/{prefix}-{number:02d}.jpg' in apply
-assert apply.count('assets/apply/') == 57
+        assert f'assets/apply/{prefix}-{number:02d}.jpg' in apply_js
+assert apply_js.count('assets/apply/') == 57
 for number in range(2,10):
     path=ROOT/'assets'/'apply'/f'pre-{number:02d}.png'
     assert path.is_file() and path.stat().st_size > 1000
-    assert f'assets/apply/pre-{number:02d}.png' in apply
+    assert f'assets/apply/pre-{number:02d}.png' in apply_js
 for value in (
     '2개월(8주) 과정', '매주 목요일 저녁 9시', '온라인 ZOOM 라이브',
     'Week 1','부동산 투자원칙','Week 2','갭투자','Week 3','서울초기재개발',
@@ -137,7 +140,7 @@ for value in (
     'Week 6','지방 재개발','Week 7','경매 권리분석 및 수익화',
     'Week 8','현장 및 멘토와의 만남',
 ):
-    assert value in apply
+    assert value in apply_js
 for copy in (
     '부동산 투자원칙·갭투자·서울 초기재개발·시장구조부터 분양권·지방 재개발·경매까지, 실전형 순환 학습으로 기초를 세우는 정규 과정.',
     '현금흐름, 갭투자, 서울 초기재개발, 경매 등 매주 실전 주제로 깊이 파고드는 핵심 스터디.',
@@ -145,7 +148,7 @@ for copy in (
     '자산 가치를 높이는 공간 디자인 전문 과정. 수익률로 이어지는 인테리어 전략과 공간가치 판단을 다룹니다.',
     '분양권과 청약 흐름을 시장/지역 분석과 연결해 보는 신규 과정입니다. 세부 커리큘럼 확정 후 오픈됩니다.',
 ):
-    assert copy in apply
+    assert copy in apply_js
 
 images=[
     'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',
