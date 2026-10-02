@@ -135,6 +135,11 @@ class SharedShellTests(unittest.TestCase):
         self.assertIn('회원 관리',sidebar)
         self.assertIn('캘린더',sidebar)
         self.assertIn('/portal/calendar',sidebar)
+        self.assertIn('>운영</span>',sidebar)
+        self.assertIn('>기존 기록</span>',sidebar)
+        self.assertIn('기존 월별 수강 기록',sidebar)
+        self.assertIn('기존 수강생 수동 기록',sidebar)
+        self.assertLess(sidebar.index('강의 / 수강권'),sidebar.index('기존 기록'))
 
     def test_admin_member_list_hides_internal_uuid_and_tmi(self):
         js=(build.STATIC/'portal.js').read_text()
