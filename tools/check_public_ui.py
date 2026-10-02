@@ -5,6 +5,7 @@ import shared_chrome as chrome
 ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
 index_css=(ROOT/'assets'/'pages'/'index.css').read_text()
+index_js=(ROOT/'assets'/'pages'/'index.js').read_text()
 apply=(ROOT/'apply.html').read_text()
 guide=(ROOT/'signup-guide.html').read_text()
 signup_guide_css=(ROOT/'assets'/'pages'/'signup-guide.css').read_text()
@@ -48,6 +49,9 @@ assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
 assert '<link rel="stylesheet" href="/assets/pages/index.css">' in index
 assert '<style>' not in index
+assert '<script src="/assets/pages/index.js"></script>' in index
+assert '<script>\n' not in index
+assert 'IntersectionObserver' in index_js and "classList.toggle('scrolled'" in index_js and 'transitionDelay' in index_js
 assert '.pcard' in index_css and '.mentor-card' in index_css and '.ctabar' in index_css
 assert 'body{padding-bottom:74px}' not in index_css
 assert 'id="calendar"' in index

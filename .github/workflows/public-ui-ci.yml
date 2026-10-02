@@ -49,5 +49,6 @@ jobs:
         run: bash tools/build_public_pages.sh
       - name: Check application JavaScript syntax
         run: |
+          node --check assets/pages/index.js
           node --check assets/pages/apply.js
           node --check assets/calendar/public-calendar.js
