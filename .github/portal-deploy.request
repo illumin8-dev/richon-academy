@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-public-calendar-history-hold-20261002-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "calendar-hit-target-gap-nowrap-20261002-a"
 }
