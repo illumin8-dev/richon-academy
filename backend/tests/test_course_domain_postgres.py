@@ -8,7 +8,7 @@ import pytest
 import auth_core as core
 import oauth_migrate,login_return_migrate,member_profile_migrate
 import oauth_signup_profile_migrate,oauth_signup_demographics_migrate,kakao_ci_migrate
-import course_domain_migrate,course_entitlement_migrate,calendar_migrate,calendar_freeform_migrate
+import course_domain_migrate,course_entitlement_migrate,course_adjustment_migrate,calendar_migrate,calendar_freeform_migrate
 import course_domain_models as model
 import course_domain_store as store
 import portal
@@ -33,6 +33,7 @@ def course_db(registry_db):
     assert kakao_ci_migrate.apply_migration()
     assert course_domain_migrate.apply_migration()
     assert course_entitlement_migrate.apply_migration()
+    assert course_adjustment_migrate.apply_migration()
     assert calendar_migrate.apply_migration()
     assert calendar_freeform_migrate.apply_migration()
     return registry_db
@@ -76,10 +77,11 @@ def run(admin,pid,start,end,*,label='1기'):
 def test_migrations_reenter_and_no_legacy_drop(course_db):
     assert course_domain_migrate.apply_migration() is False
     assert course_entitlement_migrate.apply_migration() is False
+    assert course_adjustment_migrate.apply_migration() is False
     assert calendar_migrate.apply_migration() is False
     assert calendar_freeform_migrate.apply_migration() is False
     with course_db() as c:
-        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version IN ('015_course_run_foundation','016_course_entitlements','018_calendar_events','019_calendar_freeform')").fetchone()==(4,)
+        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version IN ('015_course_run_foundation','016_course_entitlements','018_calendar_events','019_calendar_freeform','021_course_enrollment_adjustments')").fetchone()==(5,)
         for table in ('courses','monthly_enrollments','manual_enrollments','course_programs','course_runs','course_enrollments'):
             assert c.execute('SELECT to_regclass(%s)',('richon.'+table,)).fetchone()[0] is not None
 
