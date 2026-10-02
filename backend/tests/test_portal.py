@@ -118,10 +118,6 @@ def test_arbitrary_files_not_served(app, file):
     assert TestClient(app).get("/portal/assets/" + file).status_code == 404
 
 
-def test_sql_search_escapes_wildcards():
-    assert portal_store._literal_search("a%_\\b") == "%a\\%\\_\\\\b%"
-
-
 def test_private_portal_middleware_preserves_public_calendar_cache_contract(app):
     @app.get(portal.PUBLIC_CALENDAR_PATH)
     def synthetic_public_calendar():

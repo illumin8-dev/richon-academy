@@ -6,9 +6,8 @@ from uuid import UUID, uuid4
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 import auth_core
-from portal_store import _literal_search
 from domain_dates import month_start
-from store_common import fetch_rows
+from store_common import fetch_rows, literal_search
 
 class Rejected(Exception):
     def __init__(self, code='record_conflict', status=409):
@@ -239,7 +238,7 @@ def search(actor, body):
         ) SELECT * FROM records
         WHERE (%(month)s::text IS NULL OR %(month)s BETWEEN start_month AND end_month)
         ORDER BY created_at DESC,enrollment_id DESC LIMIT %(limit)s OFFSET %(offset)s''',
-        {'archived':body.archived,'course':body.course_id,'q':_literal_search(body.q),'exact':body.q,'phone':phone,
+        {'archived':body.archived,'course':body.course_id,'q':literal_search(body.q),'exact':body.q,'phone':phone,
          'month':body.month,'limit':body.limit+1,'offset':body.offset})
         rows=fetch_rows(cur)
     return {'items':rows[:body.limit],'has_more':len(rows)>body.limit,'offset':body.offset,'limit':body.limit}

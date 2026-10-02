@@ -11,8 +11,8 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import auth_core
-from portal_store import read_cursor, _literal_search
-from store_common import fetch_rows
+from portal_store import read_cursor
+from store_common import fetch_rows, literal_search
 
 SEOUL=ZoneInfo('Asia/Seoul')
 
@@ -390,7 +390,7 @@ def enrollments(run_id=None,limit=50,offset=0):
 def targets(q,limit=20):
     phone=re.sub(r'[ ()-]','',q)
     if phone.startswith('+82'):phone='0'+phone[3:]
-    like=_literal_search(q)
+    like=literal_search(q)
     with read_cursor() as cur:
         cur.execute('''WITH candidates AS (
           SELECT 'learner'::text AS target_type,l.learner_id,l.member_id,l.name,l.phone,l.email,l.created_at

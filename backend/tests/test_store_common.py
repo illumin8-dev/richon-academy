@@ -2,7 +2,7 @@
 import ast
 from pathlib import Path
 
-from store_common import fetch_rows
+from store_common import fetch_rows, literal_search
 
 ROOT=Path(__file__).parents[1]
 
@@ -26,6 +26,10 @@ def test_fetch_rows_preserves_columns_and_values():
     ]
 
 
+def test_literal_search_escapes_like_wildcards():
+    assert literal_search("a%_\\b")=="%a\\%\\_\\\\b%"
+
+
 def test_stores_use_shared_row_owner():
     expected={
         'portal_store.py',
@@ -44,5 +48,9 @@ def test_stores_use_shared_row_owner():
             for a in n.names
         }
         assert 'fetch_rows' in imports
+        assert 'literal_search' in imports
+    portal=(ROOT/'portal_store.py').read_text()
+    assert 'def _literal_search' not in portal
     manual=(ROOT/'manual_store.py').read_text()
     assert 'from monthly_store import _rows' not in manual
+    assert 'from portal_store import _literal_search' not in manual

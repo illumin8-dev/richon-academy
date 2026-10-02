@@ -3,8 +3,8 @@ import os
 import re
 from uuid import UUID
 from domain_dates import month_start
-from portal_store import read_cursor, _literal_search
-from store_common import fetch_rows
+from portal_store import read_cursor
+from store_common import fetch_rows, literal_search
 
 
 class MissingEnrollment(Exception):
@@ -103,7 +103,7 @@ def search(filters):
     f = filters.model_dump()
     p = {
         'month': month_start(f['month']), 'scope':f['scope'], 'course':f['course_id'],
-        'q':f['q'], 'like':_literal_search(f['q']),
+        'q':f['q'], 'like':literal_search(f['q']),
         'phone':re.sub(r'[ ()-]','',f['q']),
         'linked':f['member_linked'], 'plan':f['plan_months'], 'payment':f['payment_state'],
         'receipt':f['receipt_state'],'state':f['status'],

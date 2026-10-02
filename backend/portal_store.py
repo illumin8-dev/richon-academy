@@ -3,7 +3,7 @@
 No identity inference, order claiming, membership edits, or payment side effects.
 """
 from contextlib import contextmanager
-from store_common import fetch_rows
+from store_common import fetch_rows, literal_search
 from uuid import UUID
 
 import db
@@ -41,11 +41,6 @@ def _page(cur, limit: int, offset: int):
         "items": [dict(zip(names, row, strict=True)) for row in rows[:limit]],
         "limit": limit, "offset": offset, "has_more": len(rows) > limit,
     }
-
-
-def _literal_search(q: str) -> str:
-    # LIKE wildcards are data, not operators, for the search field.
-    return "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 
 def profile(member_id: UUID):
@@ -135,7 +130,7 @@ def members(limit: int, offset: int, q: str, status: str | None):
             WHERE (m.display_name ILIKE %s ESCAPE E'\\\\' OR m.member_id::text=%s)
               AND ((%s::text IS NULL AND m.status<>'withdrawn') OR m.status=%s)
             ORDER BY m.created_at DESC, m.member_id DESC LIMIT %s OFFSET %s
-        """, (_literal_search(q), q, status, status, limit + 1, offset))
+        """, (literal_search(q), q, status, status, limit + 1, offset))
         return _page(cur, limit, offset)
 
 
@@ -209,7 +204,7 @@ def courses(limit: int, offset: int, q: str, enabled: bool | None):
             WHERE (c.title ILIKE %s ESCAPE E'\\\\' OR c.cohort ILIKE %s ESCAPE E'\\\\' OR c.course_id=%s)
               AND (%s::boolean IS NULL OR c.enabled=%s)
             ORDER BY c.created_at DESC, c.course_id DESC LIMIT %s OFFSET %s
-        """, (_literal_search(q), _literal_search(q), q, enabled, enabled, limit + 1, offset))
+        """, (literal_search(q), literal_search(q), q, enabled, enabled, limit + 1, offset))
         return _page(cur, limit, offset)
 
 
@@ -228,5 +223,5 @@ def orders(limit: int, offset: int, q: str, linked: bool | None):
                    OR o.customer_phone=%s OR lower(o.customer_email)=lower(%s))
               AND (%s::boolean IS NULL OR (l.member_id IS NOT NULL)=%s)
             ORDER BY o.created_at DESC, o.order_id DESC LIMIT %s OFFSET %s
-        """, (_literal_search(q), q, q, q, linked, linked, limit + 1, offset))
+        """, (literal_search(q), q, q, q, linked, linked, limit + 1, offset))
         return _page(cur, limit, offset)
