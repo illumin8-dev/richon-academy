@@ -29,6 +29,14 @@ def test_operations_pages_share_brand_foundation_but_keep_page_css():
     manual=(STATIC/'manual.css').read_text()
     for obsolete in ('header{','header>div{','.brand{','.brand span{','.side-note{','.footnote{','#identity{'):
         assert obsolete not in manual
+    for shared_owned in (
+        '.eyebrow{font-size:10px;', 'h1{font-size:30px;', 'h2{font-size:19px;',
+        '.panel{background:#fff;', '.filters{display:flex;align-items:end;',
+        '.table-wrap{overflow-x:auto;max-width:100%}', '.skip{position:absolute;',
+    ):
+        assert shared_owned not in manual
+    assert '.layout{min-height:calc(100vh - 78px)}' in manual
+    assert '.pager{padding:16px 20px;font-size:12px}' in manual
 
 def test_standalone_auth_has_no_legacy_inline_theme():
     css=(SHARED/'auth.css').read_text()
