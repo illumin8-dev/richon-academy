@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import worker, {handle, allowed, safeLocation} from './worker.mjs';
+import worker, {handle, allowed, safeLocation, returnReferer} from './worker.mjs';
 const origin='https://richonacademy.com';
 const env={PORTAL_ENABLED:'true',PORTAL_UPSTREAM:'https://richon-portal-synthetic.as.run.app',RICHON_EDGE_SECRET:'s'.repeat(43)};
 const req=(path='/auth/login',init)=>new Request(origin+path,init);
@@ -12,6 +12,10 @@ test('only login and portal paths / limited methods',()=>{
   assert.equal(allowed('/portal/api/admin/manual/create','POST'),true);
   assert.equal(allowed('/portal/api/public/calendar','GET'),true);
   assert.equal(allowed('/portal/api/public/calendar','POST'),false);
+});
+test('course page remains an approved login return referer',()=>{
+  assert.equal(returnReferer(origin+'/portal/courses'),origin+'/portal/courses');
+  assert.equal(returnReferer(origin+'/portal/courses?source=login'),origin+'/portal/courses');
 });
 test('disabled proxy performs no network request',async()=>{
   const r=await handle(req(),{...env,PORTAL_ENABLED:'false'},()=>assert.fail('unexpected network'));assert.equal(r.status,503);
