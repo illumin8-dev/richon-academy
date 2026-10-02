@@ -22,10 +22,10 @@ jobs:
         run: node --test edge/*.test.mjs
       - name: Build portal-only image with the Dockerfile-specific allowlist
         run: docker build --pull --no-cache -f backend/Dockerfile.portal -t richon-portal:ci .
-      - name: Check private code and migrations are absent from portal image
+      - name: Check portal image contents and private-code exclusions
         run: >-
           docker run --rm --entrypoint python richon-portal:ci -c
-          "from pathlib import Path; assert all(not Path(p).exists() for p in ('/app/orders.py','/app/main.py','/app/migrations','/app/oauth_migrate.py')); print('PASS: no private order entry or migrations')"
+          "from pathlib import Path; assert all(not Path(p).exists() for p in ('/app/orders.py','/app/main.py','/app/migrations','/app/oauth_migrate.py')); assert Path('/app/portal_static/calendar-logo.svg').is_file(); print('PASS: required calendar asset present; no private order entry or migrations')"
       - name: Start with synthetic credentials, no database
         run: |
           docker run --detach --name richon-portal-ci -p 127.0.0.1:8081:8080 \
