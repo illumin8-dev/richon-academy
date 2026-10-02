@@ -5,3 +5,6 @@ __pycache__/
 
 # Generated allowlisted Cloudflare Pages output.
 .pages-dist/
+
+# Generated standalone admin preview. Build on demand; do not commit.
+admin-test.html
