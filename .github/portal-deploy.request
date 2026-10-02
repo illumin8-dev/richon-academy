@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-enrollment-restore-hold-20261002-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "public-calendar-cache-rollout-20261002-a"
 }
