@@ -8,7 +8,7 @@ from migration_runner import apply_standard_migration
 
 VERSION='021_course_enrollment_adjustments'
 DIRECTORY=Path(__file__).parent/'migrations'
-DEPENDENCIES=('020_legacy_roster_import',)
+DEPENDENCIES=('016_course_entitlements',)
 
 
 def checksum(name):
