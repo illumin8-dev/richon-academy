@@ -108,7 +108,7 @@ export async function handle(request, env, fetcher = fetch) {
     // TTL zero still forces caching and may strip Set-Cookie. Authentication
     // responses must bypass the CDN cache, not enter it with immediate expiry.
     const init = {method: request.method, headers, body, redirect: 'manual', signal: controller.signal};
-    if (publicCalendar) init.cf = {cacheEverything: true, cacheTtl: 60};
+    if (publicCalendar) init.cf = {cacheEverything: true, cacheTtlByStatus: {'200-299': 60, '300-599': 0}};
     else init.cache = 'no-store';
     const result = await fetcher(destination.href, init);
     const cacheableCalendar = publicCalendar && result.status === 200
