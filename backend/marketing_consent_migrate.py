@@ -3,6 +3,7 @@ import argparse
 import hashlib
 from pathlib import Path
 import db
+from migration_runner import apply_standard_migration
 
 VERSION='011_marketing_consent'
 DIRECTORY=Path(__file__).parent/'migrations'
@@ -15,25 +16,14 @@ def checksum(name):
 
 
 def apply_migration(*, connection_url=None):
-    with db._connect(db.database_url() if connection_url is None else connection_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SET LOCAL statement_timeout='15s'")
-            cur.execute("SET LOCAL lock_timeout='10s'")
-            cur.execute('SELECT pg_advisory_xact_lock(726426,1)')
-            for version in DEPENDENCIES:
-                cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
-                if cur.fetchone()!=(checksum(version),):
-                    raise ValueError('dependency_mismatch')
-            cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(VERSION,))
-            old=cur.fetchone()
-            if old:
-                if old!=(checksum(VERSION),):
-                    raise ValueError('migration_mismatch')
-                return False
-            cur.execute((DIRECTORY/(VERSION+'.sql')).read_text())
-            cur.execute('INSERT INTO richon.schema_migrations(version,checksum) VALUES(%s,%s)',
-                        (VERSION,checksum(VERSION)))
-    return True
+    return apply_standard_migration(
+        db_module=db,
+        directory=DIRECTORY,
+        version=VERSION,
+        dependencies=DEPENDENCIES,
+        checksum=checksum,
+        connection_url=connection_url,
+    )
 
 
 if __name__=='__main__':
