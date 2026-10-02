@@ -111,7 +111,7 @@ class NaverStageTests(TestCase):
             return 302, {'Location': 'https://' + e.ACCESS_HOST + '/cdn-cgi/access/login/richonacademy.com?token=secret-never-log'}, b''
         with patch.object(e, 'request', side_effect=response) as requests, patch.object(e.op, 'summary') as summary:
             self.assertEqual(e.access_status(), 'inconclusive')
-        self.assertEqual(requests.call_count, len(e.PATHS + e.PUBLIC) + 1)
+        self.assertEqual(requests.call_count, len(e.PATHS + e.PUBLIC) + 2)
         output = '\n'.join(call.args[0] for call in summary.call_args_list)
         self.assertIn('/auth/naver/callback', output)
         self.assertIn('"status": 403', output)
