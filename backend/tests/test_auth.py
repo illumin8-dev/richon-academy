@@ -55,7 +55,7 @@ def test_cookie_is_host_scoped_secure_and_httponly():
     r = Response()
     http.set_session_cookie(r, core.IssuedSession(TOKEN, MEMBER.expires_at))
     value = r.headers["set-cookie"]
-    for expected in ["__Host-richon-session=", "HttpOnly", "Secure", "SameSite=lax", "Path=/", "Max-Age=43200"]:
+    for expected in ["__Host-richon-session=", "HttpOnly", "Secure", "SameSite=lax", "Path=/", "Max-Age=604800"]:
         assert expected in value
     assert "Domain=" not in value
     assert r.headers["cache-control"] == "no-store"
