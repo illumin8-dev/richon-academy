@@ -20,13 +20,17 @@
 <aside class="sidebar">
   <p class="side-label">RICHON ADMIN</p>
   <nav class="nav" aria-label="관리자 메뉴">
+    <span class="nav-section-label">운영</span>
     <a class="nav-item"  href="/portal/courses"><span class="nav-glyph" aria-hidden="true">▣</span>강의 / 수강권</a>
     <a class="nav-item"  href="/portal/calendar"><span class="nav-glyph" aria-hidden="true">▦</span>캘린더</a>
-    <a class="nav-item"  href="/portal/enrollments"><span class="nav-glyph" aria-hidden="true">▤</span>월별 수강관리</a>
-    <a class="nav-item"  href="/portal/manual"><span class="nav-glyph" aria-hidden="true">＋</span>수강생 수동 등록 / 수정</a>
     <a class="nav-item" data-admin-tab-link="orders" href="/portal/admin?tab=orders"><span class="nav-glyph" aria-hidden="true">▤</span>신청·주문</a>
     <a class="nav-item" data-admin-tab-link="members" href="/portal/admin?tab=members"><span class="nav-glyph" aria-hidden="true">◉</span>회원 관리</a>
-    <a class="nav-item" href="/portal/mypage"><span class="nav-glyph" aria-hidden="true">↗</span>마이페이지</a>
+
+    <span class="nav-section-label nav-section-legacy">기존 기록</span>
+    <a class="nav-item nav-item-legacy"  href="/portal/enrollments"><span class="nav-glyph" aria-hidden="true">▤</span>기존 월별 수강 기록</a>
+    <a class="nav-item nav-item-legacy"  href="/portal/manual"><span class="nav-glyph" aria-hidden="true">＋</span>기존 수강생 수동 기록</a>
+
+    <a class="nav-item nav-item-mypage" href="/portal/mypage"><span class="nav-glyph" aria-hidden="true">↗</span>마이페이지</a>
   </nav>
 </aside>
 <!-- /richon:shared-admin-sidebar -->
@@ -34,7 +38,7 @@
 <section class="panel gate" id="gate" aria-live="polite"><h2 id="gate-title">관리자 권한을 확인하고 있습니다.</h2><p id="gate-text">잠시만 기다려 주세요.</p><button id="retry-gate" class="button" hidden>다시 확인</button></section>
 <div id="content" hidden>
 
-<div class="stats"><article class="stat"><p class="stat-label">전체 회원</p><p class="stat-value mono" id="members-total">—</p><p class="stat-note" id="members-note">현황 확인 중</p></article><article class="stat"><p class="stat-label">등록 강의</p><p class="stat-value mono" id="courses-total">—</p><p class="stat-note" id="courses-note">현황 확인 중</p></article><article class="stat"><p class="stat-label">결제 대기 주문</p><p class="stat-value mono" id="pending-total">—</p><p class="stat-note" id="orders-note">현황 확인 중</p></article></div>
+<div class="stats"><article class="stat"><p class="stat-label">전체 회원</p><p class="stat-value mono" id="members-total">—</p><p class="stat-note" id="members-note">현황 확인 중</p></article><article class="stat"><p class="stat-label">운영 프로그램</p><p class="stat-value mono" id="programs-total">—</p><p class="stat-note" id="programs-note">현황 확인 중</p></article><article class="stat"><p class="stat-label">결제 대기 주문</p><p class="stat-value mono" id="pending-total">—</p><p class="stat-note" id="orders-note">현황 확인 중</p></article></div>
 <div id="summary-status" class="status-message" role="status"></div>
 <section class="panel"><div class="section-head"><div><h2 id="list-title">신청·주문 내역</h2><p id="list-description">연결되지 않은 비회원 주문도 함께 확인합니다.</p></div><button id="refresh" class="plain">새로고침</button></div>
 <form class="filters" id="search-form"><label class="field grow"><span id="search-label">신청자 이름 / 주문번호 / 연락처 검색</span><input id="search" type="search" maxlength="200" autocomplete="off" placeholder="이름 또는 정확한 주문번호·전화번호·이메일"></label><label class="field"><span id="filter-label">회원 연결</span><select id="filter"><option value="">전체</option><option value="true">연결됨</option><option value="false">미연결</option></select></label><button type="submit" class="button primary">검색</button></form>

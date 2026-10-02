@@ -174,8 +174,9 @@ class PageResult[T](BaseModel):
 class Summary(BaseModel):
     members_total: int
     members_active: int
-    courses_total: int
-    courses_enabled: int
+    programs_total: int
+    runs_total: int
+    recruiting_runs: int
     orders_total: int
     pending_orders: int
     unlinked_orders: int

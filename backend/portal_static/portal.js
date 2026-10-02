@@ -26,7 +26,7 @@
     if ($('admin-link')) $('admin-link').hidden = true;
     // Do not retain previously rendered private rows after auth loss/logout.
     for (const id of ['list','table-body','providers']) if ($(id)) $(id).replaceChildren();
-    for (const id of ['welcome-name','profile-name','joined','order-count','members-total','courses-total','pending-total']) text(id, '');
+    for (const id of ['welcome-name','profile-name','joined','order-count','members-total','programs-total','pending-total']) text(id, '');
     for (const key of profileFields) { text('profile-'+key, ''); if ($('profile-'+key+'-row')) $('profile-'+key+'-row').hidden = true; }
     text('avatar', ''); text('profile-name-label', '표시 이름');
     text('gate-title', title); text('gate-text', message); $('retry-gate').hidden = !retry;
@@ -167,9 +167,9 @@
     try {
       const data=await api('/portal/api/admin/summary'); if (!state.unlocked) return;
       text('members-total',data.members_total);text('members-note','이용 중 '+data.members_active+'명');
-      text('courses-total',data.courses_total);text('courses-note','신청 가능 '+data.courses_enabled+'개');
+      text('programs-total',data.programs_total);text('programs-note','운영 기수 '+data.runs_total+'개 / 모집중 '+data.recruiting_runs+'개');
       text('pending-total',data.pending_orders);text('orders-note','전체 '+data.orders_total+'건 / 회원 미연결 '+data.unlinked_orders+'건');text('summary-status','');
-    } catch(error) {if(authError(error))return;for(const id of ['members-total','courses-total','pending-total']) text(id,'—');text('summary-status','현황을 불러오지 못했습니다. 새로고침으로 다시 확인해 주세요.');}
+    } catch(error) {if(authError(error))return;for(const id of ['members-total','programs-total','pending-total']) text(id,'—');text('summary-status','현황을 불러오지 못했습니다. 새로고침으로 다시 확인해 주세요.');}
   }
   async function list() {
     if (!state.unlocked) return;

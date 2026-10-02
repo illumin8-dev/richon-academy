@@ -101,17 +101,30 @@ def own_orders(member_id: UUID, limit: int, offset: int):
 
 def summary():
     with read_cursor() as cur:
+        cur.execute("""SELECT to_regclass('richon.course_programs') IS NOT NULL,
+                            to_regclass('richon.course_runs') IS NOT NULL""")
+        course_domain_ready=cur.fetchone()==(True,True)
+        if course_domain_ready:
+            cur.execute("""SELECT count(*) FROM richon.course_programs WHERE archived_at IS NULL""")
+            programs_total=cur.fetchone()[0]
+            cur.execute("""SELECT count(*) FROM richon.course_runs WHERE archived_at IS NULL""")
+            runs_total=cur.fetchone()[0]
+            cur.execute("""SELECT count(*) FROM richon.course_runs
+                           WHERE archived_at IS NULL AND status IN ('OPEN','WAITLIST')""")
+            recruiting_runs=cur.fetchone()[0]
+        else:
+            programs_total=runs_total=recruiting_runs=0
         cur.execute("""
             SELECT (SELECT count(*) FROM richon.members WHERE status<>'withdrawn') AS members_total,
                 (SELECT count(*) FROM richon.members WHERE status='active') AS members_active,
-                (SELECT count(*) FROM richon.courses) AS courses_total,
-                (SELECT count(*) FROM richon.courses WHERE enabled) AS courses_enabled,
                 (SELECT count(*) FROM richon.orders) AS orders_total,
                 (SELECT count(*) FROM richon.orders WHERE status='pending_payment') AS pending_orders,
                 (SELECT count(*) FROM richon.orders o WHERE NOT EXISTS
                     (SELECT 1 FROM richon.member_order_links l WHERE l.order_id=o.order_id)) AS unlinked_orders
         """)
-        return _row(cur)
+        base=_row(cur)
+        return {**base,'programs_total':programs_total,'runs_total':runs_total,
+                'recruiting_runs':recruiting_runs}
 
 
 def members(limit: int, offset: int, q: str, status: str | None):

@@ -103,6 +103,7 @@ def test_admin_lists_mask_contacts_and_do_not_expose_provider_subjects(example):
         assert courses.json()['items'][0]['price_krw']==1000
         summary=client.get('/portal/api/admin/summary').json()
         assert summary['orders_total']>=3 and summary['unlinked_orders']>=1
+        assert {'programs_total','runs_total','recruiting_runs'} <= set(summary)
         assert 'revenue' not in summary and 'enrollments' not in summary
 
 

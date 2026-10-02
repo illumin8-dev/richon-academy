@@ -28,13 +28,17 @@
 <aside class="sidebar">
   <p class="side-label">RICHON ADMIN</p>
   <nav class="nav" aria-label="관리자 메뉴">
+    <span class="nav-section-label">운영</span>
     <a class="nav-item" aria-current="page" href="/portal/courses"><span class="nav-glyph" aria-hidden="true">▣</span>강의 / 수강권</a>
     <a class="nav-item"  href="/portal/calendar"><span class="nav-glyph" aria-hidden="true">▦</span>캘린더</a>
-    <a class="nav-item"  href="/portal/enrollments"><span class="nav-glyph" aria-hidden="true">▤</span>월별 수강관리</a>
-    <a class="nav-item"  href="/portal/manual"><span class="nav-glyph" aria-hidden="true">＋</span>수강생 수동 등록 / 수정</a>
     <a class="nav-item" data-admin-tab-link="orders" href="/portal/admin?tab=orders"><span class="nav-glyph" aria-hidden="true">▤</span>신청·주문</a>
     <a class="nav-item" data-admin-tab-link="members" href="/portal/admin?tab=members"><span class="nav-glyph" aria-hidden="true">◉</span>회원 관리</a>
-    <a class="nav-item" href="/portal/mypage"><span class="nav-glyph" aria-hidden="true">↗</span>마이페이지</a>
+
+    <span class="nav-section-label nav-section-legacy">기존 기록</span>
+    <a class="nav-item nav-item-legacy"  href="/portal/enrollments"><span class="nav-glyph" aria-hidden="true">▤</span>기존 월별 수강 기록</a>
+    <a class="nav-item nav-item-legacy"  href="/portal/manual"><span class="nav-glyph" aria-hidden="true">＋</span>기존 수강생 수동 기록</a>
+
+    <a class="nav-item nav-item-mypage" href="/portal/mypage"><span class="nav-glyph" aria-hidden="true">↗</span>마이페이지</a>
   </nav>
 </aside>
 <!-- /richon:shared-admin-sidebar -->
