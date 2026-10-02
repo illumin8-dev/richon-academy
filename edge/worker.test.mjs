@@ -10,6 +10,8 @@ test('only login and portal paths / limited methods',()=>{
   for(const path of ['/health/db','/orders','/index.html','/apply.html','/auth/fake-login','/portal//manual','/portal/../orders','/portal/%2forder'])assert.equal(allowed(path,'GET'),false);
   assert.equal(allowed('/auth/start','GET'),false);assert.equal(allowed('/portal/manual','DELETE'),false);
   assert.equal(allowed('/portal/api/admin/manual/create','POST'),true);
+  assert.equal(allowed('/portal/api/public/calendar','GET'),true);
+  assert.equal(allowed('/portal/api/public/calendar','POST'),false);
 });
 test('disabled proxy performs no network request',async()=>{
   const r=await handle(req(),{...env,PORTAL_ENABLED:'false'},()=>assert.fail('unexpected network'));assert.equal(r.status,503);
@@ -81,6 +83,38 @@ test('all auth and portal subrequests bypass cache rather than cache with TTL ze
     assert.equal(r.headers.get('cache-control'),'no-store');
   }
 });
+test('public calendar is anonymous, cookie-free and edge-cached for 60 seconds',async()=>{
+  let observed;
+  const r=await handle(req('/portal/api/public/calendar?month=2026-10',{headers:{
+    Accept:'application/json',Cookie:'__Host-richon-session=private; unrelated=x'
+  }}),env,async(url,init)=>{
+    observed={url,init};
+    return new Response('{"month":"2026-10","items":[],"has_prev":true,"has_next":false}',{
+      status:200,headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=0, s-maxage=60'}
+    });
+  });
+  assert.equal(r.status,200);
+  assert.equal(observed.url,env.PORTAL_UPSTREAM+'/portal/api/public/calendar?month=2026-10');
+  assert.equal(observed.init.headers.get('cookie'),null);
+  assert.equal(observed.init.cache,undefined);
+  assert.deepEqual(observed.init.cf,{cacheEverything:true,cacheTtl:60});
+  assert.equal(r.headers.get('cache-control'),'public, max-age=0, s-maxage=60');
+  assert.equal(r.headers.get('set-cookie'),null);
+});
+test('public calendar never caches errors, non-json, or cookie-setting responses',async()=>{
+  for(const response of [
+    new Response('{"detail":"calendar_unavailable"}',{status:503,headers:{'Content-Type':'application/json'}}),
+    new Response('<html></html>',{status:200,headers:{'Content-Type':'text/html'}})
+  ]){
+    const r=await handle(req('/portal/api/public/calendar'),env,async()=>response.clone());
+    assert.equal(r.headers.get('cache-control'),'no-store');
+  }
+  const cookieHeaders=new Headers({'Content-Type':'application/json'});cookieHeaders.append('Set-Cookie',cookie);
+  const rejected=await handle(req('/portal/api/public/calendar'),env,async()=>new Response('{}',{headers:cookieHeaders}));
+  assert.equal(rejected.status,502);
+  assert.equal(rejected.headers.get('cache-control'),'no-store');
+});
+
 test('login response cookie and form survive two separate browser round trips unchanged',async()=>{
   for(const letter of ['a','b']){
     const token=letter.repeat(43),proof=letter.repeat(64);
