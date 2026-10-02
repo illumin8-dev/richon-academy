@@ -122,6 +122,28 @@
 
 <section class="panel"><div class="section-head"><div><h2>수강권 현황</h2><p>결제상태와 독립된 실제 수강 권한입니다.</p></div><select id="enrollment-run"></select></div>
 <div class="table-wrap"><table><thead><tr><th>수강생</th><th>강의 / 기수</th><th>기간</th><th>상태</th><th>출처</th><th></th></tr></thead><tbody id="enrollment-body"></tbody></table></div><p id="enrollment-status" class="status"></p></section>
+
+<dialog id="adjust-dialog" class="course-dialog">
+<form id="adjust-form" class="form dialog-form">
+<input name="operation" type="hidden"><input name="enrollment_id" type="hidden"><input name="version" type="hidden">
+<div class="wide dialog-head"><div><p class="eyebrow">ENROLLMENT ADJUSTMENT</p><h2 id="adjust-title">수강권 조정</h2><p id="adjust-summary" class="small"></p></div><button id="adjust-close" type="button" aria-label="닫기">×</button></div>
+<label>적용일<input name="effective_on" type="date" required></label>
+<label id="adjust-end-wrap">새 종료일<input name="new_access_end" type="date"></label>
+<label id="adjust-extension-wrap">연장 유형<select name="extension_kind"><option value="">선택</option><option value="FREE">무료 연장</option><option value="PAID">유료 연장</option></select></label>
+<label id="adjust-refund-kind-wrap">환불 유형<select name="refund_kind"><option value="FULL">전액 환불</option><option value="PARTIAL">부분 환불</option></select></label>
+<label id="adjust-refund-amount-wrap">환불금액(원)<input name="refund_amount_krw" type="number" min="0" max="100000000"></label>
+<label id="adjust-refund-ref-wrap">환불 기록 참조<input name="refund_reference" maxlength="200" placeholder="계좌이체 메모 / PG 환불번호 등"></label>
+<label class="wide">기록 사유<input name="reason" required maxlength="200" placeholder="예: 개인 사정으로 2주 휴식"></label>
+<p id="adjust-hint" class="hint wide"></p>
+<div class="dialog-actions wide"><button id="adjust-cancel" type="button">취소</button><button id="adjust-save" class="primary" type="submit">저장</button></div>
+</form>
+</dialog>
+
+<dialog id="adjust-history-dialog" class="course-dialog">
+<div class="dialog-head"><div><p class="eyebrow">ADJUSTMENT HISTORY</p><h2>수강권 변경 이력</h2><p id="adjust-history-summary" class="small"></p></div><button id="adjust-history-close" type="button" aria-label="닫기">×</button></div>
+<div id="adjust-history-list" class="adjust-history-list"></div>
+<p id="adjust-history-status" class="status"></p>
+</dialog>
 </div>
 <p id="action-status" class="status" role="status"></p>
 
