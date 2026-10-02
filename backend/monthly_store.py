@@ -1,5 +1,6 @@
 """Monthly read models. No registrations, merging, payments or entitlement writes."""
 import os
+import re
 from uuid import UUID
 from domain_dates import month_start
 from portal_store import read_cursor, _literal_search
