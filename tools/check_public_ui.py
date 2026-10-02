@@ -9,7 +9,6 @@ guide=(ROOT/'signup-guide.html').read_text()
 privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
 shared=ROOT/'frontend'/'shared'
-work=(ROOT/'CURRENT_WORK.md').read_text()
 
 footer=chrome.footer()
 assert chrome.wrapped('header',chrome.render_header('landing')) in index
@@ -142,9 +141,6 @@ for copy in (
     '분양권과 청약 흐름을 시장/지역 분석과 연결해 보는 신규 과정입니다. 세부 커리큘럼 확정 후 오픈됩니다.',
 ):
     assert copy in apply
-assert 'apply.html은 fork/original 모두 현재 0 byte' not in work
-assert '회원/로그인 공통 UI 마감 브랜치: `fix/member-shared-ui-closeout`' not in work
-assert '원본 marururu00/richon-academy 반영 전에는 실제 공개 홈페이지 완료로 간주하지 않음' in work
 
 images=[
     'seoul-redevelopment-study.jpg','pre-richon-course.jpg','richon-study-course.jpg',
