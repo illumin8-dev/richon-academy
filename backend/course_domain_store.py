@@ -60,7 +60,9 @@ def mutate(actor,operation,payload):
                     'session.create':_session_create,'session.update':_session_update,
                     'calendar_event.create':_calendar_event_create,'calendar_event.update':_calendar_event_update,
                     'enrollment.grant':_enrollment_grant,'enrollment.cancel':_enrollment_cancel,
-                    'enrollment.restore':_enrollment_restore,
+                    'enrollment.restore':_enrollment_restore,'enrollment.suspend':_enrollment_suspend,
+                    'enrollment.resume':_enrollment_resume,'enrollment.extend':_enrollment_extend,
+                    'enrollment.refund':_enrollment_refund,
                 }.get(operation)
                 if handler is None: raise Rejected('unsupported_operation',404)
                 result=handler(cur,actor,payload)
