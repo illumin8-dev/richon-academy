@@ -20,6 +20,7 @@ import course_domain_migrate
 import calendar_migrate
 import calendar_freeform_migrate
 import monthly_runtime_hardening_migrate
+import legacy_roster_migrate
 
 class Context:
     def __init__(self,value):
@@ -161,6 +162,7 @@ def test_pilot_migration_modules_delegate_to_standard_runner(monkeypatch,module)
     [
         (kakao_ci_migrate,{}),
         (course_entitlement_migrate,{'advisory_slot':2}),
+        (legacy_roster_migrate,{'advisory_slot':6}),
     ],
 )
 def test_lock_slot_migration_modules_delegate_to_standard_runner(monkeypatch,module,extra):
