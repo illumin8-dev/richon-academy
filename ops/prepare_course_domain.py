@@ -1,7 +1,7 @@
-"""Owner-run production preparation for canonical course management (DB015/016 + exact grants).
+"""Owner-run production preparation for canonical course management (DB015/016/021 + exact grants).
 
 This script applies only the reviewed canonical course/run/session/enrollment schema,
-its entitlement extension, and minimum privileges for richon_portal_login.
+its entitlement/adjustment extensions, and minimum privileges for richon_portal_login.
 It never deploys Cloud Run, changes feature flags, calls providers, or prints
 database URLs, passwords, tokens, or customer rows.
 """
@@ -20,11 +20,12 @@ sys.path[:0]=[str(ROOT/'backend'),str(ROOT/'ops')]
 import db
 import course_domain_migrate as domain
 import course_entitlement_migrate as entitlements
+import course_adjustment_migrate as adjustments
 import portal_readiness as ready
 import prepare_account_lifecycle as base
 
 MINIMUM_SOURCE='185128166d439eb36ed1b8ea993bb4e531e6bde8'
-CONFIRM='APPLY_DB004_005_015_016'
+CONFIRM='APPLY_DB004_005_015_016_021'
 
 
 class Stop(Exception):
@@ -45,7 +46,7 @@ def validate_source():
     for version in ('004_monthly_enrollments','005_manual_registry'):
         need((domain.DIRECTORY/(version+'.sql')).is_file(),
              'course_predecessor_migration_missing')
-    for migration in (domain,entitlements):
+    for migration in (domain,entitlements,adjustments):
         need((migration.DIRECTORY/(migration.VERSION+'.sql')).is_file(),
              'course_migration_missing')
     need((ROOT/'backend/portal_readiness.py').is_file(),'readiness_missing')
@@ -187,6 +188,7 @@ def apply(owner_url,runtime_url):
     changed005=False
     changed015=False
     changed016=False
+    changed021=False
     try:
         with db._connect(owner_url) as conn:
             with conn.cursor() as cur:
@@ -197,6 +199,7 @@ def apply(owner_url,runtime_url):
                 changed005=apply_predecessor(cur,'005_manual_registry')
                 changed015=apply_one(cur,domain)
                 changed016=apply_one(cur,entitlements)
+                changed021=apply_one(cur,adjustments)
                 grant_course(cur)
                 ready.check_role(cur)
     except (Stop,ValueError):
@@ -225,7 +228,7 @@ def apply(owner_url,runtime_url):
                     cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',(version,))
                     need(cur.fetchone()==(domain.checksum(version),),
                          version+'_readback_failed')
-                for migration in (domain,entitlements):
+                for migration in (domain,entitlements,adjustments):
                     cur.execute('SELECT checksum FROM richon.schema_migrations WHERE version=%s',
                                 (migration.VERSION,))
                     need(cur.fetchone()==(migration_checksum(migration),),
@@ -235,20 +238,21 @@ def apply(owner_url,runtime_url):
                     to_regclass('richon.course_runs') IS NOT NULL,
                     to_regclass('richon.course_sessions') IS NOT NULL,
                     to_regclass('richon.course_enrollments') IS NOT NULL,
-                    to_regclass('richon.course_domain_audit') IS NOT NULL""")
-                need(cur.fetchone()==(True,True,True,True,True),
+                    to_regclass('richon.course_domain_audit') IS NOT NULL,
+                    to_regclass('richon.course_enrollment_adjustments') IS NOT NULL""")
+                need(cur.fetchone()==(True,True,True,True,True,True),
                      'course_tables_missing')
     except Stop:
         raise
     except Exception:
         raise Stop('course_owner_final_readback_failed') from None
-    return changed004,changed005,changed015,changed016
+    return changed004,changed005,changed015,changed016,changed021
 
 
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--diagnose',action='store_true',
-                        help='Read-only production target checks. Does not apply DB015/016 or grants.')
+                        help='Read-only production target checks. Does not apply DB015/016/021 or grants.')
     args=parser.parse_args()
     stage='source'
     try:
@@ -267,7 +271,7 @@ def main():
              'course_feature_already_enabled')
 
         print('TARGET=richon-academy / production Neon / protected portal candidate')
-        print('SCOPE=missing DB004/DB005 predecessors + DB015/DB016 + exact richon_portal_login grants + readback')
+        print('SCOPE=missing DB004/DB005 predecessors + DB015/DB016/DB021 + exact richon_portal_login grants + readback')
         print('NO_DEPLOY=YES / COURSE_FEATURE_REMAINS_OFF=YES / NO_CUSTOMER_ROW_PRINTS=YES')
 
         stage='secret-access'
@@ -313,11 +317,12 @@ def main():
         os.environ.pop('RICHON_COURSE_DOMAIN_ENABLED',None)
 
         stage='database'
-        changed004,changed005,changed015,changed016=apply(owner_url,runtime_url)
+        changed004,changed005,changed015,changed016,changed021=apply(owner_url,runtime_url)
         print('DB004='+('APPLIED' if changed004 else 'ALREADY_APPLIED'))
         print('DB005='+('APPLIED' if changed005 else 'ALREADY_APPLIED'))
         print('DB015='+('APPLIED' if changed015 else 'ALREADY_APPLIED'))
         print('DB016='+('APPLIED' if changed016 else 'ALREADY_APPLIED'))
+        print('DB021='+('APPLIED' if changed021 else 'ALREADY_APPLIED'))
         print('RUNTIME_MINIMUM_PRIVILEGES=PASS')
         print('RUNTIME_READBACK=PASS')
         print('COURSE_FEATURE=OFF')

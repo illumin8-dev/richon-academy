@@ -15,7 +15,7 @@ class Input(BaseModel):
 
     @field_validator(
         'reason','program_id','title','description','access_mode','cohort_label','status',
-        'mentor_name','presenter_name','course_label','content_text','color_hex','video_url','material_url','name','email','phone','note',
+        'mentor_name','presenter_name','course_label','content_text','color_hex','video_url','material_url','name','email','phone','note','refund_reference',
         mode='before',check_fields=False)
     @classmethod
     def clean_text(cls,value):
@@ -191,3 +191,49 @@ class EnrollmentCancel(Write):
 class EnrollmentRestore(Write):
     enrollment_id: UUID
     version: int=Field(ge=1)
+
+
+class EnrollmentSuspend(Write):
+    enrollment_id: UUID
+    version: int=Field(ge=1)
+    effective_on: date=Field(default_factory=date.today)
+
+
+class EnrollmentResume(Write):
+    enrollment_id: UUID
+    version: int=Field(ge=1)
+    effective_on: date=Field(default_factory=date.today)
+    new_access_end: date|None=None
+    extension_kind: Literal['FREE','PAID']|None=None
+
+    @model_validator(mode='after')
+    def extension_pair(self):
+        if (self.new_access_end is None)!=(self.extension_kind is None):
+            raise ValueError('extension_fields_together')
+        return self
+
+
+class EnrollmentExtend(Write):
+    enrollment_id: UUID
+    version: int=Field(ge=1)
+    effective_on: date=Field(default_factory=date.today)
+    new_access_end: date
+    extension_kind: Literal['FREE','PAID']
+
+
+class EnrollmentRefund(Write):
+    enrollment_id: UUID
+    version: int=Field(ge=1)
+    effective_on: date=Field(default_factory=date.today)
+    refund_kind: Literal['FULL','PARTIAL']
+    refund_amount_krw: int|None=Field(default=None,ge=0,le=100000000)
+    refund_reference: str|None=Field(default=None,max_length=200)
+    new_access_end: date|None=None
+
+    @model_validator(mode='after')
+    def partial_end(self):
+        if self.refund_kind=='PARTIAL' and self.new_access_end is None:
+            raise ValueError('partial_refund_requires_end')
+        if self.refund_kind=='FULL' and self.new_access_end is not None:
+            raise ValueError('full_refund_forbids_end')
+        return self

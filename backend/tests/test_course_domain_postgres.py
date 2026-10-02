@@ -8,7 +8,7 @@ import pytest
 import auth_core as core
 import oauth_migrate,login_return_migrate,member_profile_migrate
 import oauth_signup_profile_migrate,oauth_signup_demographics_migrate,kakao_ci_migrate
-import course_domain_migrate,course_entitlement_migrate,calendar_migrate,calendar_freeform_migrate
+import course_domain_migrate,course_entitlement_migrate,course_adjustment_migrate,calendar_migrate,calendar_freeform_migrate
 import course_domain_models as model
 import course_domain_store as store
 import portal
@@ -33,6 +33,7 @@ def course_db(registry_db):
     assert kakao_ci_migrate.apply_migration()
     assert course_domain_migrate.apply_migration()
     assert course_entitlement_migrate.apply_migration()
+    assert course_adjustment_migrate.apply_migration()
     assert calendar_migrate.apply_migration()
     assert calendar_freeform_migrate.apply_migration()
     return registry_db
@@ -76,10 +77,11 @@ def run(admin,pid,start,end,*,label='1기'):
 def test_migrations_reenter_and_no_legacy_drop(course_db):
     assert course_domain_migrate.apply_migration() is False
     assert course_entitlement_migrate.apply_migration() is False
+    assert course_adjustment_migrate.apply_migration() is False
     assert calendar_migrate.apply_migration() is False
     assert calendar_freeform_migrate.apply_migration() is False
     with course_db() as c:
-        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version IN ('015_course_run_foundation','016_course_entitlements','018_calendar_events','019_calendar_freeform')").fetchone()==(4,)
+        assert c.execute("SELECT count(*) FROM richon.schema_migrations WHERE version IN ('015_course_run_foundation','016_course_entitlements','018_calendar_events','019_calendar_freeform','021_course_enrollment_adjustments')").fetchone()==(5,)
         for table in ('courses','monthly_enrollments','manual_enrollments','course_programs','course_runs','course_enrollments'):
             assert c.execute('SELECT to_regclass(%s)',('richon.'+table,)).fetchone()[0] is not None
 
@@ -153,9 +155,10 @@ def test_my_courses_exposes_optional_resources_only_during_access(course_db,acto
     assert row['status']=='ACTIVE'
     assert row['sessions'][0]['video_url']=='https://example.invalid/video'
     assert row['sessions'][0]['material_url']=='https://example.invalid/material'
-    with course_db() as c:
-        c.execute("UPDATE richon.course_enrollments SET status='SUSPENDED',suspended_at=CURRENT_TIMESTAMP WHERE enrollment_id=%s",
-                  (grant['enrollment_id'],))
+    suspended=store.mutate(admin,'enrollment.suspend',model.EnrollmentSuspend(
+        request_id=req(),reason='가상 콘텐츠 휴식',enrollment_id=UUID(grant['enrollment_id']),
+        version=grant['version']))
+    assert suspended['status']=='SUSPENDED'
     hidden=store.my_courses(member,20,0)
     row=next(x for x in hidden['items'] if str(x['enrollment_id'])==grant['enrollment_id'])
     assert row['status']=='SUSPENDED'
@@ -168,34 +171,100 @@ def test_admin_cancel_restore_and_resume_are_audited_without_deleting_history(co
     start=date.today();end=start+timedelta(days=10);r=run(admin,pid,start,end)
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
         request_id=req(),reason='가상 지급',run_id=UUID(r['run_id']),member_id=member))
-    cancel=model.EnrollmentCancel(request_id=req(),reason='가상 취소',enrollment_id=UUID(grant['enrollment_id']),version=grant['version'])
+
+    cancel=model.EnrollmentCancel(
+        request_id=req(),reason='가상 취소',enrollment_id=UUID(grant['enrollment_id']),version=grant['version'])
     cancelled=store.mutate(admin,'enrollment.cancel',cancel)
     assert cancelled['status']=='CANCELLED'
-
     restored=store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
         request_id=req(),reason='가상 복구',enrollment_id=UUID(grant['enrollment_id']),version=cancelled['version']))
     assert restored['status']=='ACTIVE'
-    with course_db() as c:
-        row=c.execute('''SELECT status,cancelled_at,suspended_at,version
-            FROM richon.course_enrollments WHERE enrollment_id=%s''',(grant['enrollment_id'],)).fetchone()
-        assert row==('ACTIVE',None,None,restored['version'])
-        c.execute("""UPDATE richon.course_enrollments
-            SET status='SUSPENDED',suspended_at=CURRENT_TIMESTAMP
-            WHERE enrollment_id=%s""",(grant['enrollment_id'],))
 
-    resumed=store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
-        request_id=req(),reason='가상 재개',enrollment_id=UUID(grant['enrollment_id']),version=restored['version']))
+    suspended=store.mutate(admin,'enrollment.suspend',model.EnrollmentSuspend(
+        request_id=req(),reason='가상 휴식',enrollment_id=UUID(grant['enrollment_id']),version=restored['version']))
+    assert suspended['status']=='SUSPENDED'
+    resumed=store.mutate(admin,'enrollment.resume',model.EnrollmentResume(
+        request_id=req(),reason='가상 재개',enrollment_id=UUID(grant['enrollment_id']),version=suspended['version']))
     assert resumed['status']=='ACTIVE'
+
     with pytest.raises(store.Rejected) as exc:
         store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
             request_id=req(),reason='활성 수강권 중복 복구',enrollment_id=UUID(grant['enrollment_id']),version=resumed['version']))
     assert exc.value.code=='enrollment_not_restorable'
+
     with course_db() as c:
         assert c.execute('''SELECT status,cancelled_at,suspended_at
             FROM richon.course_enrollments WHERE enrollment_id=%s''',(grant['enrollment_id'],)).fetchone()==('ACTIVE',None,None)
+        adjustments=c.execute('''SELECT kind,status_before,status_after,access_end_before,access_end_after
+            FROM richon.course_enrollment_adjustments WHERE enrollment_id=%s ORDER BY created_at,adjustment_id''',
+            (grant['enrollment_id'],)).fetchall()
+        assert [x[:3] for x in adjustments]==[
+            ('SUSPEND','ACTIVE','SUSPENDED'),('RESUME','SUSPENDED','ACTIVE')]
+        assert all(x[3]==x[4]==end for x in adjustments)
         assert c.execute("""SELECT count(*) FROM richon.course_domain_audit
-            WHERE operation IN ('enrollment.grant','enrollment.cancel','enrollment.restore')
-              AND entity_id=%s""",(grant['enrollment_id'],)).fetchone()==(4,)
+            WHERE operation IN ('enrollment.grant','enrollment.cancel','enrollment.restore',
+                                'enrollment.suspend','enrollment.resume')
+              AND entity_id=%s""",(grant['enrollment_id'],)).fetchone()==(5,)
+
+
+def test_extend_and_refund_preserve_history_and_idempotency(course_db,actors):
+    admin,member=actors
+    pid='adjust-'+uuid4().hex[:8];program(admin,pid)
+    start=date.today();end=start+timedelta(days=30);run_end=end+timedelta(days=30);r=run(admin,pid,start,run_end)
+    grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
+        request_id=req(),reason='가상 조정 지급',run_id=UUID(r['run_id']),member_id=member,
+        access_start=start,access_end=end))
+
+    extend_body=model.EnrollmentExtend(
+        request_id=req(),reason='운영 일정 보상 무료 연장',enrollment_id=UUID(grant['enrollment_id']),
+        version=grant['version'],new_access_end=end+timedelta(days=10),extension_kind='FREE')
+    extended=store.mutate(admin,'enrollment.extend',extend_body)
+    assert extended['access_end']==str(end+timedelta(days=10))
+    assert store.mutate(admin,'enrollment.extend',extend_body)==extended
+
+    partial=store.mutate(admin,'enrollment.refund',model.EnrollmentRefund(
+        request_id=req(),reason='일부 수강분 환불',enrollment_id=UUID(grant['enrollment_id']),
+        version=extended['version'],refund_kind='PARTIAL',refund_amount_krw=50000,
+        refund_reference='synthetic-partial',new_access_end=end+timedelta(days=5)))
+    assert partial['refund_kind']=='PARTIAL'
+    assert partial['access_end']==str(end+timedelta(days=5))
+
+    full=store.mutate(admin,'enrollment.refund',model.EnrollmentRefund(
+        request_id=req(),reason='잔여 전액 환불',enrollment_id=UUID(grant['enrollment_id']),
+        version=partial['version'],refund_kind='FULL',refund_amount_krw=100000,
+        refund_reference='synthetic-full'))
+    assert full['status']=='CANCELLED'
+
+    history=store.adjustments(UUID(grant['enrollment_id']))
+    assert [x['kind'] for x in history]==['REFUND','REFUND','EXTEND']
+    assert history[0]['refund_kind']=='FULL' and history[0]['refund_amount_krw']==100000
+    assert history[1]['refund_kind']=='PARTIAL' and history[1]['access_end_after']==end+timedelta(days=5)
+    assert history[2]['extension_kind']=='FREE' and history[2]['access_end_after']==end+timedelta(days=10)
+
+    with course_db() as db:
+        assert db.execute('SELECT count(*) FROM richon.course_enrollment_adjustments WHERE enrollment_id=%s',
+                          (grant['enrollment_id'],)).fetchone()==(3,)
+        assert db.execute('SELECT status,access_end,cancelled_at IS NOT NULL FROM richon.course_enrollments WHERE enrollment_id=%s',
+                          (grant['enrollment_id'],)).fetchone()==('CANCELLED',end+timedelta(days=5),True)
+
+
+def test_resume_can_extend_only_with_explicit_free_or_paid_kind(course_db,actors):
+    admin,member=actors
+    pid='resume-'+uuid4().hex[:8];program(admin,pid)
+    start=date.today();end=start+timedelta(days=14);run_end=end+timedelta(days=21);r=run(admin,pid,start,run_end)
+    grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
+        request_id=req(),reason='가상 재개 연장 지급',run_id=UUID(r['run_id']),member_id=member,
+        access_start=start,access_end=end))
+    suspended=store.mutate(admin,'enrollment.suspend',model.EnrollmentSuspend(
+        request_id=req(),reason='가상 휴식',enrollment_id=UUID(grant['enrollment_id']),version=grant['version']))
+    resumed=store.mutate(admin,'enrollment.resume',model.EnrollmentResume(
+        request_id=req(),reason='휴식 보상 연장 재개',enrollment_id=UUID(grant['enrollment_id']),
+        version=suspended['version'],new_access_end=end+timedelta(days=7),extension_kind='FREE'))
+    assert resumed['status']=='ACTIVE' and resumed['access_end']==str(end+timedelta(days=7))
+    history=store.adjustments(UUID(grant['enrollment_id']))
+    assert history[0]['kind']=='RESUME' and history[0]['extension_kind']=='FREE'
+    assert history[0]['access_end_before']==end
+    assert history[0]['access_end_after']==end+timedelta(days=7)
 
 
 def test_admin_member_detail_combines_canonical_enrollment_with_legacy_enabled(course_db,actors,monkeypatch):

@@ -82,9 +82,18 @@ def main():
                 elif path=='/portal/api/admin/learning/enrollments/restore' and method=='POST':
                     body=req.request.post_data_json;posts.append((path,body.copy()))
                     row=next(x for x in enrollments if x['enrollment_id']==body['enrollment_id'])
-                    assert row['status'] in {'CANCELLED','SUSPENDED'}
+                    assert row['status']=='CANCELLED'
                     row.update(status='ACTIVE',version=row['version']+1)
                     data={'enrollment_id':row['enrollment_id'],'version':row['version'],'status':'ACTIVE'}
+                elif path=='/portal/api/admin/learning/enrollments/resume' and method=='POST':
+                    body=req.request.post_data_json;posts.append((path,body.copy()))
+                    row=next(x for x in enrollments if x['enrollment_id']==body['enrollment_id'])
+                    assert row['status']=='SUSPENDED'
+                    row.update(status='ACTIVE',version=row['version']+1,
+                               access_end=body.get('new_access_end') or row['access_end'])
+                    data={'enrollment_id':row['enrollment_id'],'version':row['version'],
+                          'status':'ACTIVE','access_end':row['access_end'],
+                          'adjustment_id':'00000000-0000-4000-8000-000000000701'}
                 elif path=='/portal/api/admin/learning/enrollments/cancel' and method=='POST':
                     body=req.request.post_data_json;posts.append((path,body.copy()))
                     row=next(x for x in enrollments if x['enrollment_id']==body['enrollment_id'])
@@ -148,27 +157,37 @@ def main():
             expect(page.locator('#enrollment-body tr')).to_have_count(2)
             cancelled=page.locator('#enrollment-body tr').filter(has_text='가상 취소회원')
             suspended=page.locator('#enrollment-body tr').filter(has_text='가상 중지회원')
-            expect(cancelled.locator('button')).to_have_text('복구')
-            expect(suspended.locator('button')).to_have_text('재개')
+            expect(cancelled.get_by_role('button',name='복구')).to_be_visible()
+            expect(cancelled.get_by_role('button',name='이력')).to_be_visible()
+            expect(suspended.get_by_role('button',name='재개')).to_be_visible()
+            expect(suspended.get_by_role('button',name='연장')).to_be_visible()
+            expect(suspended.get_by_role('button',name='환불')).to_be_visible()
 
-            cancelled.locator('button').click()
+            cancelled.get_by_role('button',name='복구').click()
             expect(page.locator('#enrollment-status')).to_have_text('수강권을 복구했습니다.')
             expect(page.locator('#enrollment-body tr').filter(has_text='가상 취소회원')).to_contain_text('ACTIVE')
             assert posts[-1][0].endswith('/enrollments/restore')
             assert posts[-1][1]['reason']=='관리자 수강권 복구'
 
-            page.locator('#enrollment-body tr').filter(has_text='가상 중지회원').locator('button').click()
-            expect(page.locator('#enrollment-status')).to_have_text('수강권을 재개했습니다.')
+            suspended=page.locator('#enrollment-body tr').filter(has_text='가상 중지회원')
+            suspended.get_by_role('button',name='재개').click()
+            expect(page.locator('#adjust-dialog')).to_be_visible()
+            expect(page.locator('#adjust-title')).to_have_text('수강 재개')
+            page.locator('#adjust-form [name=reason]').fill('가상 수강 재개')
+            page.locator('#adjust-save').click()
+            expect(page.locator('#adjust-dialog')).to_be_hidden()
+            expect(page.locator('#enrollment-status')).to_have_text('수강을 재개했습니다.')
             expect(page.locator('#enrollment-body tr').filter(has_text='가상 중지회원')).to_contain_text('ACTIVE')
-            assert posts[-1][0].endswith('/enrollments/restore')
-            assert posts[-1][1]['reason']=='관리자 수강권 재개'
+            assert posts[-1][0].endswith('/enrollments/resume')
+            assert posts[-1][1]['reason']=='가상 수강 재개'
+            assert posts[-1][1]['new_access_end'] is None and posts[-1][1]['extension_kind'] is None
 
             page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(100)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'courses-mobile.png'),full_page=True)
             browser.close()
-        print('PASS: admin course sessions/resources, enrollment cancel restore/resume and mobile layout; synthetic only.')
+        print('PASS: admin course sessions/resources, enrollment restore/resume adjustment flow and mobile layout; synthetic only.')
     finally:
         server.shutdown();server.server_close()
 

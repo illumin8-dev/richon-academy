@@ -55,6 +55,28 @@ def test_enrollment_restore_requires_versioned_explicit_id():
                                 enrollment_id=uuid4(),version=0)
 
 
+def test_adjustment_models_require_explicit_consistent_fields():
+    enrollment=uuid4()
+    assert model.EnrollmentSuspend(
+        request_id=uuid4(),reason='가상 휴식',enrollment_id=enrollment,version=1).version==1
+    with pytest.raises(ValidationError):
+        model.EnrollmentResume(
+            request_id=uuid4(),reason='가상 재개',enrollment_id=enrollment,version=1,
+            new_access_end=date.today())
+    with pytest.raises(ValidationError):
+        model.EnrollmentRefund(
+            request_id=uuid4(),reason='가상 부분환불',enrollment_id=enrollment,version=1,
+            refund_kind='PARTIAL')
+    with pytest.raises(ValidationError):
+        model.EnrollmentRefund(
+            request_id=uuid4(),reason='가상 전액환불',enrollment_id=enrollment,version=1,
+            refund_kind='FULL',new_access_end=date.today())
+    value=model.EnrollmentExtend(
+        request_id=uuid4(),reason='가상 무료연장',enrollment_id=enrollment,version=1,
+        new_access_end=date.today(),extension_kind='FREE')
+    assert value.extension_kind=='FREE'
+
+
 def test_grant_requires_exactly_one_explicit_target():
     base=dict(request_id=uuid4(),reason='가상 지급',run_id=uuid4())
     with pytest.raises(ValidationError): model.EnrollmentGrant(**base)
@@ -127,7 +149,8 @@ def test_unauthenticated_session_read_never_reaches_store(app,monkeypatch):
 
 @pytest.mark.parametrize('path',[
     'programs','programs/update','runs','runs/update','sessions',
-    'calendar-events','calendar-events/update','enrollments','enrollments/cancel','enrollments/restore'
+    'calendar-events','calendar-events/update','enrollments','enrollments/cancel','enrollments/restore',
+    'enrollments/suspend','enrollments/resume','enrollments/extend','enrollments/refund'
 ])
 def test_non_admin_writes_never_reach_store(app,monkeypatch,path):
     app.dependency_overrides[auth_http.require_member]=lambda:principal('member')
@@ -168,6 +191,24 @@ def test_static_assets_have_no_token_storage_or_html_injection():
         assert value not in ops
     for required in ("credentials:'same-origin'","cache:'no-store'","redirect:'error'","'X-CSRF-Token':token"):
         assert required in ops
+
+
+def test_course_admin_exposes_adjustment_controls_without_html_injection():
+    html=(portal.STATIC/'courses.html').read_text()
+    js=(portal.STATIC/'courses.js').read_text()
+    for required in ('id="adjust-dialog"','id="adjust-form"','id="adjust-history-dialog"'):
+        assert required in html
+    for endpoint in (
+        '/portal/api/admin/learning/enrollments/suspend',
+        '/portal/api/admin/learning/enrollments/resume',
+        '/portal/api/admin/learning/enrollments/extend',
+        '/portal/api/admin/learning/enrollments/refund',
+        '/adjustments?limit=100',
+    ):
+        assert endpoint in js
+    for label in ('휴식','재개','연장','환불','이력'):
+        assert label in js
+    assert 'innerHTML' not in js
 
 
 def test_course_admin_keeps_calendar_decoupled_and_manages_sessions():

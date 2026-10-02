@@ -1,7 +1,13 @@
 'use strict';
 (()=>{
 const {$,text,el,requestId,api,csrf,post}=window.RichonOps;
-const state={programs:[],runs:[],selected:null,sessionEditing:null,sessions:[]};
+const state={programs:[],runs:[],selected:null,sessionEditing:null,sessions:[],adjusting:null};
+const adjustmentEndpoint={
+ suspend:'/portal/api/admin/learning/enrollments/suspend',
+ resume:'/portal/api/admin/learning/enrollments/resume',
+ extend:'/portal/api/admin/learning/enrollments/extend',
+ refund:'/portal/api/admin/learning/enrollments/refund',
+};
 const date=v=>v||'—';
 const money=v=>new Intl.NumberFormat('ko-KR').format(v||0)+'원';
 const dateTime=v=>v?new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Seoul'}).format(new Date(v)):'—';
@@ -127,6 +133,91 @@ async function loadCatalog(){
  const [p,r]=await Promise.all([api('/portal/api/admin/learning/programs'),api('/portal/api/admin/learning/runs')]);
  state.programs=p.items;state.runs=r.items;renderCatalog();catalogOptions();text('catalog-status','');await Promise.all([loadEnrollments(),loadSessions()]);
 }
+function seoulDate(){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+ const o=Object.fromEntries(parts.map(x=>[x.type,x.value]));return o.year+'-'+o.month+'-'+o.day;
+}
+function visible(id,show){$(id).hidden=!show;}
+function adjustmentLabel(kind){
+ return {SUSPEND:'휴식',RESUME:'재개',EXTEND:'연장',REFUND:'환불'}[kind]||kind;
+}
+function syncRefundFields(){
+ const form=$('adjust-form'),partial=form.elements.refund_kind.value==='PARTIAL';
+ visible('adjust-end-wrap',partial);
+ form.elements.new_access_end.required=partial;
+ if(!partial)form.elements.new_access_end.value='';
+}
+function openAdjustment(row,operation){
+ state.adjusting=row;const form=$('adjust-form');form.reset();
+ form.elements.operation.value=operation;form.elements.enrollment_id.value=row.enrollment_id;
+ form.elements.version.value=String(row.version);form.elements.effective_on.value=seoulDate();
+ for(const id of ['adjust-end-wrap','adjust-extension-wrap','adjust-refund-kind-wrap','adjust-refund-amount-wrap','adjust-refund-ref-wrap'])visible(id,false);
+ form.elements.new_access_end.required=false;form.elements.extension_kind.required=false;
+ let title='',hint='',reason='';
+ if(operation==='suspend'){
+  title='수강 휴식';reason='관리자 수강 일시정지';
+  hint='현재 종료일 '+row.access_end+'은 그대로 유지합니다. 재개할 때 필요한 경우 연장할 수 있습니다.';
+ }else if(operation==='resume'){
+  title='수강 재개';reason='관리자 수강 재개';visible('adjust-end-wrap',true);visible('adjust-extension-wrap',true);
+  hint='기간 연장이 없으면 새 종료일을 비워두세요. 연장할 경우 새 종료일과 무료/유료 구분을 함께 선택합니다.';
+ }else if(operation==='extend'){
+  title='수강기간 연장';reason='관리자 수강기간 연장';visible('adjust-end-wrap',true);visible('adjust-extension-wrap',true);
+  form.elements.new_access_end.required=true;form.elements.extension_kind.required=true;
+  hint='현재 종료일 '+row.access_end+'보다 뒤 날짜만 입력할 수 있습니다.';
+ }else if(operation==='refund'){
+  title='수강권 환불 기록';reason='관리자 환불 처리';visible('adjust-refund-kind-wrap',true);
+  visible('adjust-refund-amount-wrap',true);visible('adjust-refund-ref-wrap',true);
+  hint='이 화면은 환불 사실을 기록하는 기능이며 PG 환불을 실행하거나 검증하지 않습니다.';
+  syncRefundFields();
+ }
+ form.elements.reason.value=reason;
+ $('adjust-title').textContent=title;
+ $('adjust-summary').textContent=row.name+' / '+row.program_title+(row.cohort_label?' / '+row.cohort_label:'')+' / '+row.access_start+' ~ '+row.access_end;
+ $('adjust-hint').textContent=hint;
+ $('adjust-dialog').showModal();
+}
+async function showAdjustmentHistory(row){
+ const dialog=$('adjust-history-dialog'),root=$('adjust-history-list');root.replaceChildren();
+ $('adjust-history-summary').textContent=row.name+' / '+row.program_title+(row.cohort_label?' / '+row.cohort_label:'');
+ text('adjust-history-status','불러오는 중입니다.');dialog.showModal();
+ try{
+  const rows=await api('/portal/api/admin/learning/enrollments/'+row.enrollment_id+'/adjustments?limit=100');
+  for(const x of rows){
+   const card=el('article',undefined,'adjust-history-item');
+   card.append(el('strong',adjustmentLabel(x.kind)+' / '+x.effective_on));
+   card.append(el('span',x.status_before+' → '+x.status_after));
+   card.append(el('span',x.access_start_before+' ~ '+x.access_end_before+' → '+x.access_start_after+' ~ '+x.access_end_after));
+   if(x.extension_kind)card.append(el('span','연장: '+(x.extension_kind==='FREE'?'무료':'유료')));
+   if(x.refund_kind){
+    const detail='환불: '+(x.refund_kind==='FULL'?'전액':'부분')+(x.refund_amount_krw!=null?' / '+money(x.refund_amount_krw):'');
+    card.append(el('span',detail,'refund-line'));
+   }
+   if(x.refund_reference)card.append(el('span','참조: '+x.refund_reference));
+   card.append(el('span','사유: '+x.note));
+   root.append(card);
+  }
+  text('adjust-history-status',rows.length?'':'변경 이력이 없습니다.');
+ }catch(e){text('adjust-history-status','이력을 불러오지 못했습니다.');}
+}
+function actionButton(label,className,handler){
+ const b=el('button',label,className);b.type='button';b.addEventListener('click',handler);return b;
+}
+async function cancelEnrollment(row){
+ if(!confirm('이 수강권을 취소할까요? 환불 기록이 필요한 경우에는 환불 기능을 사용하세요.'))return;
+ try{
+  await post('/portal/api/admin/learning/enrollments/cancel',{
+   request_id:requestId(),reason:'관리자 수강권 취소',enrollment_id:row.enrollment_id,version:row.version});
+  await loadEnrollments();text('enrollment-status','수강권을 취소했습니다.');
+ }catch(e){text('enrollment-status','취소하지 못했습니다: '+(e.detail||e.status||''));}
+}
+async function restoreEnrollment(row){
+ if(!confirm('취소한 수강권을 복구할까요?'))return;
+ try{
+  await post('/portal/api/admin/learning/enrollments/restore',{
+   request_id:requestId(),reason:'관리자 수강권 복구',enrollment_id:row.enrollment_id,version:row.version});
+  await loadEnrollments();text('enrollment-status','수강권을 복구했습니다.');
+ }catch(e){text('enrollment-status','복구하지 못했습니다: '+(e.detail||e.status||''));}
+}
 async function loadEnrollments(){
  const q=new URLSearchParams({limit:'100'});if($('enrollment-run').value)q.set('run_id',$('enrollment-run').value);
  try{
@@ -134,29 +225,17 @@ async function loadEnrollments(){
   for(const r of data.items){
    const tr=el('tr');const values=[r.name,r.program_title+(r.cohort_label?' / '+r.cohort_label:''),r.access_start+' ~ '+r.access_end,r.status,r.source];
    for(const v of values){const td=el('td',v);tr.append(td);}
-   const td=el('td');
-   if(r.status==='CANCELLED'||r.status==='SUSPENDED'){
-    const resume=r.status==='SUSPENDED',label=resume?'재개':'복구',b=el('button',label,'restore');b.type='button';
-    b.addEventListener('click',async()=>{
-     if(!confirm(resume?'이 수강권을 다시 이용 가능 상태로 재개할까요?':'취소한 수강권을 복구할까요?'))return;
-     b.disabled=true;
-     try{
-      await post('/portal/api/admin/learning/enrollments/restore',{
-       request_id:requestId(),reason:resume?'관리자 수강권 재개':'관리자 수강권 복구',
-       enrollment_id:r.enrollment_id,version:r.version});
-      await loadEnrollments();text('enrollment-status',resume?'수강권을 재개했습니다.':'수강권을 복구했습니다.');
-     }catch(e){text('enrollment-status',(resume?'재개':'복구')+'하지 못했습니다: '+(e.detail||e.status||''));}
-     finally{b.disabled=false;}
-    });td.append(b);
+   const td=el('td');td.className='enrollment-actions';
+   if(r.status==='CANCELLED'){
+    td.append(actionButton('복구','restore',()=>restoreEnrollment(r)));
    }else{
-    const b=el('button','취소','cancel');b.type='button';b.addEventListener('click',async()=>{
-     if(!confirm('이 수강권을 취소할까요?'))return;
-     b.disabled=true;
-     try{await post('/portal/api/admin/learning/enrollments/cancel',{request_id:requestId(),reason:'관리자 수강권 취소',enrollment_id:r.enrollment_id,version:r.version});await loadEnrollments();text('enrollment-status','수강권을 취소했습니다.');}
-     catch(e){text('enrollment-status','취소하지 못했습니다: '+(e.detail||e.status||''));}
-     finally{b.disabled=false;}
-    });td.append(b);
+    if(r.status==='SCHEDULED'||r.status==='ACTIVE')td.append(actionButton('휴식','suspend',()=>openAdjustment(r,'suspend')));
+    if(r.status==='SUSPENDED')td.append(actionButton('재개','restore',()=>openAdjustment(r,'resume')));
+    td.append(actionButton('연장','extend',()=>openAdjustment(r,'extend')));
+    td.append(actionButton('환불','refund',()=>openAdjustment(r,'refund')));
+    td.append(actionButton('취소','cancel',()=>cancelEnrollment(r)));
    }
+   td.append(actionButton('이력','history',()=>showAdjustmentHistory(r)));
    tr.append(td);body.append(tr);
   }
   text('enrollment-status',data.items.length?'':'등록된 수강권이 없습니다.');
@@ -223,6 +302,37 @@ $('grant-form').addEventListener('submit',async e=>{
    access_start:f.access_start,access_end:f.access_end,note:f.note};
  try{await post('/portal/api/admin/learning/enrollments',body);text('grant-status','수강권을 지급했습니다.');await loadCatalog();}
  catch(x){text('grant-status','지급하지 못했습니다: '+(x.detail||x.status||''));}
+});
+$('adjust-close').addEventListener('click',()=>$('adjust-dialog').close());
+$('adjust-cancel').addEventListener('click',()=>$('adjust-dialog').close());
+$('adjust-history-close').addEventListener('click',()=>$('adjust-history-dialog').close());
+$('adjust-form').elements.refund_kind.addEventListener('change',syncRefundFields);
+$('adjust-form').addEventListener('submit',async e=>{
+ e.preventDefault();const form=e.currentTarget,f=formData(form),op=f.operation,row=state.adjusting;
+ if(!row)return;
+ const body={request_id:requestId(),reason:f.reason,enrollment_id:f.enrollment_id,
+   version:Number(f.version),effective_on:f.effective_on};
+ if(op==='resume'){
+  body.new_access_end=f.new_access_end||null;body.extension_kind=f.extension_kind||null;
+  if(Boolean(body.new_access_end)!==Boolean(body.extension_kind)){
+   $('adjust-hint').textContent='종료일을 연장할 때는 무료/유료 구분도 함께 선택해 주세요.';return;
+  }
+ }else if(op==='extend'){
+  body.new_access_end=f.new_access_end;body.extension_kind=f.extension_kind;
+ }else if(op==='refund'){
+  body.refund_kind=f.refund_kind;
+  body.refund_amount_krw=f.refund_amount_krw==null?null:Number(f.refund_amount_krw);
+  body.refund_reference=f.refund_reference||null;
+  body.new_access_end=f.refund_kind==='PARTIAL'?f.new_access_end:null;
+ }
+ $('adjust-save').disabled=true;
+ try{
+  const endpoint=adjustmentEndpoint[op];if(!endpoint)throw Object.assign(new Error(),{detail:'unsupported_adjustment'});
+  await post(endpoint,body);
+  $('adjust-dialog').close();state.adjusting=null;await loadEnrollments();
+  text('enrollment-status',{suspend:'수강을 휴식 처리했습니다.',resume:'수강을 재개했습니다.',extend:'수강기간을 연장했습니다.',refund:'환불 기록을 반영했습니다.'}[op]);
+ }catch(x){$('adjust-hint').textContent='저장하지 못했습니다: '+(x.detail||x.status||'');}
+ finally{$('adjust-save').disabled=false;}
 });
 $('logout').addEventListener('click',async()=>{try{const t=await csrf();await api('/auth/logout',{method:'POST',headers:{'X-CSRF-Token':t}});location.href='/';}catch{ text('action-status','로그아웃하지 못했습니다.');}});
 boot();

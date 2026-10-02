@@ -63,7 +63,7 @@ MARKETING_UPDATE = {
                                   'last_consented_at','last_withdrawn_at','updated_at'),
 }
 MARKETING_DELETE = ('member_marketing_consents',)
-COURSE_READ = ('course_programs','course_runs','course_sessions','course_enrollments')
+COURSE_READ = ('course_programs','course_runs','course_sessions','course_enrollments','course_enrollment_adjustments')
 COURSE_WRITE_ONLY = ('course_domain_audit',)
 COURSE_SELECT_COLUMNS = {
     'course_domain_audit': ('actor_id','request_id','fingerprint','result'),
@@ -80,6 +80,10 @@ COURSE_INSERT = {
                            'access_end','source','note'),
     'course_domain_audit': ('event_id','actor_id','request_id','fingerprint','operation',
                             'entity_id','reason','result'),
+    'course_enrollment_adjustments': ('adjustment_id','enrollment_id','actor_id','request_id','kind',
+                                      'effective_on','status_before','status_after','access_start_before',
+                                      'access_end_before','access_start_after','access_end_after','extension_kind',
+                                      'refund_kind','refund_amount_krw','refund_reference','note'),
     'enrollment_learners': ('learner_id','member_id','name','email','phone'),
 }
 COURSE_UPDATE = {
@@ -88,7 +92,7 @@ COURSE_UPDATE = {
                     'status','price_krw','archived_at','version','updated_at'),
     'course_sessions': ('title','mentor_name','starts_at','ends_at','video_url',
                         'material_url','cancelled_at','version','updated_at'),
-    'course_enrollments': ('status','cancelled_at','suspended_at','version','updated_at'),
+    'course_enrollments': ('status','access_end','cancelled_at','suspended_at','version','updated_at'),
 }
 
 CALENDAR_READ = ('calendar_events',)

@@ -111,6 +111,12 @@ def make_router(settings:AuthSettings,calendar_enabled=False):
             label,_,start_at,end_at,_=_month_parts(month)
             return {'month':label,'items':read(response,store.admin_calendar,start_at,end_at)}
 
+    @router.get('/admin/learning/enrollments/{enrollment_id}/adjustments')
+    def enrollment_adjustments(enrollment_id:UUID,response:Response,
+                               admin:Annotated[Principal,Depends(require_admin)],
+                               limit:int=Query(100,ge=1,le=200)):
+        return read(response,store.adjustments,enrollment_id,limit)
+
     @router.get('/admin/learning/targets')
     def targets(response:Response,admin:Annotated[Principal,Depends(require_admin)],
                 q:str=Query(default='',max_length=200),limit:int=Query(20,ge=1,le=50)):
@@ -162,6 +168,22 @@ def make_router(settings:AuthSettings,calendar_enabled=False):
     @router.post('/admin/learning/enrollments/restore')
     def restore(body:model.EnrollmentRestore,response:Response,admin:Annotated[Principal,Depends(permitted)]):
         return write(response,admin,'enrollment.restore',body)
+
+    @router.post('/admin/learning/enrollments/suspend')
+    def suspend(body:model.EnrollmentSuspend,response:Response,admin:Annotated[Principal,Depends(permitted)]):
+        return write(response,admin,'enrollment.suspend',body)
+
+    @router.post('/admin/learning/enrollments/resume')
+    def resume(body:model.EnrollmentResume,response:Response,admin:Annotated[Principal,Depends(permitted)]):
+        return write(response,admin,'enrollment.resume',body)
+
+    @router.post('/admin/learning/enrollments/extend')
+    def extend(body:model.EnrollmentExtend,response:Response,admin:Annotated[Principal,Depends(permitted)]):
+        return write(response,admin,'enrollment.extend',body)
+
+    @router.post('/admin/learning/enrollments/refund')
+    def refund(body:model.EnrollmentRefund,response:Response,admin:Annotated[Principal,Depends(permitted)]):
+        return write(response,admin,'enrollment.refund',body)
 
     return router
 
