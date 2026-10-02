@@ -4,6 +4,7 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 import pytest
 import auth_http
@@ -119,6 +120,19 @@ def test_arbitrary_files_not_served(app, file):
 
 def test_sql_search_escapes_wildcards():
     assert portal_store._literal_search("a%_\\b") == "%a\\%\\_\\\\b%"
+
+
+def test_private_portal_middleware_preserves_public_calendar_cache_contract(app):
+    @app.get(portal.PUBLIC_CALENDAR_PATH)
+    def synthetic_public_calendar():
+        return JSONResponse(
+            {'month':'2026-10','items':[],'has_prev':False,'has_next':False},
+            headers={'Cache-Control':portal.PUBLIC_CALENDAR_CACHE})
+    response=TestClient(app).get(portal.PUBLIC_CALENDAR_PATH)
+    assert response.status_code==200
+    assert response.headers['cache-control']==portal.PUBLIC_CALENDAR_CACHE
+    assert response.headers['referrer-policy']=='no-referrer'
+    assert response.headers['x-frame-options']=='DENY'
 
 
 def test_assets_use_text_nodes_and_no_token_storage():
