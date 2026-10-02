@@ -1,4 +1,4 @@
 {
-  "operation": "hold",
-  "request_id": "post-admin-canonical-learning-hold-20261002-a"
+  "operation": "rollout-login-handoff",
+  "request_id": "admin-course-sessions-20261002-a"
 }
