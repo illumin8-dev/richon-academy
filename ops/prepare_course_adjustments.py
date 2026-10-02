@@ -1,8 +1,8 @@
 """Owner-only DB021 preparation for enrollment adjustments.
 
-Applies the reviewed adjustment ledger and refreshes the exact course-domain
-runtime grants. Never deploys Cloud Run, changes feature flags, calls providers,
-or prints credentials/customer rows.
+Applies the reviewed adjustment ledger and only the DB021 privilege delta,
+then validates the complete runtime grant profile. Never deploys Cloud Run,
+changes feature flags, calls providers, or prints credentials/customer rows.
 """
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ import db
 import course_adjustment_migrate as adjustment
 import portal_readiness as ready
 import prepare_account_lifecycle as base
-import prepare_course_domain as course
 
 CONFIRM='APPLY_DB021_ENROLLMENT_ADJUSTMENTS'
 
@@ -76,6 +75,30 @@ def apply_migration(cur):
     return True
 
 
+def grant_adjustment_delta(cur):
+    from psycopg import sql
+
+    role=sql.Identifier(ready.ROLE)
+    table=sql.Identifier('course_enrollment_adjustments')
+    relation=sql.SQL('richon.{}').format(table)
+
+    # Normalize only the new DB021 table. Existing course/legacy grants are not
+    # touched here because those features may already be live concurrently.
+    cur.execute(sql.SQL('REVOKE ALL ON {} FROM {}').format(relation,role))
+    cur.execute(sql.SQL('GRANT SELECT ON {} TO {}').format(relation,role))
+    columns=ready.COURSE_INSERT['course_enrollment_adjustments']
+    cur.execute(sql.SQL('GRANT INSERT ({}) ON {} TO {}').format(
+        sql.SQL(',').join(map(sql.Identifier,columns)),relation,role))
+    cur.execute(sql.SQL(
+        'REVOKE UPDATE,DELETE,TRUNCATE,TRIGGER,REFERENCES ON {} FROM {}'
+    ).format(relation,role))
+
+    # DB021 operations adjust the canonical end date but no other new column.
+    cur.execute(sql.SQL(
+        'GRANT UPDATE ({}) ON richon.course_enrollments TO {}'
+    ).format(sql.Identifier('access_end'),role))
+
+
 def prepare(owner_url,runtime_url):
     base.diagnose_connection(owner_url,base.OWNER_ROLE,'owner')
     base.diagnose_connection(runtime_url,ready.ROLE,'runtime')
@@ -87,9 +110,9 @@ def prepare(owner_url,runtime_url):
                 cur.execute("SET LOCAL lock_timeout='10s'")
                 cur.execute('SELECT pg_advisory_xact_lock(726426,7)')
                 changed=apply_migration(cur)
-                course.grant_course(cur)
+                grant_adjustment_delta(cur)
                 ready.check_role(cur)
-    except (Stop,course.Stop,ValueError):
+    except (Stop,ValueError):
         raise
     except Exception:
         raise Stop('db021_grant_transaction_failed') from None
@@ -177,8 +200,8 @@ def main():
         print('COURSE_RUNTIME_GRANTS=PASS / RUNTIME_READBACK=PASS')
         print('CUSTOMER_ROWS_CHANGED=NO / CLOUD_RUN_OR_WORKER_CHANGED=NO')
         return 0
-    except (Stop,course.Stop,base.Stop,ValueError,Exception,KeyboardInterrupt) as exc:
-        if isinstance(exc,(Stop,course.Stop,base.Stop)):
+    except (Stop,base.Stop,ValueError,Exception,KeyboardInterrupt) as exc:
+        if isinstance(exc,(Stop,base.Stop)):
             code=str(exc)
         elif isinstance(exc,ValueError):
             code=str(exc) or 'db021_readiness_failed'
