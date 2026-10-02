@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 import auth_core
 from portal_store import read_cursor, _literal_search
+from store_common import fetch_rows
 
 SEOUL=ZoneInfo('Asia/Seoul')
 
@@ -29,11 +30,6 @@ def transaction(actor):
         if cur.fetchone()!=('admin','active'):
             raise Rejected('admin_required',403)
         yield cur
-
-
-def _rows(cur):
-    names=[x.name for x in cur.description]
-    return [dict(zip(names,row,strict=True)) for row in cur.fetchall()]
 
 
 def _audit(cur,actor,request_id,fingerprint,operation,entity,reason,result):
@@ -298,7 +294,7 @@ def programs(limit=100,offset=0,include_archived=False):
           WHERE (%s OR archived_at IS NULL)
           ORDER BY archived_at NULLS FIRST,title,program_id LIMIT %s OFFSET %s''',
           (include_archived,limit+1,offset))
-        rows=_rows(cur)
+        rows=fetch_rows(cur)
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}
 
 
@@ -312,7 +308,7 @@ def runs(program_id=None,limit=100,offset=0,include_archived=False):
           WHERE (%s::text IS NULL OR r.program_id=%s) AND (%s OR r.archived_at IS NULL)
           ORDER BY r.starts_on DESC,r.run_id DESC LIMIT %s OFFSET %s''',
           (program_id,program_id,include_archived,limit+1,offset))
-        rows=_rows(cur)
+        rows=fetch_rows(cur)
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}
 
 
@@ -323,7 +319,7 @@ def sessions(run_id,include_cancelled=False):
           FROM richon.course_sessions
           WHERE run_id=%s AND (%s OR cancelled_at IS NULL)
           ORDER BY sequence_no,starts_at,session_id''',(run_id,include_cancelled))
-        return _rows(cur)
+        return fetch_rows(cur)
 
 
 def admin_calendar(start_at,end_at):
@@ -340,7 +336,7 @@ def admin_calendar(start_at,end_at):
                  (event_type='SPECIAL' AND ends_at IS NOT NULL AND ends_at>%s AND starts_at<%s)
                  OR ((event_type<>'SPECIAL' OR ends_at IS NULL) AND starts_at>=%s AND starts_at<%s))
            ORDER BY starts_at,event_id''',(start_at,end_at,start_at,end_at))
-        return _rows(cur)
+        return fetch_rows(cur)
 
 
 def public_calendar(prev_start,start_at,end_at,next_end):
@@ -357,7 +353,7 @@ def public_calendar(prev_start,start_at,end_at,next_end):
                  (event_type='SPECIAL' AND ends_at IS NOT NULL AND ends_at>%s AND starts_at<%s)
                  OR ((event_type<>'SPECIAL' OR ends_at IS NULL) AND starts_at>=%s AND starts_at<%s))
            ORDER BY starts_at,event_id''',(start_at,end_at,start_at,end_at))
-        items=_rows(cur)
+        items=fetch_rows(cur)
         cur.execute('''SELECT
           EXISTS(SELECT 1 FROM richon.calendar_events
             WHERE cancelled_at IS NULL AND is_public IS TRUE AND (
@@ -387,7 +383,7 @@ def enrollments(run_id=None,limit=50,offset=0):
           WHERE (%s::uuid IS NULL OR e.run_id=%s)
           ORDER BY e.created_at DESC,e.enrollment_id DESC LIMIT %s OFFSET %s''',
           (run_id,run_id,limit+1,offset))
-        rows=_rows(cur)
+        rows=fetch_rows(cur)
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}
 
 
@@ -413,7 +409,7 @@ def targets(q,limit=20):
           CASE WHEN email IS NULL THEN NULL ELSE left(split_part(email,'@',1),1)||'***@'||split_part(email,'@',2) END AS email_masked
         FROM candidates ORDER BY created_at DESC LIMIT %(limit)s''',
         {'like':like,'phone':phone,'exact':q,'limit':limit})
-        return _rows(cur)
+        return fetch_rows(cur)
 
 
 def my_courses(member_id:UUID,limit=20,offset=0):
@@ -440,5 +436,5 @@ def my_courses(member_id:UUID,limit=20,offset=0):
           WHERE l.member_id=%s AND e.status<>'CANCELLED'
           ORDER BY e.access_end DESC,e.created_at DESC LIMIT %s OFFSET %s''',
           (member_id,limit+1,offset))
-        rows=_rows(cur)
+        rows=fetch_rows(cur)
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}

@@ -3,6 +3,7 @@
 No identity inference, order claiming, membership edits, or payment side effects.
 """
 from contextlib import contextmanager
+from store_common import fetch_rows
 from uuid import UUID
 
 import db
@@ -31,11 +32,6 @@ def _row(cur):
     if row is None:
         raise MissingMember()
     return dict(zip([c.name for c in cur.description], row, strict=True))
-
-
-def _rows(cur):
-    names = [c.name for c in cur.description]
-    return [dict(zip(names, row, strict=True)) for row in cur.fetchall()]
 
 
 def _page(cur, limit: int, offset: int):
@@ -178,7 +174,7 @@ def member_detail(member_id: UUID):
             WHERE l.member_id=%s
             ORDER BY e.access_end DESC,e.created_at DESC
             LIMIT 100""",(member_id,))
-        result['learning']=_rows(cur)
+        result['learning']=fetch_rows(cur)
 
         result['legacy_learning']=[]
         if os.getenv('RICHON_MONTHLY_ENABLED','false')=='true':
@@ -196,13 +192,13 @@ def member_detail(member_id: UUID):
                 GROUP BY e.enrollment_id,c.title,c.cohort,r.start_month,x.archived_at
                 ORDER BY r.start_month DESC,e.enrollment_id DESC
                 LIMIT 100""",(member_id,))
-            result['legacy_learning']=_rows(cur)
+            result['legacy_learning']=fetch_rows(cur)
 
         cur.execute(f"""SELECT {ORDER_FIELDS}
             FROM richon.orders o JOIN richon.member_order_links l ON l.order_id=o.order_id
             WHERE l.member_id=%s
             ORDER BY o.created_at DESC,o.order_id DESC LIMIT 100""",(member_id,))
-        result['orders']=_rows(cur)
+        result['orders']=fetch_rows(cur)
         return result
 
 def courses(limit: int, offset: int, q: str, enabled: bool | None):
