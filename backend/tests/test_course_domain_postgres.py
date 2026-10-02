@@ -186,6 +186,10 @@ def test_admin_cancel_restore_and_resume_are_audited_without_deleting_history(co
     resumed=store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
         request_id=req(),reason='가상 재개',enrollment_id=UUID(grant['enrollment_id']),version=restored['version']))
     assert resumed['status']=='ACTIVE'
+    with pytest.raises(store.Rejected) as exc:
+        store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
+            request_id=req(),reason='활성 수강권 중복 복구',enrollment_id=UUID(grant['enrollment_id']),version=resumed['version']))
+    assert exc.value.code=='enrollment_not_restorable'
     with course_db() as c:
         assert c.execute('''SELECT status,cancelled_at,suspended_at
             FROM richon.course_enrollments WHERE enrollment_id=%s''',(grant['enrollment_id'],)).fetchone()==('ACTIVE',None,None)
