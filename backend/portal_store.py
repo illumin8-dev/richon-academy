@@ -104,8 +104,10 @@ def summary():
         cur.execute("""
             SELECT (SELECT count(*) FROM richon.members WHERE status<>'withdrawn') AS members_total,
                 (SELECT count(*) FROM richon.members WHERE status='active') AS members_active,
-                (SELECT count(*) FROM richon.courses) AS courses_total,
-                (SELECT count(*) FROM richon.courses WHERE enabled) AS courses_enabled,
+                (SELECT count(*) FROM richon.course_programs WHERE archived_at IS NULL) AS programs_total,
+                (SELECT count(*) FROM richon.course_runs WHERE archived_at IS NULL) AS runs_total,
+                (SELECT count(*) FROM richon.course_runs
+                    WHERE archived_at IS NULL AND status IN ('OPEN','WAITLIST')) AS recruiting_runs,
                 (SELECT count(*) FROM richon.orders) AS orders_total,
                 (SELECT count(*) FROM richon.orders WHERE status='pending_payment') AS pending_orders,
                 (SELECT count(*) FROM richon.orders o WHERE NOT EXISTS
