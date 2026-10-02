@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "admin-course-sessions-20261002-a"
+  "operation": "hold",
+  "request_id": "post-admin-course-sessions-hold-20261002-a"
 }
