@@ -206,7 +206,7 @@ def test_public_calendar_filters_private_rows_and_reports_adjacent_months(course
     august=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(
         request_id=req(),reason='공개 다음달',event_date=date(2026,8,6),
         color_hex='#00B622',course_label='Pre리치온',content_text='부동산 투자원칙'))
-    with store.write_cursor(admin) as cur:
+    with course_db() as cur:
         cur.execute('UPDATE richon.calendar_events SET is_public=FALSE WHERE event_id=%s',(UUID(july['event_id']),))
     data=store.public_calendar(
         datetime(2026,5,31,15,tzinfo=timezone.utc),
