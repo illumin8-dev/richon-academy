@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import pytest
 
-source=Path(__file__).parents[1]/'monthly_store.py'
+source=Path(__file__).parents[1]/'domain_dates.py'
 tree=ast.parse(source.read_text())
 functions=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in {'month_start','add_months'}]
 namespace={'date':date,'re':re}
@@ -35,3 +35,15 @@ def test_not_a_day_based_expiry():
 def test_extending_preserves_original_month_anchor():
     start=month_start('2026-10')
     assert add_months(add_months(start,3),1)==add_months(start,4)==month_start('2027-02')
+
+
+def test_manual_models_uses_pure_month_owner_not_store():
+    source=Path(__file__).parents[1]/'manual_models.py'
+    tree=ast.parse(source.read_text())
+    imports=[
+        n.module
+        for n in tree.body
+        if isinstance(n,ast.ImportFrom) and n.module is not None
+    ]
+    assert 'domain_dates' in imports
+    assert 'monthly_store' not in imports

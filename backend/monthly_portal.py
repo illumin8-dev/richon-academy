@@ -14,6 +14,7 @@ from auth_core import Principal
 from auth_http import require_admin, AuthSettings, _origin, _csrf, cookie_token
 from portal import UI_PAGE_HEADERS, HEADERS, SearchQuery, PageQuery, PageResult
 import monthly_store as store
+from domain_dates import month_start
 
 logger = logging.getLogger('richon.monthly')
 STATIC = Path(__file__).parent / 'portal_static'
@@ -37,7 +38,7 @@ class Filters(SearchQuery):
     @field_validator('month','end_from','end_to')
     @classmethod
     def valid_month(cls,value):
-        if value is not None: store.month_start(value)
+        if value is not None: month_start(value)
         return value
 
     @field_validator('plan_months',mode='before')

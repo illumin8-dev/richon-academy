@@ -5,7 +5,7 @@ import unicodedata
 from typing import Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from monthly_store import month_start
+from domain_dates import month_start
 
 class Input(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True, hide_input_in_errors=True)
