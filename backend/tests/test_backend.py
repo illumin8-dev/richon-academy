@@ -105,6 +105,20 @@ def test_database_probe_uses_read_only_transaction_and_closes(monkeypatch):
     connection.__exit__.assert_called_once()
 
 
+def test_read_cursor_uses_repeatable_read_and_timeouts(monkeypatch):
+    connection, cursor = fake_connection(monkeypatch)
+    with db.read_cursor() as current:
+        assert current is cursor
+    assert connection.read_only is True
+    assert [call.args[0] for call in cursor.execute.call_args_list] == [
+        "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ",
+        "SET LOCAL statement_timeout = '5s'",
+        "SET LOCAL lock_timeout = '3s'",
+    ]
+    cursor.__exit__.assert_called_once()
+    connection.__exit__.assert_called_once()
+
+
 def test_database_probe_closes_on_query_failure(monkeypatch):
     connection, cursor = fake_connection(monkeypatch)
     cursor.execute.side_effect = RuntimeError("simulated failure")

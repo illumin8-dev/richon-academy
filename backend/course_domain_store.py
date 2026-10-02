@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import auth_core
-from portal_store import read_cursor
+from db import read_cursor
 from store_common import fetch_rows, literal_search
 
 SEOUL=ZoneInfo('Asia/Seoul')
