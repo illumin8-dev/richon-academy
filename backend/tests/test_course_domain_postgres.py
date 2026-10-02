@@ -210,9 +210,10 @@ def test_admin_cancel_restore_and_resume_are_audited_without_deleting_history(co
 def test_extend_and_refund_preserve_history_and_idempotency(course_db,actors):
     admin,member=actors
     pid='adjust-'+uuid4().hex[:8];program(admin,pid)
-    start=date.today();end=start+timedelta(days=30);r=run(admin,pid,start,end)
+    start=date.today();end=start+timedelta(days=30);run_end=end+timedelta(days=30);r=run(admin,pid,start,run_end)
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
-        request_id=req(),reason='가상 조정 지급',run_id=UUID(r['run_id']),member_id=member))
+        request_id=req(),reason='가상 조정 지급',run_id=UUID(r['run_id']),member_id=member,
+        access_start=start,access_end=end))
 
     extend_body=model.EnrollmentExtend(
         request_id=req(),reason='운영 일정 보상 무료 연장',enrollment_id=UUID(grant['enrollment_id']),
@@ -250,9 +251,10 @@ def test_extend_and_refund_preserve_history_and_idempotency(course_db,actors):
 def test_resume_can_extend_only_with_explicit_free_or_paid_kind(course_db,actors):
     admin,member=actors
     pid='resume-'+uuid4().hex[:8];program(admin,pid)
-    start=date.today();end=start+timedelta(days=14);r=run(admin,pid,start,end)
+    start=date.today();end=start+timedelta(days=14);run_end=end+timedelta(days=21);r=run(admin,pid,start,run_end)
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
-        request_id=req(),reason='가상 재개 연장 지급',run_id=UUID(r['run_id']),member_id=member))
+        request_id=req(),reason='가상 재개 연장 지급',run_id=UUID(r['run_id']),member_id=member,
+        access_start=start,access_end=end))
     suspended=store.mutate(admin,'enrollment.suspend',model.EnrollmentSuspend(
         request_id=req(),reason='가상 휴식',enrollment_id=UUID(grant['enrollment_id']),version=grant['version']))
     resumed=store.mutate(admin,'enrollment.resume',model.EnrollmentResume(
