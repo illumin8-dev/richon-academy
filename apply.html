@@ -12,43 +12,7 @@
 <link rel="stylesheet" href="frontend/shared/site.css">
 <script defer src="frontend/shared/site.js"></script>
 <script defer src="frontend/shared/login.js"></script>
-<style>
-:root{--apply-gold:#c9a86a;--apply-gold-dark:#a9842f;--apply-paper:#faf8f3;--apply-soft:#f6f5f2;--apply-shadow:0 22px 50px -30px rgba(0,0,0,.18);--apply-serif:'Fraunces',serif}
-*{box-sizing:border-box}
-body.apply-page{margin:0;background:#fff;color:var(--site-ink);font-family:var(--site-font);line-height:1.65;-webkit-font-smoothing:antialiased}
-.apply-wrap{max-width:1040px;margin:0 auto;padding:0 24px}
-.apply-head{padding:48px 0 12px}.apply-head .eyebrow{margin:0 0 8px;color:var(--apply-gold-dark);font:italic 15px/1.4 var(--apply-serif)}
-.apply-head h1{margin:0;font-size:clamp(30px,4vw,42px);line-height:1.15;letter-spacing:-.035em}
-.apply-chips{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 6px}
-.apply-chip{appearance:none;border:1px solid #d8d4c8;background:#fff;color:var(--site-muted);border-radius:999px;padding:9px 14px;font:650 13px/1.4 var(--site-font);cursor:pointer;transition:.2s}
-.apply-chip:hover{border-color:var(--apply-gold);color:var(--apply-gold-dark)}.apply-chip[aria-pressed=true]{background:var(--site-orange);border-color:var(--site-orange);color:#fff}
-.apply-chip small{margin-left:5px;font-size:10px;font-weight:700;opacity:.82}
-.apply-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.9fr);gap:30px;padding:24px 0 68px;align-items:start}
-.apply-visual{position:relative;aspect-ratio:16/9;border:1px solid var(--site-border);border-radius:16px;background:#f3f1ea;box-shadow:var(--apply-shadow);margin-bottom:22px;overflow:hidden}
-.apply-visual img{width:100%;height:100%;display:block;object-fit:cover}
-.apply-visual-badge{position:absolute;left:14px;bottom:14px;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.92);color:var(--site-ink);font-size:11px;font-weight:800;box-shadow:0 8px 22px -14px rgba(0,0,0,.45)}
-.apply-when{font-size:12.5px;font-weight:750;color:var(--site-orange);letter-spacing:.02em;margin-bottom:8px}
-.apply-title{font-size:clamp(23px,3vw,32px);font-weight:800;letter-spacing:-.025em;margin-bottom:12px}
-.apply-desc{color:var(--site-muted);font-size:15px;margin-bottom:22px}
-.apply-gallery{display:grid;gap:14px;margin:0 0 8px}
-.apply-gallery img{width:100%;height:auto;display:block;border:1px solid var(--site-border);border-radius:14px;box-shadow:var(--apply-shadow);background:#f6f5f2}
-.apply-course-info{margin:24px 0 18px;padding:22px;border:1px solid var(--site-border);border-radius:16px;background:var(--apply-soft)}
-.apply-course-info h2{margin:0 0 8px;font-size:18px;letter-spacing:-.02em}
-.apply-course-info p{margin:0 0 16px;color:var(--site-muted);font-size:14px}
-.apply-curriculum{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.apply-curriculum li{border:1px solid #e8e3d8;border-radius:12px;background:#fff;padding:13px 14px}
-.apply-curriculum b{display:block;margin-bottom:3px;font-size:13px;color:var(--site-ink)}
-.apply-curriculum span{display:block;color:var(--site-muted);font-size:12.5px;line-height:1.55}
-.apply-summary{position:sticky;top:98px;border:1px solid var(--site-border);border-radius:16px;background:#fff;padding:24px;box-shadow:var(--apply-shadow)}
-.apply-summary-row{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:10px;color:var(--site-muted);font-size:13px}.apply-summary-row strong{text-align:right;color:var(--site-ink)}
-.apply-price{font:600 29px/1.3 var(--apply-serif);margin:9px 0 4px;color:var(--site-ink)}.apply-price small{font:500 12px/1.5 var(--site-font);color:var(--site-muted)}
-.apply-status{display:inline-flex;border-radius:999px;padding:5px 9px;margin:3px 0 12px;font-size:11px;font-weight:800}.apply-status.open{background:#e7f6ed;color:#247446}.apply-status.waitlist{background:#fff1df;color:#a45a10}.apply-status.upcoming{background:#f1eee8;color:#7c766b}
-.apply-actions{display:grid;gap:9px}.apply-action{display:flex;justify-content:center;align-items:center;min-height:48px;border-radius:11px;padding:12px 15px;text-decoration:none;font-size:14px;font-weight:800;transition:.2s}.apply-action.primary{background:var(--site-orange);color:#fff}.apply-action.primary:hover{background:#ff913f;transform:translateY(-2px)}.apply-action.gold{background:var(--apply-gold);color:#231c0c}.apply-action.wait{background:#fff1df;color:#a45a10;border:1px solid #f0d1a9}.apply-action[aria-disabled=true]{pointer-events:none;background:#ece8df!important;color:#8a8174!important;border-color:#e0dbd2!important;transform:none!important}
-.apply-pay-alt{margin-top:18px;padding-top:16px;border-top:1px solid var(--site-border);font-size:13px;color:var(--site-muted)}.apply-account{margin-top:6px;color:var(--apply-gold-dark);font-weight:700;overflow-wrap:anywhere}
-.apply-message{border:1px solid #eadcc7;background:#fff8ef;color:#815637;border-radius:10px;padding:13px 14px;margin-top:12px;font-size:12.5px;line-height:1.7}
-@media(max-width:820px){.apply-grid{grid-template-columns:1fr}.apply-summary{position:static}.apply-head{padding-top:36px}}
-@media(max-width:520px){.apply-wrap{padding:0 18px}.apply-head h1{font-size:29px}.apply-chip{padding:8px 11px;font-size:12px}.apply-summary{padding:20px}.apply-curriculum{grid-template-columns:1fr}}
-</style>
+<link rel="stylesheet" href="/assets/pages/apply.css">
 </head>
 <body class="richon-page apply-page">
 <span id="top" aria-hidden="true"></span>
