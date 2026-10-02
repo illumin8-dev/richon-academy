@@ -38,6 +38,19 @@ assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
 assert 'body{padding-bottom:74px}' not in index
+assert 'id="calendar"' in index
+assert 'id="landing-calendar"' in index
+assert 'assets/calendar/public-calendar.css' in index
+assert 'assets/calendar/public-calendar.js' in index
+assert 'assets/calendar/calendar-logo.svg' in index
+for relative in ('calendar-logo.svg','public-calendar.css','public-calendar.js'):
+    path=ROOT/'assets'/'calendar'/relative
+    assert path.is_file() and path.stat().st_size > 100
+calendar_js=(ROOT/'assets'/'calendar'/'public-calendar.js').read_text()
+assert "/portal/api/public/calendar?month=" in calendar_js
+assert "credentials:'omit'" in calendar_js
+for forbidden in ('innerHTML','insertAdjacentHTML','document.cookie','localStorage.','sessionStorage.','eval('):
+    assert forbidden not in calendar_js
 assert '.cal-' not in index
 assert '캘린더 셀 살짝 반응' not in index
 
