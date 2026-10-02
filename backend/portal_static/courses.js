@@ -119,7 +119,8 @@ function renderSessions(){
    try{
     await post('/portal/api/admin/learning/sessions/update',sessionUpdateBody(
       row,!row.cancelled,row.cancelled?'관리자 회차 복구':'관리자 회차 사용 중지'));
-    resetSessionForm();await loadSessions();
+    const message=row.cancelled?'회차를 복구했습니다.':'회차를 사용 중지했습니다.';
+    await loadSessions();text('session-status',message);
    }catch(e){text('session-status','변경하지 못했습니다: '+(e.detail||e.status||''));}
    finally{toggle.disabled=false;}
   });
@@ -180,7 +181,8 @@ $('session-form').addEventListener('submit',async e=>{
  $('session-save').disabled=true;
  try{
   await post(editing?'/portal/api/admin/learning/sessions/update':'/portal/api/admin/learning/sessions',body);
-  text('session-status',editing?'회차를 수정했습니다.':'회차를 추가했습니다.');resetSessionForm();await loadSessions();
+  const message=editing?'회차를 수정했습니다.':'회차를 추가했습니다.';
+  await loadSessions();text('session-status',message);
  }catch(x){text('session-status','저장하지 못했습니다: '+(x.detail||x.status||''));}
  finally{$('session-save').disabled=false;}
 });
