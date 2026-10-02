@@ -47,15 +47,7 @@ jobs:
       - run: python3 tools/check_public_ui.py
       - name: Build isolated Cloudflare Pages output
         run: bash tools/build_public_pages.sh
-      - name: Check application inline JavaScript syntax
+      - name: Check application JavaScript syntax
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          html=Path('apply.html').read_text()
-          scripts=re.findall(r'<script>(.*?)</script>',html,re.S)
-          assert scripts, 'apply inline script missing'
-          Path('/tmp/richon-apply-inline.js').write_text('\n'.join(scripts))
-          PY
-          node --check /tmp/richon-apply-inline.js
+          node --check assets/pages/apply.js
           node --check assets/calendar/public-calendar.js
