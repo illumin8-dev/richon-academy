@@ -162,18 +162,36 @@ def test_my_courses_exposes_optional_resources_only_during_access(course_db,acto
     assert row['sessions'][0]['video_url'] is None and row['sessions'][0]['material_url'] is None
 
 
-def test_admin_cancel_is_audited_and_does_not_delete_history(course_db,actors):
+def test_admin_cancel_restore_and_resume_are_audited_without_deleting_history(course_db,actors):
     admin,member=actors
     pid='cancel-'+uuid4().hex[:8];program(admin,pid)
     start=date.today();end=start+timedelta(days=10);r=run(admin,pid,start,end)
     grant=store.mutate(admin,'enrollment.grant',model.EnrollmentGrant(
         request_id=req(),reason='가상 지급',run_id=UUID(r['run_id']),member_id=member))
     cancel=model.EnrollmentCancel(request_id=req(),reason='가상 취소',enrollment_id=UUID(grant['enrollment_id']),version=grant['version'])
-    result=store.mutate(admin,'enrollment.cancel',cancel)
-    assert result['status']=='CANCELLED'
+    cancelled=store.mutate(admin,'enrollment.cancel',cancel)
+    assert cancelled['status']=='CANCELLED'
+
+    restored=store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
+        request_id=req(),reason='가상 복구',enrollment_id=UUID(grant['enrollment_id']),version=cancelled['version']))
+    assert restored['status']=='ACTIVE'
     with course_db() as c:
-        assert c.execute('SELECT status,cancelled_at IS NOT NULL FROM richon.course_enrollments WHERE enrollment_id=%s',(grant['enrollment_id'],)).fetchone()==('CANCELLED',True)
-        assert c.execute("SELECT count(*) FROM richon.course_domain_audit WHERE operation IN ('enrollment.grant','enrollment.cancel') AND entity_id=%s",(grant['enrollment_id'],)).fetchone()==(2,)
+        row=c.execute('''SELECT status,cancelled_at,suspended_at,version
+            FROM richon.course_enrollments WHERE enrollment_id=%s''',(grant['enrollment_id'],)).fetchone()
+        assert row==('ACTIVE',None,None,restored['version'])
+        c.execute("""UPDATE richon.course_enrollments
+            SET status='SUSPENDED',suspended_at=CURRENT_TIMESTAMP
+            WHERE enrollment_id=%s""",(grant['enrollment_id'],))
+
+    resumed=store.mutate(admin,'enrollment.restore',model.EnrollmentRestore(
+        request_id=req(),reason='가상 재개',enrollment_id=UUID(grant['enrollment_id']),version=restored['version']))
+    assert resumed['status']=='ACTIVE'
+    with course_db() as c:
+        assert c.execute('''SELECT status,cancelled_at,suspended_at
+            FROM richon.course_enrollments WHERE enrollment_id=%s''',(grant['enrollment_id'],)).fetchone()==('ACTIVE',None,None)
+        assert c.execute("""SELECT count(*) FROM richon.course_domain_audit
+            WHERE operation IN ('enrollment.grant','enrollment.cancel','enrollment.restore')
+              AND entity_id=%s""",(grant['enrollment_id'],)).fetchone()==(4,)
 
 
 def test_admin_member_detail_combines_canonical_enrollment_with_legacy_enabled(course_db,actors,monkeypatch):
