@@ -1642,3 +1642,52 @@
 - 사용자 육안 확인:
   - 콘텐츠가 적은 admin/mypage 화면에서 footer가 viewport 하단에 붙는지.
   - 긴 페이지에서 footer가 콘텐츠를 덮지 않고 아래로 자연스럽게 밀리는지.
+
+
+### 체크포인트 41 / 2026-10-02 운영 E2E·공개 캘린더 캐시 완료 + 정리 모드 전환
+- enrollment restore/reopen:
+  - PR #135 병합 완료.
+  - CANCELLED -> 복구 / SUSPENDED -> 재개.
+  - 기존 enrollment_id와 이력을 유지하고 access 기간 기준으로 SCHEDULED / ACTIVE / COMPLETED를 재계산.
+- 공개 캘린더 edge cache:
+  - PR #136 병합 완료.
+  - Cloudflare BIC deployment-check rule에 `/portal/api/public/calendar` 추가.
+  - Skip 범위는 Browser Integrity Check만 유지.
+  - `richon-account-router` Worker 최신 main 소스 배포 완료.
+  - 실서비스 `GET /portal/api/public/calendar` = 200 JSON.
+  - `Cache-Control: public, max-age=0, s-maxage=60`.
+  - Set-Cookie 없음 확인.
+- Worker drift 회수:
+  - 실배포 Worker에만 존재하던 `/portal/courses` return allowlist를 PR #137에서 GitHub 정본으로 복원.
+  - PR #137 CI PASS / merge 완료.
+- latest protected portal candidate:
+  - old: `richon-portal-handoff-36963149099-1`
+  - new: `richon-portal-handoff-36973175331-1`
+  - source: `9851ee40b362f1d2ba7f9b6498c99559dfddc887`
+  - default 100% revision `richon-portal-gh-35810692921-1` unchanged.
+  - IAM_UNCHANGED / EDGE_GATE / ACCESS_GATE PASS.
+- Pre리치온 9기 운영 E2E:
+  - production program/run 존재.
+  - 가격 176,000원.
+  - 기간 / access: 2026-10-08 ~ 2026-12-07.
+  - fixed_months=2.
+  - 관리자 계정에 canonical 수강권 1개 / member-linked 1개.
+  - 현재 날짜 기준 SCHEDULED -> 마이페이지에서 '시작 예정' 카드 노출 육안 확인.
+  - `/portal/api/me/courses` -> account.js -> 내 강의 렌더링 chain 확인.
+  - course_sessions=0이며 현재는 그대로 유지.
+- 일반 수강생 E2E:
+  - production 활성 일반회원이 현재 0명이라 실제 회원 대상 지급 E2E는 실사용 회원 유입 후 확인.
+  - 테스트 회원을 임의 생성하지 않음.
+- 현재 명시적 HOLD:
+  - Kakao / Naver 플랫폼 심사.
+  - 결제 / PG.
+  - 일반회원 테스트 계정 생성.
+  - Pre리치온 회차 / 영상 / 자료 운영 데이터 입력.
+- deployment request:
+  - `operation=hold`
+  - `request_id=post-public-calendar-cache-hold-20261002-a`
+  - hold commit `026f485d7e276e671774999c6029ceeafa73b999`.
+- 다음 작업:
+  - 운영 문서 최신화.
+  - 오래된 open PR / branch / obsolete draft 정리 후보 감사.
+  - 실제 close/delete는 별도 승인 전 수행하지 않음.
