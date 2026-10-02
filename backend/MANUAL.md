@@ -30,7 +30,7 @@ https://raw.githack.com/illumin8-dev/richon-academy/164da94379fb1269ea79ab69d9e2
 기준은 feat/backend-monthly-enrollments의 PR #8입니다. 원본 홈페이지, Cloud Run, Neon DB,
 IAM, Secret, 실제 회원 및 결제 데이터에는 적용하지 않았습니다. 기능은 기본 OFF입니다.
 
-- admin-test.html: index-test처럼 정적으로 열 수 있는 단일 HTML. **가상 데이터만** 포함합니다.
+- `preview/build_admin_preview.py`가 생성하는 `admin-test.html`: 정적으로 열 수 있는 단일 HTML이며 **가상 데이터만** 포함합니다. 생성물은 main에서 추적하지 않습니다.
   변경은 브라우저 탭 메모리에만 존재합니다. 새로고침하면 초기화되고 서버/DB로 전송하지 않습니다.
   로그인 없이 볼 수 있지만 실제 관리자 인증을 통과한 것이 아닙니다. 실제 개인정보 입력 금지.
 - /portal/manual: 실제 관리자 세션 + Origin + CSRF 확인 후 API를 호출하도록 작성한 UI입니다. 운영 서비스에는 미배포입니다.
