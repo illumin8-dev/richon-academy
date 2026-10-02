@@ -187,3 +187,7 @@ class EnrollmentGrant(Write):
 class EnrollmentCancel(Write):
     enrollment_id: UUID
     version: int=Field(ge=1)
+
+class EnrollmentRestore(Write):
+    enrollment_id: UUID
+    version: int=Field(ge=1)

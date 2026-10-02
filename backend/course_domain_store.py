@@ -64,6 +64,7 @@ def mutate(actor,operation,payload):
                     'session.create':_session_create,'session.update':_session_update,
                     'calendar_event.create':_calendar_event_create,'calendar_event.update':_calendar_event_update,
                     'enrollment.grant':_enrollment_grant,'enrollment.cancel':_enrollment_cancel,
+                    'enrollment.restore':_enrollment_restore,
                 }.get(operation)
                 if handler is None: raise Rejected('unsupported_operation',404)
                 result=handler(cur,actor,payload)
@@ -265,6 +266,28 @@ def _enrollment_cancel(cur,actor,body):
           version=version+1,updated_at=CURRENT_TIMESTAMP
       WHERE enrollment_id=%s RETURNING version''',(body.enrollment_id,))
     return {'enrollment_id':str(body.enrollment_id),'version':cur.fetchone()[0],'status':'CANCELLED'}
+
+
+def _enrollment_restore(cur,actor,body):
+    cur.execute('''SELECT version,status,access_start,access_end
+      FROM richon.course_enrollments WHERE enrollment_id=%s FOR UPDATE''',(body.enrollment_id,))
+    row=cur.fetchone()
+    if row is None: raise Rejected('enrollment_not_found',404)
+    version,status,access_start,access_end=row
+    if version!=body.version: raise Rejected('stale_record')
+    if status not in ('CANCELLED','SUSPENDED'):
+        raise Rejected('enrollment_not_restorable')
+    cur.execute('''UPDATE richon.course_enrollments
+      SET status=CASE
+          WHEN CURRENT_DATE<access_start THEN 'SCHEDULED'
+          WHEN CURRENT_DATE>access_end THEN 'COMPLETED'
+          ELSE 'ACTIVE' END,
+          cancelled_at=NULL,suspended_at=NULL,
+          version=version+1,updated_at=CURRENT_TIMESTAMP
+      WHERE enrollment_id=%s
+      RETURNING status,version''',(body.enrollment_id,))
+    restored_status,new_version=cur.fetchone()
+    return {'enrollment_id':str(body.enrollment_id),'version':new_version,'status':restored_status}
 
 
 def programs(limit=100,offset=0,include_archived=False):

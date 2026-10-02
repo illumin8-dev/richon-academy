@@ -159,6 +159,10 @@ def make_router(settings:AuthSettings,calendar_enabled=False):
     def cancel(body:model.EnrollmentCancel,response:Response,admin:Annotated[Principal,Depends(permitted)]):
         return write(response,admin,'enrollment.cancel',body)
 
+    @router.post('/admin/learning/enrollments/restore')
+    def restore(body:model.EnrollmentRestore,response:Response,admin:Annotated[Principal,Depends(permitted)]):
+        return write(response,admin,'enrollment.restore',body)
+
     return router
 
 

@@ -149,11 +149,30 @@ async function loadEnrollments(){
   for(const r of data.items){
    const tr=el('tr');const values=[r.name,r.program_title+(r.cohort_label?' / '+r.cohort_label:''),r.access_start+' ~ '+r.access_end,r.status,r.source];
    for(const v of values){const td=el('td',v);tr.append(td);}
-   const td=el('td');if(r.status!=='CANCELLED'){const b=el('button','취소','cancel');b.type='button';b.addEventListener('click',async()=>{
-    if(!confirm('이 수강권을 취소할까요?'))return;
-    try{await post('/portal/api/admin/learning/enrollments/cancel',{request_id:requestId(),reason:'관리자 수강권 취소',enrollment_id:r.enrollment_id,version:r.version});await loadEnrollments();}
-    catch(e){text('enrollment-status','취소하지 못했습니다: '+(e.detail||e.status||''));}
-   });td.append(b);}tr.append(td);body.append(tr);
+   const td=el('td');
+   if(r.status==='CANCELLED'||r.status==='SUSPENDED'){
+    const resume=r.status==='SUSPENDED',label=resume?'재개':'복구',b=el('button',label,'restore');b.type='button';
+    b.addEventListener('click',async()=>{
+     if(!confirm(resume?'이 수강권을 다시 이용 가능 상태로 재개할까요?':'취소한 수강권을 복구할까요?'))return;
+     b.disabled=true;
+     try{
+      await post('/portal/api/admin/learning/enrollments/restore',{
+       request_id:requestId(),reason:resume?'관리자 수강권 재개':'관리자 수강권 복구',
+       enrollment_id:r.enrollment_id,version:r.version});
+      await loadEnrollments();text('enrollment-status',resume?'수강권을 재개했습니다.':'수강권을 복구했습니다.');
+     }catch(e){text('enrollment-status',(resume?'재개':'복구')+'하지 못했습니다: '+(e.detail||e.status||''));}
+     finally{b.disabled=false;}
+    });td.append(b);
+   }else{
+    const b=el('button','취소','cancel');b.type='button';b.addEventListener('click',async()=>{
+     if(!confirm('이 수강권을 취소할까요?'))return;
+     b.disabled=true;
+     try{await post('/portal/api/admin/learning/enrollments/cancel',{request_id:requestId(),reason:'관리자 수강권 취소',enrollment_id:r.enrollment_id,version:r.version});await loadEnrollments();text('enrollment-status','수강권을 취소했습니다.');}
+     catch(e){text('enrollment-status','취소하지 못했습니다: '+(e.detail||e.status||''));}
+     finally{b.disabled=false;}
+    });td.append(b);
+   }
+   tr.append(td);body.append(tr);
   }
   text('enrollment-status',data.items.length?'':'등록된 수강권이 없습니다.');
  }catch(e){text('enrollment-status','수강권을 불러오지 못했습니다.');}

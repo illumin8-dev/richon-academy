@@ -46,6 +46,15 @@ def test_program_access_model_validation(body):
     with pytest.raises(ValidationError): model.ProgramCreate(**base,**body)
 
 
+def test_enrollment_restore_requires_versioned_explicit_id():
+    value=model.EnrollmentRestore(request_id=uuid4(),reason='가상 복구',
+                                  enrollment_id=uuid4(),version=1)
+    assert value.version==1
+    with pytest.raises(ValidationError):
+        model.EnrollmentRestore(request_id=uuid4(),reason='가상 복구',
+                                enrollment_id=uuid4(),version=0)
+
+
 def test_grant_requires_exactly_one_explicit_target():
     base=dict(request_id=uuid4(),reason='가상 지급',run_id=uuid4())
     with pytest.raises(ValidationError): model.EnrollmentGrant(**base)
@@ -118,7 +127,7 @@ def test_unauthenticated_session_read_never_reaches_store(app,monkeypatch):
 
 @pytest.mark.parametrize('path',[
     'programs','programs/update','runs','runs/update','sessions',
-    'calendar-events','calendar-events/update','enrollments','enrollments/cancel'
+    'calendar-events','calendar-events/update','enrollments','enrollments/cancel','enrollments/restore'
 ])
 def test_non_admin_writes_never_reach_store(app,monkeypatch,path):
     app.dependency_overrides[auth_http.require_member]=lambda:principal('member')
