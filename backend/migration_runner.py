@@ -11,6 +11,7 @@ def apply_standard_migration(
     connection_url=None,
     advisory_slot=1,
     statement_timeout_seconds=15,
+    dependency_error_with_version=False,
 ):
     target=db_module.database_url() if connection_url is None else connection_url
     with db_module._connect(target) as conn:
@@ -24,7 +25,10 @@ def apply_standard_migration(
                     (dependency,),
                 )
                 if cur.fetchone() != (checksum(dependency),):
-                    raise ValueError('dependency_mismatch')
+                    error='dependency_mismatch'
+                    if dependency_error_with_version:
+                        error+='_'+dependency
+                    raise ValueError(error)
             cur.execute(
                 'SELECT checksum FROM richon.schema_migrations WHERE version=%s',
                 (version,),
