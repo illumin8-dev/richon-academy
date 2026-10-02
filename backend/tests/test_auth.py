@@ -51,11 +51,16 @@ def test_token_hash_and_csrf_are_distinct_and_not_credentials():
     assert TOKEN not in repr(core.IssuedSession(TOKEN, MEMBER.expires_at))
 
 
+def test_session_policy_is_7_days_absolute_and_24h_idle():
+    assert core.SESSION_SECONDS == 7 * 24 * 60 * 60
+    assert core.IDLE_SECONDS == 24 * 60 * 60
+
+
 def test_cookie_is_host_scoped_secure_and_httponly():
     r = Response()
     http.set_session_cookie(r, core.IssuedSession(TOKEN, MEMBER.expires_at))
     value = r.headers["set-cookie"]
-    for expected in ["__Host-richon-session=", "HttpOnly", "Secure", "SameSite=lax", "Path=/", "Max-Age=43200"]:
+    for expected in ["__Host-richon-session=", "HttpOnly", "Secure", "SameSite=lax", "Path=/", "Max-Age=604800"]:
         assert expected in value
     assert "Domain=" not in value
     assert r.headers["cache-control"] == "no-store"
