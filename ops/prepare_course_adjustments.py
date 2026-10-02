@@ -131,6 +131,9 @@ def main():
         _,owner_version=base.secret_ref(base.OWNER_SERVICE,base.OWNER_SECRET)
         portal_service,runtime_version=base.secret_ref(base.PORTAL_SERVICE,base.RUNTIME_SECRET)
         need(env_value(portal_service,'RICHON_COURSE_DOMAIN_ENABLED')=='true','course_feature_not_enabled')
+        monthly_flag=env_value(portal_service,'RICHON_MONTHLY_ENABLED') or 'false'
+        manual_flag=env_value(portal_service,'RICHON_MANUAL_ENABLED') or 'false'
+        need(monthly_flag in ('true','false') and manual_flag in ('true','false'),'invalid_legacy_feature_flag')
 
         print('TARGET=richon-academy / production Neon / protected portal candidate')
         print('SCOPE=DB021 adjustment ledger + exact course runtime grants')
@@ -165,8 +168,8 @@ def main():
         os.environ['RICHON_ACCOUNT_ENABLED']='true'
         os.environ['RICHON_MARKETING_CONSENT_ENABLED']='true'
         os.environ['RICHON_COURSE_DOMAIN_ENABLED']='true'
-        os.environ['RICHON_MONTHLY_ENABLED']='true'
-        os.environ['RICHON_MANUAL_ENABLED']='true'
+        os.environ['RICHON_MONTHLY_ENABLED']=monthly_flag
+        os.environ['RICHON_MANUAL_ENABLED']=manual_flag
 
         stage='database'
         changed=prepare(owner_url,runtime_url)
