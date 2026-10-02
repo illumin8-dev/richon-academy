@@ -26,6 +26,9 @@ def test_operations_pages_share_brand_foundation_but_keep_page_css():
         css=(STATIC/name).read_text()
         assert not css.startswith(':root{')
         assert '#ef7825' not in css
+    manual=(STATIC/'manual.css').read_text()
+    for obsolete in ('header{','header>div{','.brand{','.brand span{','.side-note{','.footnote{','#identity{'):
+        assert obsolete not in manual
 
 def test_standalone_auth_has_no_legacy_inline_theme():
     css=(SHARED/'auth.css').read_text()
