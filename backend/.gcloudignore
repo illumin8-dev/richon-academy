@@ -13,6 +13,7 @@
 !portal_store.py
 !monthly_store.py
 !domain_dates.py
+!store_common.py
 !monthly_portal.py
 !manual_models.py
 !manual_store.py

@@ -8,7 +8,7 @@ from contextlib import contextmanager
 import auth_core
 from portal_store import _literal_search
 from domain_dates import month_start
-from monthly_store import _rows
+from store_common import fetch_rows
 
 class Rejected(Exception):
     def __init__(self, code='record_conflict', status=409):
@@ -199,7 +199,7 @@ def detail(actor, eid):
              JOIN richon.manual_learners y USING(learner_id) JOIN richon.enrollment_learners l USING(learner_id)
              JOIN richon.courses c USING(course_id) JOIN richon.course_month_rules r USING(course_id)
              WHERE enrollment_id=%s''',(eid,))
-        rows=_rows(cur)
+        rows=fetch_rows(cur)
         if not rows: raise Rejected('manual_enrollment_not_found',404)
         result=rows[0]
         cur.execute('''SELECT t.term_id,t.sequence_no,t.months,t.grant_state,t.quoted_amount_krw,
@@ -208,7 +208,7 @@ def detail(actor, eid):
             to_char(t.applied_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD') AS applied_on
             FROM richon.monthly_enrollment_terms t JOIN richon.manual_terms x USING(term_id)
             WHERE enrollment_id=%s ORDER BY sequence_no LIMIT 1000''',(eid,))
-        result['terms']=_rows(cur)
+        result['terms']=fetch_rows(cur)
         audit(cur,actor,'detail.read',eid,'manual_detail_view',{'fields':['name','nickname','email','phone','original_joined_on']})
     return result
 
@@ -241,5 +241,5 @@ def search(actor, body):
         ORDER BY created_at DESC,enrollment_id DESC LIMIT %(limit)s OFFSET %(offset)s''',
         {'archived':body.archived,'course':body.course_id,'q':_literal_search(body.q),'exact':body.q,'phone':phone,
          'month':body.month,'limit':body.limit+1,'offset':body.offset})
-        rows=_rows(cur)
+        rows=fetch_rows(cur)
     return {'items':rows[:body.limit],'has_more':len(rows)>body.limit,'offset':body.offset,'limit':body.limit}

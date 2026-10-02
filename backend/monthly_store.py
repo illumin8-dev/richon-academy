@@ -4,15 +4,11 @@ import re
 from uuid import UUID
 from domain_dates import month_start
 from portal_store import read_cursor, _literal_search
+from store_common import fetch_rows
 
 
 class MissingEnrollment(Exception):
     pass
-
-
-def _rows(cur):
-    names = [x.name for x in cur.description]
-    return [dict(zip(names,row,strict=True)) for row in cur.fetchall()]
 
 
 BASE = r'''
@@ -125,15 +121,15 @@ def search(filters):
           count(DISTINCT learner_id) FILTER (WHERE end_month=%(month)s::date)::integer AS ending_people,
           count(DISTINCT learner_id) FILTER (WHERE pending_terms>0 AND %(month)s::date BETWEEN start_month AND proposed_end)::integer AS pending_people
           FROM filtered''',p)
-        summary = _rows(cur)[0]
+        summary = fetch_rows(cur)[0]
         cur.execute(base+'''SELECT course_id,course_title,cohort,
           count(DISTINCT learner_id) FILTER (WHERE %(month)s::date BETWEEN start_month AND end_month)::integer AS confirmed_people,
           count(DISTINCT learner_id) FILTER (WHERE pending_terms>0 AND %(month)s::date BETWEEN start_month AND proposed_end)::integer AS pending_people
           FROM filtered GROUP BY course_id,course_title,cohort ORDER BY course_title,cohort NULLS LAST,course_id LIMIT 201''',p)
-        course_summary = _rows(cur)
+        course_summary = fetch_rows(cur)
         cur.execute(base+'SELECT '+ROW_FIELDS+''' FROM filtered
           ORDER BY end_month ASC NULLS LAST,name,enrollment_id LIMIT %(limit)s OFFSET %(offset)s''',p)
-        items = _rows(cur)
+        items = fetch_rows(cur)
     return {'month':f['month'],'summary':summary,'courses':course_summary[:200],
             'courses_truncated':len(course_summary)>200,'items':items,'limit':f['limit'],
             'offset':f['offset'],'has_more':f['offset']+len(items)<summary['total']}
@@ -144,7 +140,7 @@ def options():
         cur.execute('''SELECT c.course_id,c.title,c.cohort,to_char(r.start_month,'YYYY-MM') AS start_month,
                r.duration_kind,r.fixed_months FROM richon.course_month_rules r
                JOIN richon.courses c USING(course_id) ORDER BY c.title,c.cohort NULLS LAST,c.course_id LIMIT 201''')
-        rows = _rows(cur)
+        rows = fetch_rows(cur)
     return {'items':rows[:200],'has_more':len(rows)>200}
 
 
@@ -163,5 +159,5 @@ def history(enrollment_id: UUID, limit: int, offset: int):
           CASE WHEN grant_state='confirmed' THEN to_char(start_month+(preceding_months+months-1)*interval '1 month','YYYY-MM') END AS end_month,
           quoted_amount_krw,payment_state,paid_amount_krw,refunded_amount_krw,paid_at,receipt_state
           FROM terms ORDER BY sequence_no DESC LIMIT %s OFFSET %s''',(enrollment_id,limit+1,offset))
-        rows = _rows(cur)
+        rows = fetch_rows(cur)
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}
