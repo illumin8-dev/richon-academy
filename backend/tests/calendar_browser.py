@@ -23,11 +23,12 @@ class Handler(BaseHTTPRequestHandler):
             '/portal/assets/portal.css':'portal.css',
             '/portal/calendar-assets/calendar.css':'calendar.css',
             '/portal/calendar-assets/calendar.js':'calendar.js',
+            '/portal/calendar-assets/calendar-logo.svg':'calendar-logo.svg',
         }.get(urlsplit(self.path).path)
         if not name:self.send_error(404);return
         content=(STATIC/name).read_bytes()
         self.send_response(200)
-        self.send_header('Content-Type',{'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8'}[name.rsplit('.',1)[1]])
+        self.send_header('Content-Type',{'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8','svg':'image/svg+xml'}[name.rsplit('.',1)[1]])
         self.send_header('Content-Security-Policy',"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
         self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(content)
     def log_message(self,*args):pass
@@ -109,6 +110,15 @@ def main():
             page=context.new_page();page.goto(origin+'/portal/calendar')
             expect(page.locator('#gate')).to_be_hidden()
             expect(page.locator('#month-label')).to_have_text('2026년 10월')
+            expect(page.locator('.calendar-logo')).to_have_attribute('src','/portal/calendar-assets/calendar-logo.svg')
+            assert page.locator('.calendar-logo').evaluate("(el)=>el.complete&&el.naturalWidth>0")
+            # Legend must not shift the title: the title block stays centered on the calendar paper.
+            centers=page.evaluate("""()=>{
+              const paper=document.querySelector('.calendar-paper').getBoundingClientRect();
+              const title=document.querySelector('.calendar-paper-title').getBoundingClientRect();
+              return {paper:paper.left+paper.width/2,title:title.left+title.width/2};
+            }""")
+            assert abs(centers['paper']-centers['title'])<=1.0
             expect(page.locator('.calendar-week')).to_have_count(5)
             expect(page.locator('.calendar-event-item')).to_have_count(3)
             # Exact regression: 9~12 must never visually expand to the 8th.
@@ -207,7 +217,7 @@ def main():
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'calendar-mobile.png'),full_page=True)
             browser.close()
-        print('PASS: proposal-B holiday ribbons, plain holiday dates, dynamic monthly legend, visible PNG copy success, arbitrary event duplication, 1200px PNG clipboard export, XSS-safe text and mobile view; synthetic only.')
+        print('PASS: original SVG logo, title centered independently of legend, proposal-B holiday ribbons, actual monthly legend, visible PNG copy success and 1200px export; synthetic only.')
     finally:
         server.shutdown();server.server_close()
 
