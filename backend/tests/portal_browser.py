@@ -16,7 +16,7 @@ from playwright.sync_api import sync_playwright, expect
 STATIC = Path(__file__).resolve().parents[1] / 'portal_static'
 TIMESTAMP='2026-09-22T03:00:00Z'
 PROFILE={'member_id':'00000000-0000-4000-8000-000000000001','display_name':'샘플 수강생','role':'member','created_at':TIMESTAMP,'providers':['kakao'],'linked_order_count':2}
-SUMMARY={'members_total':12,'members_active':11,'courses_total':3,'courses_enabled':2,'orders_total':8,'pending_orders':8,'unlinked_orders':2}
+SUMMARY={'members_total':12,'members_active':11,'programs_total':3,'runs_total':5,'recruiting_runs':2,'orders_total':8,'pending_orders':8,'unlinked_orders':2}
 ORDERS=[{'order_id':'ord_sample_0001','course_id':'sample-flow','course_title':'[샘플] 흐름을 읽는 부동산 투자법','cohort':'테스트 기수','amount_krw':1000,'currency':'KRW','status':'pending_payment','created_at':TIMESTAMP,'customer_name':'샘플 수강생','phone_masked':'010-****-0000','email_masked':'s***@example.invalid','member_linked':True},
 {'order_id':'ord_sample_0002','course_id':'sample-basic','course_title':'[샘플] 프리리치온 기초 과정','cohort':'테스트 기수','amount_krw':1000,'currency':'KRW','status':'pending_payment','created_at':TIMESTAMP,'customer_name':'샘플 신청자','phone_masked':'010-****-0000','email_masked':'t***@example.invalid','member_linked':False}]
 MEMBERS=[{**PROFILE,'status':'active'}, {**PROFILE,'member_id':'00000000-0000-4000-8000-000000000002','display_name':'샘플 회원','providers':['naver'],'linked_order_count':0,'status':'active'}]
@@ -79,6 +79,8 @@ def main():
             scenario['role']='admin';page.set_viewport_size({'width':1440,'height':1050})
             page.goto(origin+'/portal/admin');expect(page.locator('#table-body tr')).to_have_count(2)
             expect(page.locator('#members-total')).to_have_text('12')
+            expect(page.locator('#programs-total')).to_have_text('3')
+            expect(page.locator('#programs-note')).to_have_text('운영 기수 5개 / 모집중 2개')
             if output:page.screenshot(path=str(output/'admin-desktop.png'),full_page=True)
             expect(page.locator('[data-admin-tab-link=courses]')).to_have_count(0)
             for tab,title in [('members','회원 목록'),('orders','신청·주문 내역')]:
