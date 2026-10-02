@@ -15,6 +15,8 @@ import oauth_signup_demographics_migrate
 import kakao_ci_migrate
 import course_entitlement_migrate
 
+import account_migrate
+
 class Context:
     def __init__(self,value):
         self.value=value
@@ -81,6 +83,12 @@ def test_applies_new_migration_and_uses_explicit_connection_url(tmp_path):
     ]
     assert ('target-sql',None) in cur.executed
     assert cur.executed[-1][1]==('target','checksum-target')
+
+
+def test_statement_timeout_can_be_overridden(tmp_path):
+    directory,cur,db,checksum=target(tmp_path,[('checksum-dep',),None])
+    assert apply(directory,db,checksum,statement_timeout_seconds=20) is True
+    assert cur.executed[0]==("SET LOCAL statement_timeout='20s'",None)
 
 
 def test_advisory_lock_slot_can_be_overridden(tmp_path):
@@ -163,3 +171,23 @@ def test_lock_slot_migration_modules_delegate_to_standard_runner(monkeypatch,mod
     }
     expected.update(extra)
     assert called==expected
+
+
+def test_account_migration_delegates_timeout_override(monkeypatch):
+    called={}
+
+    def fake_runner(**kwargs):
+        called.update(kwargs)
+        return 'sentinel'
+
+    monkeypatch.setattr(account_migrate,'apply_standard_migration',fake_runner)
+    assert account_migrate.apply_migration(connection_url='synthetic://override')=='sentinel'
+    assert called=={
+        'db_module':account_migrate.db,
+        'directory':account_migrate.DIRECTORY,
+        'version':account_migrate.VERSION,
+        'dependencies':account_migrate.DEPENDENCIES,
+        'checksum':account_migrate.checksum,
+        'connection_url':'synthetic://override',
+        'statement_timeout_seconds':20,
+    }
