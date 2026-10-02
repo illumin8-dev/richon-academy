@@ -108,6 +108,14 @@ def test_unauthenticated_reads_never_reach_store(app,monkeypatch,path):
     assert not any(x.called for x in [blocked]) 
 
 
+def test_unauthenticated_session_read_never_reaches_store(app,monkeypatch):
+    blocked=Mock(side_effect=AssertionError('must not query session'))
+    monkeypatch.setattr(portal.store,'sessions',blocked)
+    r=TestClient(app).get('/portal/api/admin/learning/sessions?run_id='+str(uuid4()))
+    assert r.status_code==401
+    blocked.assert_not_called()
+
+
 @pytest.mark.parametrize('path',[
     'programs','programs/update','runs','runs/update','sessions',
     'calendar-events','calendar-events/update','enrollments','enrollments/cancel'
@@ -149,12 +157,15 @@ def test_static_assets_have_no_token_storage_or_html_injection():
     assert "credentials:'same-origin'" in (portal.STATIC/'calendar.js').read_text()
 
 
-def test_course_admin_keeps_freeform_calendar_decoupled():
+def test_course_admin_keeps_calendar_decoupled_and_manages_sessions():
     html=(portal.STATIC/'courses.html').read_text()
     js=(portal.STATIC/'courses.js').read_text()
     assert '캘린더는 강의 / 기수 데이터와 별도로 자유롭게 관리합니다.' in html
     assert '일정 / 영상 / 자료는 중앙관리 캘린더에서 관리합니다.' not in html
-    for forbidden in ('id="session-form"','id="session-run"','id="session-list"','id="session-save"'):
-        assert forbidden not in html
-    for forbidden in ("$('session-form')","$('session-run')",'loadSessions','resetSessionForm','isoLocal('):
-        assert forbidden not in js
+    for required in ('id="session-form"','id="session-run"','id="session-list"','id="session-save"'):
+        assert required in html
+    for required in ("$('session-form')","$('session-run')",'loadSessions','resetSessionForm','isoLocal('):
+        assert required in js
+    assert "/portal/api/admin/learning/sessions?'" in js
+    assert "'/portal/api/admin/learning/sessions/update'" in js
+    assert "startsWith('https://')" in js
