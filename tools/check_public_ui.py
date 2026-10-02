@@ -4,6 +4,7 @@ import shared_chrome as chrome
 
 ROOT=Path(__file__).resolve().parents[1]
 index=(ROOT/'index.html').read_text()
+index_css=(ROOT/'assets'/'pages'/'index.css').read_text()
 apply=(ROOT/'apply.html').read_text()
 guide=(ROOT/'signup-guide.html').read_text()
 privacy=(ROOT/'privacy.html').read_text()
@@ -44,7 +45,10 @@ assert index.count('class="mentor-feature-card"') == 1
 assert 'class="mentor-kicker"' not in index
 assert index.count('id="burger"') == 1
 assert index.count('class="site-footer"') == 1
-assert 'body{padding-bottom:74px}' not in index
+assert '<link rel="stylesheet" href="/assets/pages/index.css">' in index
+assert '<style>' not in index
+assert '.pcard' in index_css and '.mentor-card' in index_css and '.ctabar' in index_css
+assert 'body{padding-bottom:74px}' not in index_css
 assert 'id="calendar"' in index
 assert 'id="landing-calendar"' in index
 assert 'assets/calendar/public-calendar.css' in index
