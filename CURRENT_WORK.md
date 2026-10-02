@@ -141,7 +141,8 @@ Kakao 개인정보 동의항목 1차 심사 반려 (2026-09-28):
 - [x] 관리자 홈 강의 통계를 legacy courses가 아니라 course_programs / course_runs 기준으로 전환
 - [x] 관리자 회차/영상/자료 관리 UI / 기수별 회차 생성·수정·사용중지·복구 / HTTPS 영상·자료 링크
 - [x] 수강권 취소 후 복구 / SUSPENDED 재개 / 현재 수강기간 기준 상태 자동 복원 / audit+version 유지
-- [ ] 공개 캘린더 60초 edge cache + rollout probe
+- [x] 공개 캘린더 60초 edge cache + rollout probe 소스/테스트 준비
+- [ ] Cloudflare Worker 실제 배포 + BIC-only probe 예외에 `/portal/api/public/calendar` 추가 후 candidate rollout
 
 
 사용자 결정:

@@ -43,6 +43,18 @@ root/index/apply/terms/privacy는 기존 정적 호스팅에 남깁니다. 홈�
 - 쿠키/회원 DB 기록 삭제는 별도의 데이터 변경이며 소스 롤백과 함께 자동 실행하지 않습니다.
 - 유출이 의심되는 edge secret은 Worker와 포털의 양쪽에서 함께 회전하고 필요 시 회원 세션도 회수합니다.
 
+## 공개 캘린더 캐시 예외
+
+- `GET /portal/api/public/calendar`만 익명 공개 read-only 경로로 취급합니다.
+- 이 경로는 브라우저 캐시는 사용하지 않고(`max-age=0`), Cloudflare shared cache만 60초(`s-maxage=60`) 사용합니다.
+- Worker는 이 요청에 회원 쿠키를 upstream으로 전달하지 않습니다.
+- upstream이 쿠키를 설정하면 캐시하지 않고 실패 처리합니다.
+- 오류 / JSON이 아닌 응답은 항상 `no-store`입니다.
+- POST 등 다른 메서드는 이 공개 경로에서 허용하지 않습니다.
+- 나머지 `/auth/*`, `/portal/*` 요청은 기존처럼 CDN cache bypass / `no-store`를 유지합니다.
+- rollout probe는 실제 `richonacademy.com/portal/api/public/calendar`의 200 JSON, 공개 필드 shape, 정확한 cache-control, Set-Cookie 부재를 확인합니다.
+- 기존 BIC-only 배포 점검 예외가 경로 allowlist 방식이면 `/portal/api/public/calendar`을 동일한 GET / empty-query / fixed deployment-check User-Agent 조건으로 추가해야 합니다.
+
 ## 검증 명령
 
 `node --test edge/worker.test.mjs`는 모의 transport 검사입니다. live provider/Cloudflare 호출이 없습니다.

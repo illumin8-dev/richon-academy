@@ -19,6 +19,8 @@ import portal_store as store
 logger = logging.getLogger("richon.portal")
 STATIC = Path(__file__).parent / "portal_static"
 HEADERS = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
+PUBLIC_CALENDAR_PATH = "/portal/api/public/calendar"
+PUBLIC_CALENDAR_CACHE = "public, max-age=0, s-maxage=60"
 PRETENDARD_CSS = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
 PRETENDARD_FONT = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/"
 PAGE_HEADERS = {
@@ -251,8 +253,11 @@ def install_if_enabled(app: FastAPI) -> bool:
     async def private_portal_headers(request: Request, call_next):
         response = await call_next(request)
         if request.url.path.startswith("/portal/"):
+            public_calendar = request.method == "GET" and request.url.path == PUBLIC_CALENDAR_PATH and response.status_code == 200
             page_headers = MEMBER_PAGE_HEADERS if request.url.path == "/portal/mypage" else (UI_PAGE_HEADERS if request.url.path in {"/portal/admin", "/portal/courses", "/portal/calendar", "/portal/enrollments", "/portal/manual"} else PAGE_HEADERS)
             response.headers.update(page_headers if response.status_code == 200 else PAGE_HEADERS)
+            if public_calendar:
+                response.headers["Cache-Control"] = PUBLIC_CALENDAR_CACHE
         return response
 
     # Pages contain only the UI shell. Protected APIs decide every data access.

@@ -44,3 +44,10 @@ No Cloudflare setting, DB/IAM, provider token, service image/traffic, homepage, 
 - https://developers.cloudflare.com/waf/custom-rules/skip/
 - https://developers.cloudflare.com/waf/custom-rules/skip/options/
 - https://developers.cloudflare.com/rules/configuration-rules/settings/
+
+
+## 2026-10-02 public calendar probe extension
+
+The landing calendar now has a public read-only probe at `GET /portal/api/public/calendar`. If the existing BIC-only deployment-check skip rule still uses the exact path set documented above, add only `/portal/api/public/calendar` to that same path set. Keep the existing constraints unchanged: host `richonacademy.com`, method `GET`, empty query, User-Agent `RichonPortalDeployCheck/1.0`, and Skip **Browser Integrity Check only**. Do not broaden to `/portal/*`, do not bypass Access, and do not disable BIC globally.
+
+This extension is needed so rollout automation can verify the public calendar JSON shape and `Cache-Control: public, max-age=0, s-maxage=60` without browser impersonation. It is not an authentication bypass and does not carry cookies.

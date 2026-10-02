@@ -29,8 +29,9 @@ PROBE_USER_AGENT = 'RichonPortalDeployCheck/1.0'
 NAVER_VERSIONS = {'NAVER_CLIENT_ID': ('richon-naver-client-id', '1'),
                   'NAVER_CLIENT_SECRET': ('richon-naver-client-secret', '1')}
 PUBLIC = ('/', '/apply.html')
+PUBLIC_CALENDAR_URL = ORIGIN + '/portal/api/public/calendar'
 LOGIN_MODAL = ORIGIN + '/auth/login?view=modal&return_to=%2Fportal%2Fmypage'
-URLS = ({c.URL + '/auth/login', CANDIDATE + '/auth/login', LOGIN_MODAL}
+URLS = ({c.URL + '/auth/login', CANDIDATE + '/auth/login', LOGIN_MODAL, PUBLIC_CALENDAR_URL}
         | {ORIGIN + p for p in PATHS + PUBLIC})
 
 
@@ -147,6 +148,39 @@ def access_status():
     except (c.Stop, ValueError):
         confirmed = False
         op.summary('CUSTOMER ROUTE PROBE login-modal: transport_or_response_unconfirmed')
+
+    try:
+        status, headers, body = request(PUBLIC_CALENDAR_URL, accept='application/json')
+        valid = (
+            status == 200
+            and headers.get('Content-Type', '').split(';')[0] == 'application/json'
+            and headers.get('Cache-Control', '') == 'public, max-age=0, s-maxage=60'
+            and not headers.get('Set-Cookie')
+            and len(body) <= 8192
+        )
+        if valid:
+            try:
+                data = json.loads(body)
+            except (ValueError, UnicodeError):
+                valid = False
+            else:
+                valid = (
+                    isinstance(data, dict)
+                    and bool(re.fullmatch(r'\d{4}-(?:0[1-9]|1[0-2])', data.get('month', '')))
+                    and isinstance(data.get('items'), list)
+                    and isinstance(data.get('has_prev'), bool)
+                    and isinstance(data.get('has_next'), bool)
+                )
+        op.summary('CUSTOMER ROUTE PROBE public-calendar: ' + json.dumps({
+            'status': status, 'expected_response': valid,
+            'cache_control': headers.get('Cache-Control', ''),
+            'cloudflare_marker': bool(headers.get('CF-Ray')),
+            'challenge': headers.get('CF-Mitigated') == 'challenge',
+        }, sort_keys=True))
+        confirmed = confirmed and valid
+    except (c.Stop, ValueError):
+        confirmed = False
+        op.summary('CUSTOMER ROUTE PROBE public-calendar: transport_or_response_unconfirmed')
     return CUSTOMER_ROUTES if confirmed else 'inconclusive'
 
 

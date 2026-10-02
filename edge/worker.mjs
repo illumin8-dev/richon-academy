@@ -5,6 +5,7 @@ const LIMIT = 65536;
 const TEST_CANDIDATE_HOST = 'portal-candidate---richon-portal-amjmgyepbq-as.a.run.app';
 const PUBLIC_RETURNS = new Set(['/', '/index.html', '/apply.html']);
 const PORTAL_RETURNS = new Set(['/portal/mypage', '/portal/admin', '/portal/enrollments', '/portal/manual']);
+const PUBLIC_CALENDAR = '/portal/api/public/calendar';
 const COMPLETIONS = new Set(['/auth/kakao/callback', '/auth/naver/callback', '/auth/signup']);
 const ACCOUNT_STARTS = new Set(['/portal/api/me/logins/link/start', '/portal/api/me/reauth/start',
   '/portal/api/me/logins/unlink/start', '/portal/api/me/withdraw/provider/start']);
@@ -21,7 +22,9 @@ const AUTH = new Map([
 ]);
 export function allowed(path, method) {
   if (!/^\/(auth|portal)\/[A-Za-z0-9_./-]+$/.test(path) || path.split('/').slice(1).some(x => !x || x === '.' || x === '..')) return false;
-  return path.startsWith('/auth/') ? (AUTH.get(path) || []).includes(method) : ['GET', 'POST'].includes(method);
+  if (path.startsWith('/auth/')) return (AUTH.get(path) || []).includes(method);
+  if (path === PUBLIC_CALENDAR) return method === 'GET';
+  return ['GET', 'POST'].includes(method);
 }
 function failure(status, detail) {
   return new Response(JSON.stringify({detail}), {status, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Referrer-Policy':'no-referrer'}});
@@ -95,17 +98,23 @@ export async function handle(request, env, fetcher = fetch) {
     const previous = returnReferer(request.headers.get('referer'));
     if (previous) headers.set('Referer', previous);
   }
+  const publicCalendar = url.pathname === PUBLIC_CALENDAR && request.method === 'GET';
   const cookies = (request.headers.get('cookie') || '').split(';').map(x => x.trim()).filter(x => COOKIES.has(x.split('=',1)[0]));
-  if (cookies.length) headers.set('Cookie', cookies.join('; '));
+  if (!publicCalendar && cookies.length) headers.set('Cookie', cookies.join('; '));
   headers.set('X-Richon-Edge-Key', env.RICHON_EDGE_SECRET);
   const destination = new URL(url.pathname + url.search, upstream.origin);
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 30000);
   try {
     // TTL zero still forces caching and may strip Set-Cookie. Authentication
     // responses must bypass the CDN cache, not enter it with immediate expiry.
-    const result = await fetcher(destination.href, {method: request.method, headers, body,
-      redirect: 'manual', signal: controller.signal, cache: 'no-store'});
-    const output = new Headers({'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
+    const init = {method: request.method, headers, body, redirect: 'manual', signal: controller.signal};
+    if (publicCalendar) init.cf = {cacheEverything: true, cacheTtlByStatus: {'200-299': 60, '300-599': 0}};
+    else init.cache = 'no-store';
+    const result = await fetcher(destination.href, init);
+    const cacheableCalendar = publicCalendar && result.status === 200
+      && result.headers.get('content-type')?.toLowerCase().split(';')[0].trim() === 'application/json';
+    const output = new Headers({'Cache-Control':cacheableCalendar ? 'public, max-age=0, s-maxage=60' : 'no-store',
+      'Referrer-Policy':'no-referrer', 'X-Content-Type-Options':'nosniff', 'X-Frame-Options':'DENY'});
     for (const key of ['content-type', 'content-security-policy', 'retry-after']) {
       const value = result.headers.get(key); if (value) output.set(key, value);
     }
@@ -117,6 +126,7 @@ export async function handle(request, env, fetcher = fetch) {
     }
     const setCookies = typeof result.headers.getSetCookie === 'function'
       ? result.headers.getSetCookie() : result.headers.getAll('Set-Cookie');
+    if (publicCalendar && setCookies.length) throw new Error('public_calendar_cookie');
     for (const cookie of setCookies) {
       const parts = cookie.split(';').map(x => x.trim());
       const attrs = parts.slice(1).map(x => x.toLowerCase());

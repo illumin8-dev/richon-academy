@@ -19,6 +19,8 @@ ORIGIN = 'https://richonacademy.com'
 LIMIT = 65536
 HEADERS = {'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
            'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY'}
+PUBLIC_CALENDAR_PATH = '/portal/api/public/calendar'
+PUBLIC_CALENDAR_CACHE = b'public, max-age=0, s-maxage=60'
 
 
 def allowed(path, method):
@@ -40,6 +42,8 @@ def allowed(path, method):
     }
     if path.startswith('/auth/'):
         return method in auth_methods.get(path, set())
+    if path == PUBLIC_CALENDAR_PATH:
+        return method == 'GET'
     return method in {'GET', 'POST'}
 
 
@@ -94,8 +98,13 @@ class EdgeBoundary:
                              and message['status'] == 200
                              and any(k.lower() == b'content-type' and v.lower().split(b';')[0] == b'text/html'
                                      for k,v in headers))
+                public_calendar = (scope['method'] == 'GET' and scope['path'] == PUBLIC_CALENDAR_PATH
+                                   and message['status'] == 200
+                                   and any(k.lower() == b'content-type' and v.lower().split(b';')[0] == b'application/json'
+                                           for k,v in headers))
                 policy = b'same-origin' if form_page else b'no-referrer'
-                message = {**message, 'headers': headers + [(b'cache-control', b'no-store'), (b'referrer-policy', policy)]}
+                cache = PUBLIC_CALENDAR_CACHE if public_calendar else b'no-store'
+                message = {**message, 'headers': headers + [(b'cache-control', cache), (b'referrer-policy', policy)]}
             await send(message)
         await self.app(scope, replay, secure_send)
 

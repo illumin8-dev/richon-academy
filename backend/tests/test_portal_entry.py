@@ -1,6 +1,8 @@
 """Portal origin gate and private-route exclusion. Synthetic config only."""
 from unittest.mock import Mock
 import pytest
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 import auth_core
 import portal_entry as entry
@@ -68,6 +70,21 @@ def test_request_limits_before_handlers(enabled):
         assert c.post('/auth/start',content=b'x'*65537).status_code==413
         assert c.post('/auth/start',content='x',headers={'Content-Length':'70000'}).status_code==413
         assert c.get('/auth/login?q='+'x'*8200).status_code==414
+
+def test_public_calendar_gate_is_get_only_and_preserves_shared_cache_header():
+    app=FastAPI()
+    @app.get(entry.PUBLIC_CALENDAR_PATH)
+    def calendar():
+        return JSONResponse({'month':'2026-10','items':[],'has_prev':False,'has_next':False},
+                            headers={'Cache-Control':'public, max-age=0, s-maxage=60'})
+    gated=entry.EdgeBoundary(app,enabled=True,secret=SECRET)
+    with TestClient(gated,base_url=entry.ORIGIN,headers={'X-Richon-Edge-Key':SECRET}) as c:
+        response=c.get(entry.PUBLIC_CALENDAR_PATH)
+        assert response.status_code==200
+        assert response.headers['cache-control']=='public, max-age=0, s-maxage=60'
+        assert response.headers['referrer-policy']=='no-referrer'
+        assert c.post(entry.PUBLIC_CALENDAR_PATH).status_code==404
+
 
 def test_invalid_configuration_fails_closed(enabled,monkeypatch):
     monkeypatch.setenv('RICHON_OAUTH_ORIGIN','https://other.example.invalid')
