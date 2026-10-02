@@ -195,6 +195,28 @@ def test_admin_member_detail_combines_canonical_enrollment_with_legacy_enabled(c
     assert validated.orders==[]
 
 
+def test_public_calendar_filters_private_rows_and_reports_adjacent_months(course_db,actors):
+    admin,_=actors
+    june=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(
+        request_id=req(),reason='공개 이전달',event_date=date(2026,6,29),
+        color_hex='#D8BD78',course_label='리치온 아카데미',content_text='무료 브리핑'))
+    july=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(
+        request_id=req(),reason='공개 현재달',event_date=date(2026,7,1),
+        color_hex='#FF9F26',course_label='리치온 인테리어'))
+    august=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(
+        request_id=req(),reason='공개 다음달',event_date=date(2026,8,6),
+        color_hex='#00B622',course_label='Pre리치온',content_text='부동산 투자원칙'))
+    with course_db() as cur:
+        cur.execute('UPDATE richon.calendar_events SET is_public=FALSE WHERE event_id=%s',(UUID(july['event_id']),))
+    data=store.public_calendar(
+        datetime(2026,5,31,15,tzinfo=timezone.utc),
+        datetime(2026,6,30,15,tzinfo=timezone.utc),
+        datetime(2026,7,31,15,tzinfo=timezone.utc),
+        datetime(2026,8,31,15,tzinfo=timezone.utc))
+    assert data['items']==[]
+    assert data['has_prev'] is True and data['has_next'] is True
+
+
 def test_visual_calendar_event_banner_update_delete_and_overlap(course_db,actors):
     admin,_=actors
     created=store.mutate(admin,'calendar_event.create',model.CalendarEventCreate(

@@ -92,6 +92,19 @@ def make_router(settings:AuthSettings,calendar_enabled=False):
         return read(response,store.enrollments,run_id,limit,offset)
 
     if calendar_enabled:
+        @router.get('/public/calendar')
+        def public_calendar(response:Response,month:str|None=Query(default=None,max_length=7)):
+            label,prev_start,start_at,end_at,next_end=_month_parts(month)
+            response.headers.update(HEADERS)
+            response.headers['Cache-Control']='public, max-age=0, s-maxage=60'
+            try:
+                data=store.public_calendar(prev_start,start_at,end_at,next_end)
+            except Exception:
+                logger.warning('public_calendar_store_unavailable')
+                raise HTTPException(503,'calendar_unavailable',headers=HEADERS) from None
+            return {'month':label,**data}
+
+    if calendar_enabled:
         @router.get('/admin/learning/calendar')
         def admin_calendar(response:Response,admin:Annotated[Principal,Depends(require_admin)],
                            month:str|None=Query(default=None,max_length=7)):

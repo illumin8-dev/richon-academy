@@ -320,6 +320,35 @@ def admin_calendar(start_at,end_at):
         return _rows(cur)
 
 
+def public_calendar(prev_start,start_at,end_at,next_end):
+    with read_cursor() as cur:
+        cur.execute('''SELECT
+                 CASE WHEN event_type='SPECIAL' AND ends_at IS NOT NULL THEN 'BANNER' ELSE 'EVENT' END AS display_kind,
+                 to_char(starts_at AT TIME ZONE 'Asia/Seoul','YYYY-MM-DD') AS event_date,
+                 CASE WHEN event_type='SPECIAL' AND ends_at IS NOT NULL
+                      THEN to_char((ends_at AT TIME ZONE 'Asia/Seoul') - INTERVAL '1 day','YYYY-MM-DD')
+                      ELSE NULL END AS end_date,
+                 color_hex,course_label,content_text
+            FROM richon.calendar_events
+           WHERE cancelled_at IS NULL AND is_public IS TRUE AND (
+                 (event_type='SPECIAL' AND ends_at IS NOT NULL AND ends_at>%s AND starts_at<%s)
+                 OR ((event_type<>'SPECIAL' OR ends_at IS NULL) AND starts_at>=%s AND starts_at<%s))
+           ORDER BY starts_at,event_id''',(start_at,end_at,start_at,end_at))
+        items=_rows(cur)
+        cur.execute('''SELECT
+          EXISTS(SELECT 1 FROM richon.calendar_events
+            WHERE cancelled_at IS NULL AND is_public IS TRUE AND (
+              (event_type='SPECIAL' AND ends_at IS NOT NULL AND ends_at>%s AND starts_at<%s)
+              OR ((event_type<>'SPECIAL' OR ends_at IS NULL) AND starts_at>=%s AND starts_at<%s))),
+          EXISTS(SELECT 1 FROM richon.calendar_events
+            WHERE cancelled_at IS NULL AND is_public IS TRUE AND (
+              (event_type='SPECIAL' AND ends_at IS NOT NULL AND ends_at>%s AND starts_at<%s)
+              OR ((event_type<>'SPECIAL' OR ends_at IS NULL) AND starts_at>=%s AND starts_at<%s)))''',
+          (prev_start,start_at,prev_start,start_at,end_at,next_end,end_at,next_end))
+        has_prev,has_next=cur.fetchone()
+    return {'items':items,'has_prev':has_prev,'has_next':has_next}
+
+
 def enrollments(run_id=None,limit=50,offset=0):
     with read_cursor() as cur:
         cur.execute('''SELECT e.enrollment_id,e.run_id,e.learner_id,l.member_id,l.name,

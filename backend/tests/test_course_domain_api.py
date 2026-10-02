@@ -78,6 +78,19 @@ def test_calendar_banner_requires_valid_end_date():
             model.CalendarEventCreate(**base,end_date=invalid)
 
 
+def test_public_calendar_is_anonymous_read_only_and_cacheable(app,monkeypatch):
+    expected={'items':[{'display_kind':'EVENT','event_date':'2026-10-08','end_date':None,
+                        'color_hex':'#00B622','course_label':'Pre리치온','content_text':'부동산 투자원칙'}],
+              'has_prev':True,'has_next':False}
+    mocked=Mock(return_value=expected);monkeypatch.setattr(portal.store,'public_calendar',mocked)
+    r=TestClient(app).get('/portal/api/public/calendar?month=2026-10')
+    assert r.status_code==200,r.text
+    assert r.json()=={'month':'2026-10',**expected}
+    assert r.headers['cache-control']=='public, max-age=0, s-maxage=60'
+    mocked.assert_called_once()
+    assert TestClient(app).get('/portal/api/public/calendar?month=2026-13').status_code==422
+
+
 @pytest.mark.parametrize('path',[
     '/portal/api/me/courses','/portal/api/admin/learning/programs',
     '/portal/api/admin/learning/runs','/portal/api/admin/learning/enrollments',
