@@ -110,6 +110,16 @@ def main():
             page=context.new_page();page.goto(origin+'/portal/calendar')
             expect(page.locator('#gate')).to_be_hidden()
             expect(page.locator('#month-label')).to_have_text('2026년 10월')
+            for button_id in ('prev-month','next-month'):
+                button=page.locator('#'+button_id)
+                box=button.bounding_box()
+                assert box and box['width']>=44 and box['height']>=44
+                assert button.locator('span').evaluate("(el)=>getComputedStyle(el).pointerEvents")=='none'
+                center=page.evaluate("""id=>{
+                  const el=document.getElementById(id),r=el.getBoundingClientRect();
+                  return document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.id||'';
+                }""",button_id)
+                assert center==button_id
             expect(page.locator('.calendar-logo')).to_have_attribute('src','/portal/calendar-assets/calendar-logo.svg')
             assert page.locator('.calendar-logo').evaluate("(el)=>el.complete&&el.naturalWidth>0")
             # Legend must not shift the title: the title block stays centered on the calendar paper.
