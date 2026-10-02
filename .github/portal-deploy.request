@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "enrollment-restore-20261002-a"
+  "operation": "hold",
+  "request_id": "post-enrollment-restore-hold-20261002-a"
 }
