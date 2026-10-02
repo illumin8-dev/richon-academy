@@ -46,6 +46,10 @@ assert 'assets/calendar/calendar-logo.svg' in index
 for relative in ('calendar-logo.svg','public-calendar.css','public-calendar.js'):
     path=ROOT/'assets'/'calendar'/relative
     assert path.is_file() and path.stat().st_size > 100
+calendar_css=(ROOT/'assets'/'calendar'/'public-calendar.css').read_text()
+assert 'display:grid;grid-template-columns:42px 1fr 42px' in calendar_css
+assert '.landing-calendar-nav button:first-child{grid-column:1}' in calendar_css
+assert '.landing-calendar-nav button:last-child{grid-column:3}' in calendar_css
 calendar_js=(ROOT/'assets'/'calendar'/'public-calendar.js').read_text()
 assert "/portal/api/public/calendar?month=" in calendar_js
 assert "credentials:'omit'" in calendar_js
