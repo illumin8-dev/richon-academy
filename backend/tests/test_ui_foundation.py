@@ -33,6 +33,15 @@ def test_operations_pages_share_brand_foundation_but_keep_page_css():
     for obsolete in ('header{','header>div{','.brand{','.brand:before{','.aside-note{','.footnote{'):
         assert obsolete not in enrollments
     for shared_owned in (
+        '.layout{display:grid;', '.eyebrow{font-size:11px;', 'h1{font-size:30px;',
+        '.panel{background:#fff;', '.skip{position:absolute;', '.skip:focus{top:8px}',
+    ):
+        assert shared_owned not in enrollments
+    assert 'h2{font-weight:700}' in enrollments
+    assert '.filters{padding:20px}' in enrollments
+    assert '.stats{margin:16px 0}' in enrollments
+    assert '.pager{padding:15px 20px}' in enrollments
+    for shared_owned in (
         '.eyebrow{font-size:10px;', 'h1{font-size:30px;', 'h2{font-size:19px;',
         '.panel{background:#fff;', '.filters{display:flex;align-items:end;',
         '.table-wrap{overflow-x:auto;max-width:100%}', '.skip{position:absolute;',
