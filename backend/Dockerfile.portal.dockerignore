@@ -18,6 +18,7 @@ backend/*
 !backend/portal_store.py
 !backend/monthly_portal.py
 !backend/monthly_store.py
+!backend/domain_dates.py
 !backend/manual_models.py
 !backend/manual_store.py
 !backend/manual_portal.py

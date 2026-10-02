@@ -7,7 +7,8 @@ from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 import auth_core
 from portal_store import _literal_search
-from monthly_store import _rows, month_start
+from domain_dates import month_start
+from monthly_store import _rows
 
 class Rejected(Exception):
     def __init__(self, code='record_conflict', status=409):
