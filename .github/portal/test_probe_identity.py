@@ -46,10 +46,11 @@ class ProbeIdentity(TestCase):
                 e.request(e.ORIGIN + '/auth/login', wrong_key=True)
             opener.open.assert_not_called()
 
-    def test_public_requests_are_still_six_exact_queryless_paths(self):
+    def test_public_requests_keep_exact_queryless_allowlist_plus_calendar_probe(self):
         expected = {'/', '/apply.html', '/auth/login', '/auth/kakao/callback',
                     '/auth/naver/callback', '/portal/mypage'}
         self.assertEqual(set(e.PATHS + e.PUBLIC), expected)
+        self.assertEqual(e.PUBLIC_CALENDAR_URL, e.ORIGIN + '/portal/api/public/calendar')
         with patch.object(e.urllib.request, 'build_opener') as build:
             for suffix in ('/auth/start', '/auth/me', '/auth/login?code=x',
                            '/auth/kakao/callback?state=x', '/portal/admin'):
