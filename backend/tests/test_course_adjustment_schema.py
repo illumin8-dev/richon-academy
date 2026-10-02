@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 SQL=(ROOT/'migrations'/'021_course_enrollment_adjustments.sql').read_text()
 MIGRATE=(ROOT/'course_adjustment_migrate.py').read_text()
+PREP=(ROOT.parent/'ops'/'prepare_course_adjustments.py').read_text()
 
 
 def test_adjustment_ledger_preserves_before_after_snapshots():
@@ -36,3 +37,12 @@ def test_adjustment_migration_is_explicit_and_course_scoped():
     assert "DEPENDENCIES=('016_course_entitlements',)" in MIGRATE
     assert 'advisory_slot=7' in MIGRATE
     assert "if __name__=='__main__':" in MIGRATE
+
+
+def test_db021_prepare_changes_only_incremental_course_grants():
+    assert 'grant_adjustment_delta' in PREP
+    assert 'course.grant_course' not in PREP
+    assert "'course_enrollment_adjustments'" in PREP
+    assert "'access_end'" in PREP
+    assert 'REVOKE ALL ON {} FROM {}' in PREP
+    assert 'richon.course_enrollments' in PREP
