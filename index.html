@@ -314,6 +314,8 @@
 <link rel="preload" as="image" href="assets/hero/richon-hero-mobile.webp" type="image/webp" media="(max-width:768px)">
 <link rel="stylesheet" href="assets/hero/home-hero.css">
 <script defer src="assets/hero/home-hero.js"></script>
+<link rel="stylesheet" href="assets/calendar/public-calendar.css">
+<script defer src="assets/calendar/public-calendar.js"></script>
 </head>
 <body>
 
@@ -491,6 +493,28 @@
   </div>
 </section>
 
+
+<section class="block light" id="calendar">
+  <div class="wrap">
+    <div class="landing-calendar reveal" id="landing-calendar" aria-live="polite" aria-busy="true">
+      <div class="landing-calendar-nav">
+        <button id="landing-calendar-prev" type="button" aria-label="이전 달" hidden>←</button>
+        <button id="landing-calendar-next" type="button" aria-label="다음 달" hidden>→</button>
+      </div>
+      <div class="landing-calendar-head">
+        <div class="landing-calendar-title">
+          <img class="landing-calendar-logo" src="assets/calendar/calendar-logo.svg" alt="">
+          <h2><span id="landing-calendar-month-label"></span><br>리치온 캘린더</h2>
+        </div>
+        <div id="landing-calendar-legend" class="landing-calendar-legend" aria-label="이번 달 과정"></div>
+      </div>
+      <div class="landing-calendar-weekdays" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+      <div id="landing-calendar-weeks" class="landing-calendar-weeks"></div>
+      <div id="landing-calendar-mobile" class="landing-calendar-mobile"></div>
+      <p id="landing-calendar-status" class="landing-calendar-status" role="status"></p>
+    </div>
+  </div>
+</section>
 
 <section class="block light" id="instructor">
   <div class="wrap mentor-section">
