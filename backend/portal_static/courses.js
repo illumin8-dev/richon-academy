@@ -2,6 +2,12 @@
 (()=>{
 const {$,text,el,requestId,api,csrf,post}=window.RichonOps;
 const state={programs:[],runs:[],selected:null,sessionEditing:null,sessions:[],adjusting:null};
+const adjustmentEndpoint={
+ suspend:'/portal/api/admin/learning/enrollments/suspend',
+ resume:'/portal/api/admin/learning/enrollments/resume',
+ extend:'/portal/api/admin/learning/enrollments/extend',
+ refund:'/portal/api/admin/learning/enrollments/refund',
+};
 const date=v=>v||'—';
 const money=v=>new Intl.NumberFormat('ko-KR').format(v||0)+'원';
 const dateTime=v=>v?new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Seoul'}).format(new Date(v)):'—';
@@ -321,7 +327,8 @@ $('adjust-form').addEventListener('submit',async e=>{
  }
  $('adjust-save').disabled=true;
  try{
-  await post('/portal/api/admin/learning/enrollments/'+op,body);
+  const endpoint=adjustmentEndpoint[op];if(!endpoint)throw Object.assign(new Error(),{detail:'unsupported_adjustment'});
+  await post(endpoint,body);
   $('adjust-dialog').close();state.adjusting=null;await loadEnrollments();
   text('enrollment-status',{suspend:'수강을 휴식 처리했습니다.',resume:'수강을 재개했습니다.',extend:'수강기간을 연장했습니다.',refund:'환불 기록을 반영했습니다.'}[op]);
  }catch(x){$('adjust-hint').textContent='저장하지 못했습니다: '+(x.detail||x.status||'');}
