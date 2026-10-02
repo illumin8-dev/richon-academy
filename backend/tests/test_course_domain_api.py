@@ -118,7 +118,7 @@ def test_unauthenticated_session_read_never_reaches_store(app,monkeypatch):
 
 @pytest.mark.parametrize('path',[
     'programs','programs/update','runs','runs/update','sessions',
-    'calendar-events','calendar-events/update','enrollments','enrollments/cancel'
+    'calendar-events','calendar-events/update','enrollments','enrollments/cancel','enrollments/restore'
 ])
 def test_non_admin_writes_never_reach_store(app,monkeypatch,path):
     app.dependency_overrides[auth_http.require_member]=lambda:principal('member')
