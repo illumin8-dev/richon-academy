@@ -28,6 +28,11 @@ def candidate(state):
     return svc
 
 
+CALENDAR_BODY=json.dumps({'month':'2026-10','items':[],'has_prev':True,'has_next':False}).encode()
+def healthy_calendar():
+    return 200, {'Content-Type':'application/json','Cache-Control':'public, max-age=0, s-maxage=60'}, CALENDAR_BODY
+
+
 class EdgeGuards(TestCase):
     def test_explicit_modes_only(self):
         for name in ('inspect-edge', 'stage-edge'):
@@ -112,6 +117,9 @@ class EdgeGuards(TestCase):
             'notice': None,
         }).encode()
         def response(url, **kw):
+            if url == e.PUBLIC_CALENDAR_URL:
+                self.assertEqual(kw.get('accept'), 'application/json')
+                return healthy_calendar()
             if url == e.LOGIN_MODAL:
                 self.assertEqual(kw.get('accept'), 'application/json')
                 return 200, {'Content-Type': 'application/json'}, modal
@@ -124,6 +132,28 @@ class EdgeGuards(TestCase):
         with patch.object(e, 'request', side_effect=response):
             self.assertEqual(e.access_status(), e.CUSTOMER_ROUTES)
 
+    def test_public_calendar_probe_requires_json_shape_cache_header_and_no_cookie(self):
+        modal = json.dumps({'csrf':'a'*64,'return_to':'/portal/mypage','providers':['kakao']}).encode()
+        def base(url, **kw):
+            if url == e.PUBLIC_CALENDAR_URL:return healthy_calendar()
+            if url == e.LOGIN_MODAL:return 200, {'Content-Type':'application/json'}, modal
+            path=url.removeprefix(e.ORIGIN)
+            if path in e.CALLBACKS:return 303, {'Location':e.ORIGIN+'/auth/login?error=login_failed'}, b''
+            if path in e.PATHS+e.PUBLIC:return 200, {'Content-Type':'text/html'}, b''
+            raise AssertionError(url)
+        with patch.object(e,'request',side_effect=base):
+            self.assertEqual(e.access_status(),e.CUSTOMER_ROUTES)
+        for bad in [
+            (200,{'Content-Type':'application/json','Cache-Control':'no-store'},CALENDAR_BODY),
+            (200,{'Content-Type':'application/json','Cache-Control':'public, max-age=0, s-maxage=60','Set-Cookie':'x=y'},CALENDAR_BODY),
+            (200,{'Content-Type':'application/json','Cache-Control':'public, max-age=0, s-maxage=60'},b'{}'),
+        ]:
+            def broken(url, **kw):
+                if url==e.PUBLIC_CALENDAR_URL:return bad
+                return base(url,**kw)
+            with patch.object(e,'request',side_effect=broken):
+                self.assertEqual(e.access_status(),'inconclusive')
+
     def test_pages_apply_canonical_redirect_is_a_pass_but_other_redirects_are_not(self):
         modal = json.dumps({
             'csrf': 'a' * 64,
@@ -133,6 +163,8 @@ class EdgeGuards(TestCase):
             'notice': None,
         }).encode()
         def good(url, **kw):
+            if url == e.PUBLIC_CALENDAR_URL:
+                return healthy_calendar()
             if url == e.LOGIN_MODAL:
                 return 200, {'Content-Type': 'application/json'}, modal
             path = url.removeprefix(e.ORIGIN)
@@ -146,6 +178,8 @@ class EdgeGuards(TestCase):
 
         for location in ('https://evil.invalid/apply', '/other', e.ORIGIN + '/apply?x=1'):
             def bad(url, **kw):
+                if url == e.PUBLIC_CALENDAR_URL:
+                    return healthy_calendar()
                 if url == e.LOGIN_MODAL:
                     return 200, {'Content-Type': 'application/json'}, modal
                 path = url.removeprefix(e.ORIGIN)
@@ -159,6 +193,8 @@ class EdgeGuards(TestCase):
 
     def test_cloudflare_access_redirect_on_customer_route_is_not_a_pass(self):
         def response(url, **kw):
+            if url == e.PUBLIC_CALENDAR_URL:
+                return healthy_calendar()
             if url == e.LOGIN_MODAL:
                 return 302, {'Location': 'https://' + e.ACCESS_HOST + '/cdn-cgi/access/login/richonacademy.com?kid=x'}, b''
             if url in {e.ORIGIN + p for p in e.PUBLIC}:
@@ -169,6 +205,8 @@ class EdgeGuards(TestCase):
 
     def test_invalid_modal_bootstrap_is_not_a_pass(self):
         def response(url, **kw):
+            if url == e.PUBLIC_CALENDAR_URL:
+                return healthy_calendar()
             if url == e.LOGIN_MODAL:
                 return 200, {'Content-Type': 'application/json'}, b'{}'
             path = url.removeprefix(e.ORIGIN)
