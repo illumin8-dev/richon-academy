@@ -9,6 +9,7 @@ guide=(ROOT/'signup-guide.html').read_text()
 privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
 policy_css=(ROOT/'assets'/'pages'/'policy.css').read_text()
+apply_css=(ROOT/'assets'/'pages'/'apply.css').read_text()
 shared=ROOT/'frontend'/'shared'
 
 footer=chrome.footer()
@@ -26,6 +27,9 @@ for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only in index
     assert landing_only not in apply
 assert 'id="navMenu"' not in apply
+assert '<link rel="stylesheet" href="/assets/pages/apply.css">' in apply
+assert '<style>' not in apply
+assert '.apply-grid' in apply_css and '.apply-summary' in apply_css and '.apply-curriculum' in apply_css
 assert 'id="burger"' not in apply
 assert 'data:image' not in index
 assert 'RICHON Estate Study Group 대표' not in index
