@@ -36,6 +36,7 @@ portal_static/*
 !portal_static/manual.js
 !portal_static/auth.css
 !portal_static/ops.css
+!portal_static/ops.js
 !portal_static/courses.html
 !portal_static/courses.css
 !portal_static/courses.js

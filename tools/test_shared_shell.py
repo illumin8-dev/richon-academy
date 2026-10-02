@@ -62,7 +62,7 @@ class SharedShellTests(unittest.TestCase):
                 self.assertIn(chrome.wrapped('footer',footer),page)
 
     def test_private_shared_assets_are_exact_copies(self):
-        for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'account.css', 'account.js'):
+        for name in ('site.css', 'site.js', 'login.js', 'signup.js', 'handoff.js', 'ops.js', 'account.css', 'account.js'):
             self.assertEqual((build.SOURCE / name).read_bytes(), (build.STATIC / name).read_bytes())
         self.assertEqual((build.SOURCE / 'admin.css').read_bytes(), (build.STATIC / 'portal.css').read_bytes())
         site=(build.SOURCE/'site.css').read_text()
@@ -123,6 +123,8 @@ class SharedShellTests(unittest.TestCase):
                 self.assertEqual(page.count(footer),1)
                 self.assertIn('/portal/assets/site.css',page)
                 self.assertIn('/portal/assets/site.js',page)
+                if name in ('courses.html','calendar.html'):
+                    self.assertIn('/portal/assets/ops.js',page)
                 self.assertIn('class="richon-page"',page)
                 self.assertEqual(page.count(chrome.font_link()),1)
                 self.assertEqual(page.count('data-admin-tab-link="orders"'),1)

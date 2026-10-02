@@ -6,7 +6,7 @@ SHARED=ROOT/'frontend'/'shared'
 STATIC=ROOT/'backend'/'portal_static'
 
 def test_shared_auth_and_ops_assets_are_exact_copies():
-    for name in ('auth.css','ops.css','site.css'):
+    for name in ('auth.css','ops.css','ops.js','site.css'):
         assert (SHARED/name).read_bytes()==(STATIC/name).read_bytes()
 
 def test_operations_pages_share_brand_foundation_but_keep_page_css():

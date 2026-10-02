@@ -47,6 +47,7 @@ backend/portal_static/*
 !backend/portal_static/signup.js
 !backend/portal_static/auth.css
 !backend/portal_static/ops.css
+!backend/portal_static/ops.js
 !backend/portal_static/account.css
 !backend/portal_static/account.js
 !backend/portal_static/courses.html

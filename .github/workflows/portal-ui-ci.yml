@@ -29,6 +29,7 @@ jobs:
         run: |
           node --check backend/portal_static/portal.js
           node --check backend/portal_static/account.js
+          node --check backend/portal_static/ops.js
           node --check backend/portal_static/login.js
           node --check backend/portal_static/signup.js
           node --check backend/portal_static/handoff.js
