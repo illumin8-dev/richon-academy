@@ -43,6 +43,16 @@ def main():
     sessions=[{'session_id':SESSION_ID,'run_id':RUN_ID,'sequence_no':1,'title':'부동산 투자원칙','mentor_name':'이루민',
                'starts_at':'2026-10-08T12:00:00+00:00','ends_at':'2026-10-08T14:00:00+00:00',
                'video_url':None,'material_url':None,'content_url':None,'cancelled':False,'version':1}]
+    enrollments=[
+      {'enrollment_id':'00000000-0000-4000-8000-000000000401','run_id':RUN_ID,'learner_id':'00000000-0000-4000-8000-000000000501',
+       'member_id':'00000000-0000-4000-8000-000000000601','name':'가상 취소회원','phone_masked':None,'email_masked':None,
+       'program_title':'Pre리치온','cohort_label':'Pre리치온 9기','access_start':'2026-10-08','access_end':'2026-12-07',
+       'source':'ADMIN','note':None,'version':2,'status':'CANCELLED'},
+      {'enrollment_id':'00000000-0000-4000-8000-000000000402','run_id':RUN_ID,'learner_id':'00000000-0000-4000-8000-000000000502',
+       'member_id':'00000000-0000-4000-8000-000000000602','name':'가상 중지회원','phone_masked':None,'email_masked':None,
+       'program_title':'Pre리치온','cohort_label':'Pre리치온 9기','access_start':'2026-10-08','access_end':'2026-12-07',
+       'source':'ADMIN','note':None,'version':3,'status':'SUSPENDED'},
+    ]
     posts=[];counter=[300]
     try:
         with sync_playwright() as p:
@@ -63,11 +73,22 @@ def main():
                 elif path=='/portal/api/admin/learning/runs' and method=='GET':
                     data={'items':runs,'limit':100,'offset':0,'has_more':False}
                 elif path=='/portal/api/admin/learning/enrollments' and method=='GET':
-                    data={'items':[],'limit':100,'offset':0,'has_more':False}
+                    data={'items':[x.copy() for x in enrollments],'limit':100,'offset':0,'has_more':False}
                 elif path=='/portal/api/admin/learning/sessions' and method=='GET':
                     data=[x.copy() for x in sessions]
                 elif path=='/auth/csrf':
                     data={'csrf_token':'test-only'}
+                elif path=='/portal/api/admin/learning/enrollments/restore' and method=='POST':
+                    body=req.request.post_data_json;posts.append((path,body.copy()))
+                    row=next(x for x in enrollments if x['enrollment_id']==body['enrollment_id'])
+                    assert row['status'] in {'CANCELLED','SUSPENDED'}
+                    row.update(status='ACTIVE',version=row['version']+1)
+                    data={'enrollment_id':row['enrollment_id'],'version':row['version'],'status':'ACTIVE'}
+                elif path=='/portal/api/admin/learning/enrollments/cancel' and method=='POST':
+                    body=req.request.post_data_json;posts.append((path,body.copy()))
+                    row=next(x for x in enrollments if x['enrollment_id']==body['enrollment_id'])
+                    row.update(status='CANCELLED',version=row['version']+1)
+                    data={'enrollment_id':row['enrollment_id'],'version':row['version'],'status':'CANCELLED'}
                 elif path=='/portal/api/admin/learning/sessions/update' and method=='POST':
                     body=req.request.post_data_json;posts.append((path,body.copy()))
                     row=next(x for x in sessions if x['session_id']==body['session_id'])
@@ -123,12 +144,30 @@ def main():
             first.locator('button',has_text='복구').click()
             expect(page.locator('.session-card').first).to_contain_text('사용 중')
 
+            expect(page.locator('#enrollment-body tr')).to_have_count(2)
+            cancelled=page.locator('#enrollment-body tr').filter(has_text='가상 취소회원')
+            suspended=page.locator('#enrollment-body tr').filter(has_text='가상 중지회원')
+            expect(cancelled.locator('button')).to_have_text('복구')
+            expect(suspended.locator('button')).to_have_text('재개')
+
+            cancelled.locator('button').click()
+            expect(page.locator('#enrollment-status')).to_have_text('수강권을 복구했습니다.')
+            expect(page.locator('#enrollment-body tr').filter(has_text='가상 취소회원')).to_contain_text('ACTIVE')
+            assert posts[-1][0].endswith('/enrollments/restore')
+            assert posts[-1][1]['reason']=='관리자 수강권 복구'
+
+            page.locator('#enrollment-body tr').filter(has_text='가상 중지회원').locator('button').click()
+            expect(page.locator('#enrollment-status')).to_have_text('수강권을 재개했습니다.')
+            expect(page.locator('#enrollment-body tr').filter(has_text='가상 중지회원')).to_contain_text('ACTIVE')
+            assert posts[-1][0].endswith('/enrollments/restore')
+            assert posts[-1][1]['reason']=='관리자 수강권 재개'
+
             page.set_viewport_size({'width':390,'height':844});page.wait_for_timeout(100)
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
             if len(sys.argv)>1:
                 dst=Path(sys.argv[1]);dst.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(dst/'courses-mobile.png'),full_page=True)
             browser.close()
-        print('PASS: admin course sessions create/edit/resource links/cancel-restore and mobile layout; synthetic only.')
+        print('PASS: admin course sessions/resources, enrollment cancel restore/resume and mobile layout; synthetic only.')
     finally:
         server.shutdown();server.server_close()
 
