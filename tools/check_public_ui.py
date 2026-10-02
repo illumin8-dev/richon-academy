@@ -8,6 +8,7 @@ apply=(ROOT/'apply.html').read_text()
 guide=(ROOT/'signup-guide.html').read_text()
 privacy=(ROOT/'privacy.html').read_text()
 terms=(ROOT/'terms.html').read_text()
+policy_css=(ROOT/'assets'/'pages'/'policy.css').read_text()
 shared=ROOT/'frontend'/'shared'
 
 footer=chrome.footer()
@@ -180,6 +181,10 @@ assert chrome.wrapped('header',chrome.render_header('document')) in privacy
 assert chrome.wrapped('header',chrome.render_header('document')) in terms
 assert chrome.wrapped('footer',footer) in privacy
 assert chrome.wrapped('footer',footer) in terms
+for page in (privacy,terms):
+    assert '<link rel="stylesheet" href="/assets/pages/policy.css">' in page
+    assert '<style>' not in page
+assert '--maxw:860px' in policy_css and 'header.doc' in policy_css and 'h3.art' in policy_css
 for landing_only in ('/#proof','/#programs','/#instructor'):
     assert landing_only not in guide
 assert 'id="navMenu"' not in guide
