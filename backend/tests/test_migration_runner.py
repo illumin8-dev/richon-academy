@@ -19,6 +19,7 @@ import account_migrate
 import course_domain_migrate
 import calendar_migrate
 import calendar_freeform_migrate
+import monthly_runtime_hardening_migrate
 
 class Context:
     def __init__(self,value):
@@ -190,6 +191,7 @@ def test_lock_slot_migration_modules_delegate_to_standard_runner(monkeypatch,mod
         (course_domain_migrate,{'dependency_error_with_version':True}),
         (calendar_migrate,{'advisory_slot':4,'dependency_error_with_version':True}),
         (calendar_freeform_migrate,{'advisory_slot':5,'dependency_error_with_version':True}),
+        (monthly_runtime_hardening_migrate,{'advisory_slot':5,'dependency_error_with_version':True}),
     ],
 )
 def test_versioned_dependency_migrations_delegate_to_standard_runner(monkeypatch,module,extra):
