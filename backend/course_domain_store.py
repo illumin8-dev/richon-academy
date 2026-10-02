@@ -511,6 +511,17 @@ def enrollments(run_id=None,limit=50,offset=0):
     return {'items':rows[:limit],'limit':limit,'offset':offset,'has_more':len(rows)>limit}
 
 
+def adjustments(enrollment_id,limit=100):
+    with read_cursor() as cur:
+        cur.execute('''SELECT adjustment_id,enrollment_id,kind,effective_on,status_before,status_after,
+              access_start_before,access_end_before,access_start_after,access_end_after,
+              extension_kind,refund_kind,refund_amount_krw,refund_reference,note,created_at
+          FROM richon.course_enrollment_adjustments
+          WHERE enrollment_id=%s
+          ORDER BY created_at DESC,adjustment_id DESC LIMIT %s''',(enrollment_id,limit))
+        return fetch_rows(cur)
+
+
 def targets(q,limit=20):
     phone=re.sub(r'[ ()-]','',q)
     if phone.startswith('+82'):phone='0'+phone[3:]
