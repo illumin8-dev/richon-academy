@@ -29,6 +29,9 @@ def test_operations_pages_share_brand_foundation_but_keep_page_css():
     manual=(STATIC/'manual.css').read_text()
     for obsolete in ('header{','header>div{','.brand{','.brand span{','.side-note{','.footnote{','#identity{'):
         assert obsolete not in manual
+    enrollments=(STATIC/'enrollments.css').read_text()
+    for obsolete in ('header{','header>div{','.brand{','.brand:before{','.aside-note{','.footnote{'):
+        assert obsolete not in enrollments
     for shared_owned in (
         '.eyebrow{font-size:10px;', 'h1{font-size:30px;', 'h2{font-size:19px;',
         '.panel{background:#fff;', '.filters{display:flex;align-items:end;',
