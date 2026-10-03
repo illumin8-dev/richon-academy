@@ -1,4 +1,4 @@
 {
-  "operation": "rollout-login-handoff",
-  "request_id": "rollout-enrollment-adjustments-20261003-a"
+  "operation": "recover-candidate-code",
+  "request_id": "recover-db021-candidate-20261003-a"
 }
