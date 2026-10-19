@@ -13,7 +13,7 @@
     menu?.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setMenu(false)));
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && burger?.getAttribute('aria-expanded') === 'true') {setMenu(false); burger.focus();} });
     document.querySelectorAll('[data-site-year]').forEach(el => {el.textContent = String(new Date().getFullYear());});
-    // Home entry remains hidden until a separately approved release changes this explicit markup.
+    // Public pages opt in explicitly; portal/admin surfaces stay hidden unless their own UI enables account actions.
     const entry = document.getElementById('site-account-login');
     if (entry && document.body.dataset.accountEntry === 'enabled') entry.hidden = false;
   }
