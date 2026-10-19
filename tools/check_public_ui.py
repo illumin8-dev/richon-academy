@@ -24,7 +24,7 @@ for page in (index,apply):
     assert 'href="frontend/shared/site.css"' in page
     assert 'src="frontend/shared/site.js"' in page
     assert 'src="frontend/shared/login.js"' in page
-    assert 'data-account-entry="enabled"' not in page
+    assert 'data-account-entry="enabled"' in page
     assert 'id="site-account-login"' in page and 'data-richon-login hidden' in page
     assert 'id="site-account-me"' in page
 for landing_only in ('/#proof','/#programs','/#instructor'):
@@ -209,6 +209,7 @@ assert '<link rel="stylesheet" href="/assets/pages/signup-guide.css">' in guide
 assert '<style>' not in guide
 assert '.signup-guide' in signup_guide_css and '.guide-section' in signup_guide_css and '.collection-table' in signup_guide_css
 assert 'src="/frontend/shared/login.js"' in guide
+assert 'data-account-entry="enabled"' in guide
 for value in ('회원가입 전체 절차','이름','휴대전화번호','이메일','연령대','성별',
               'CI(연계정보)','중복가입 방지'):
     assert value in guide
