@@ -78,7 +78,7 @@ assert '.landing-mobile-day,.landing-mobile-banner{border:1px solid #e8e3db;bord
 assert '.landing-mobile-day{display:grid;grid-template-columns:32px minmax(0,1fr);gap:6px;align-items:start;min-width:0}' in calendar_css
 assert '.landing-mobile-date{width:30px;height:30px;border-radius:7px' in calendar_css
 assert '.landing-mobile-banner{grid-column:1/-1;' in calendar_css
-assert '.landing-mobile-event+.landing-mobile-event{margin-top:6px;padding-top:6px' in calendar_css
+assert '.landing-mobile-event+.landing-mobile-event{margin-top:5px;padding-top:5px' in calendar_css
 assert 'id="landing-calendar-prev" type="button" aria-label="이전 달" hidden><span aria-hidden="true">←</span>' in index
 assert 'id="landing-calendar-next" type="button" aria-label="다음 달" hidden><span aria-hidden="true">→</span>' in index
 calendar_js=(ROOT/'assets'/'calendar'/'public-calendar.js').read_text()
