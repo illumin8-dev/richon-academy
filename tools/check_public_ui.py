@@ -72,6 +72,12 @@ assert 'min-height:88px' in calendar_css
 assert '.landing-calendar-day{min-height:88px;padding:0 3px' in calendar_css
 assert '.landing-calendar-event-content{display:block;margin:2px 0 0;color:#444;font-size:11.5px' in calendar_css
 assert '@media(min-width:901px){.landing-calendar-event-content{white-space:nowrap}}' in calendar_css
+assert '@media(max-width:720px){#calendar.block{padding:24px 0}' in calendar_css
+assert '.landing-calendar-mobile{display:grid;gap:6px}' in calendar_css
+assert '.landing-mobile-day,.landing-mobile-banner{border:1px solid #e8e3db;border-radius:10px;padding:8px 10px' in calendar_css
+assert '.landing-mobile-day{display:grid;grid-template-columns:38px minmax(0,1fr);gap:8px;align-items:start}' in calendar_css
+assert '.landing-mobile-date{width:36px;height:36px;border-radius:8px' in calendar_css
+assert '.landing-mobile-event+.landing-mobile-event{margin-top:6px;padding-top:6px' in calendar_css
 assert 'id="landing-calendar-prev" type="button" aria-label="이전 달" hidden><span aria-hidden="true">←</span>' in index
 assert 'id="landing-calendar-next" type="button" aria-label="다음 달" hidden><span aria-hidden="true">→</span>' in index
 calendar_js=(ROOT/'assets'/'calendar'/'public-calendar.js').read_text()
